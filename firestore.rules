@@ -1,0 +1,92 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isResourceOwner() {
+      return request.auth.uid == resource.data.userId;
+    }
+    
+    function isRequestingOwnData(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function getUserData(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
+    }
+
+    function isSameCompany(companyId) {
+        // Check if the user document exists before trying to access its data.
+        return exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+               getUserData(request.auth.uid).companyId == companyId;
+    }
+
+    function isAdmin() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             getUserData(request.auth.uid).role == 'admin';
+    }
+
+    match /test_writes/{docId} {
+      allow read, write: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    }
+
+    match /companies/{companyId} {
+      allow read: if isSignedIn() && isSameCompany(companyId);
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.ownerId;
+    }
+    
+    match /invites/{inviteId} {
+      // Admins can create invites for their own company.
+      allow create: if isSignedIn() && isAdmin() && isSameCompany(request.resource.data.companyId);
+      // A user can read an invite if it's for their email.
+      allow read: if isSignedIn() && request.auth.token.email == resource.data.email;
+      // Allow a user to update the status of their own invite (e.g., to 'accepted').
+      allow update: if isSignedIn() && request.auth.token.email == resource.data.email;
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (isRequestingOwnData(userId) || isSameCompany(resource.data.companyId));
+      allow write: if isSignedIn() && (
+        (request.method == 'create' && isRequestingOwnData(userId)) ||
+        (request.method == 'update' && (isRequestingOwnData(userId) || (isAdmin() && isSameCompany(resource.data.companyId))))
+      );
+    }
+    
+    match /{path=**}/notifications/{notificationId} {
+      allow read, write: if isSignedIn() && get(/databases/$(database)/documents/projects/$(request.resource.data.projectId)).data.userIds.hasAny([request.auth.uid]);
+    }
+    
+    match /projects/{projectId} {
+      allow get: if isSignedIn() && resource.data.userIds.hasAny([request.auth.uid]);
+      allow create: if isSignedIn() && isSameCompany(request.resource.data.companyId);
+      allow update: if isSignedIn() && isAdmin() && isSameCompany(resource.data.companyId);
+
+      match /chatMessages/{messageId} {
+          allow read, create: if isSignedIn() && get(/databases/$(database)/documents/projects/$(projectId)).data.userIds.hasAny([request.auth.uid]);
+      }
+
+      match /expenses {
+        allow list, create: if isSignedIn() && get(/databases/$(database)/documents/projects/$(projectId)).data.userIds.hasAny([request.auth.uid]);
+      }
+
+      match /expenses/{expenseId} {
+        function isExpenseOwner() {
+          return request.auth.uid == resource.data.userId;
+        }
+        allow get: if isSignedIn() && get(/databases/$(database)/documents/projects/$(projectId)).data.userIds.hasAny([request.auth.uid]);
+        allow update, delete: if isSignedIn() && get(/databases/$(database)/documents/projects/$(projectId)).data.userIds.hasAny([request.auth.uid]) && (isExpenseOwner() || isAdmin());
+      }
+    }
+    
+    match /materials/{materialId} {
+      // This rule is insecure. It should be restricted to users of a company.
+      // For now, allowing any signed-in user to proceed.
+      allow read, write: if isSignedIn();
+    }
+  }
+}

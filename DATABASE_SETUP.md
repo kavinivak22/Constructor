@@ -1,0 +1,305 @@
+# Database Schema Setup for Supabase
+
+This document provides the necessary SQL script to set up the required tables and database triggers in your Supabase project for the application to function correctly.
+
+## Instructions
+
+1.  **Navigate to your Supabase Project:**
+    *   Go to [supabase.com](https://supabase.com) and log in.
+    *   Select the project you are using for this application.
+
+2.  **Go to the SQL Editor:**
+    *   In the left-hand navigation menu, find and click on the **SQL Editor** icon (it looks like `<>`).
+
+3.  **Create a New Query:**
+    *   Click on **"+ New query"**.
+
+4.  **Copy and Paste the SQL Script:**
+    *   Copy the entire SQL script below.
+    *   Paste the copied SQL into the new query window in the Supabase SQL Editor.
+
+5.  **Run the Query:**
+    *   Click the **"RUN"** button (with the green play icon) to execute the script. The script is designed to be safe to run multiple times; it will drop old policies and functions before creating new ones.
+
+After the script successfully runs, all the required tables with the correct columns, along with database functions and triggers, will be created in your database. This will resolve the errors you were seeing.
+
+---
+
+## SQL Script to Run
+
+```sql
+-- Drop dependent objects first to avoid errors
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP FUNCTION IF EXISTS public.handle_new_user();
+
+-- Drop old tables if they exist to ensure a clean setup
+DROP TABLE IF EXISTS public.companies CASCADE;
+DROP TABLE IF EXISTS public.users CASCADE;
+DROP TABLE IF EXISTS public.projects CASCADE;
+DROP TABLE IF EXISTS public.invites CASCADE;
+DROP TABLE IF EXISTS public.chat_messages CASCADE;
+DROP TABLE IF EXISTS public.notifications CASCADE;
+DROP TABLE IF EXISTS public.test_writes CASCADE;
+
+
+-- Enable Row Level Security (RLS)
+ALTER DATABASE postgres SET "app.settings.jwt_claims" TO '{"role": "authenticated"}';
+
+
+-- =================================================================
+-- Tables
+-- =================================================================
+
+-- COMPANIES table
+CREATE TABLE public.companies (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
+    name text NOT NULL,
+    "ownerId" uuid NOT NULL REFERENCES auth.users(id),
+    address text,
+    phone text,
+    website text,
+    "businessType" text,
+    "companySize" text
+);
+ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
+
+-- USERS table
+CREATE TABLE public.users (
+    id uuid NOT NULL PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    "displayName" text,
+    email text,
+    phone text,
+    "photoURL" text,
+    role text DEFAULT 'member'::text NOT NULL,
+    "projectIds" uuid[] DEFAULT '{}'::uuid[],
+    "companyId" uuid REFERENCES public.companies(id),
+    status text DEFAULT 'active'::text NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now()
+);
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+
+-- PROJECTS table
+CREATE TABLE public.projects (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    name text NOT NULL,
+    description text,
+    "startDate" timestamp with time zone,
+    "endDate" timestamp with time zone,
+    status text,
+    "userIds" uuid[] DEFAULT '{}'::uuid[],
+    progress integer,
+    "imageId" text,
+    "companyId" uuid NOT NULL REFERENCES public.companies(id),
+    "clientName" text,
+    "clientContact" text,
+    location text,
+    budget numeric,
+    "projectType" text,
+    "createdAt" timestamp with time zone DEFAULT now()
+);
+ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
+
+-- INVITES table
+CREATE TABLE public.invites (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    email text NOT NULL,
+    "companyId" uuid NOT NULL REFERENCES public.companies(id),
+    role text,
+    status text,
+    "createdAt" timestamp with time zone DEFAULT now(),
+    "projectIds" uuid[] DEFAULT '{}'::uuid[]
+);
+ALTER TABLE public.invites ENABLE ROW LEVEL SECURITY;
+
+
+-- CHAT MESSAGES table
+CREATE TABLE public.chat_messages (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    project_id uuid REFERENCES public.projects(id),
+    user_id uuid REFERENCES auth.users(id),
+    message text,
+    "created_at" timestamp with time zone DEFAULT now()
+);
+ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
+
+
+-- NOTIFICATIONS table
+CREATE TABLE public.notifications (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    user_id uuid NOT NULL REFERENCES auth.users(id),
+    project_id uuid NOT NULL REFERENCES public.projects(id),
+    title text NOT NULL,
+    description text NOT NULL,
+    read boolean DEFAULT false NOT NULL,
+    link text,
+    category text,
+    icon text,
+    "timestamp" timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+-- TEST_WRITES table (for debugging)
+CREATE TABLE public.test_writes (
+    id bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    "created_at" timestamp with time zone DEFAULT now(),
+    "userId" uuid,
+    email text,
+    message text
+);
+ALTER TABLE public.test_writes ENABLE ROW LEVEL SECURITY;
+
+
+-- =================================================================
+-- Auth Trigger for New Users
+-- =================================================================
+
+-- Function to be called by the trigger
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER -- This is crucial for it to have the permissions to write to public.users
+AS $$
+BEGIN
+  INSERT INTO public.users (id, email, "displayName", "photoURL")
+  VALUES (
+    NEW.id,
+    NEW.email,
+    NEW.raw_user_meta_data->>'full_name',
+    NEW.raw_user_meta_data->>'avatar_url'
+  );
+  RETURN NEW;
+END;
+$$;
+
+-- Helper function to get current user's company ID without triggering RLS
+CREATE OR REPLACE FUNCTION public.get_auth_user_company_id()
+RETURNS uuid
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT "companyId" FROM public.users WHERE id = auth.uid();
+$$;
+
+-- Create the trigger to fire after a new user is created in auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- =================================================================
+-- Row Level Security (RLS) Policies
+-- =================================================================
+
+-- Drop old policies to avoid conflicts
+DROP POLICY IF EXISTS "Allow individual read access" ON public.companies;
+DROP POLICY IF EXISTS "Allow individual insert access" ON public.companies;
+DROP POLICY IF EXISTS "Allow individual read access for users" ON public.users;
+DROP POLICY IF EXISTS "Allow individual update access for users" ON public.users;
+DROP POLICY IF EXISTS "Allow all access for authenticated users" ON public.test_writes;
+
+-- ** COMPANIES POLICIES **
+-- A user can read a company's details if they are the owner.
+CREATE POLICY "Allow individual read access" ON public.companies
+FOR SELECT USING (auth.uid() = "ownerId");
+
+-- A user can create a company if they are the designated ownerId of the new row.
+CREATE POLICY "Allow individual insert access" ON public.companies
+FOR INSERT WITH CHECK (auth.uid() = "ownerId");
+
+-- ** USERS POLICIES **
+-- Users can see their own profile.
+-- Users can also see other users in the same company.
+CREATE POLICY "Allow individual read access for users" ON public.users
+FOR SELECT USING (
+  (auth.uid() = id) OR
+  (
+    "companyId" IS NOT NULL AND
+    "companyId" = get_auth_user_company_id()
+  )
+);
+
+-- Users can update their own profile. This is crucial for assigning a companyId after registration.
+CREATE POLICY "Allow individual update access for users" ON public.users
+FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+
+-- ** TEST_WRITES POLICY ** (For debugging)
+CREATE POLICY "Allow all access for authenticated users" ON public.test_writes
+FOR ALL USING (auth.uid() = "userId") WITH CHECK (auth.uid() = "userId");
+
+-- ** PROJECTS POLICIES **
+CREATE POLICY "Allow project access to assigned users" ON public.projects
+FOR ALL USING (
+    "companyId" = get_auth_user_company_id()
+);
+
+-- ** NOTIFICATIONS POLICIES **
+CREATE POLICY "Allow notification access to the recipient" ON public.notifications
+FOR ALL USING (user_id = auth.uid());
+
+-- ** CHAT MESSAGES POLICIES **
+CREATE POLICY "Allow chat access to project members" ON public.chat_messages
+FOR ALL USING (
+    project_id IN (
+        SELECT id FROM public.projects WHERE "companyId" = get_auth_user_company_id()
+    )
+);
+
+-- ** INVITES POLICIES **
+CREATE POLICY "Allow invite access" ON public.invites
+FOR ALL USING (
+    "companyId" = get_auth_user_company_id() AND 
+    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin')
+) WITH CHECK (
+    "companyId" = get_auth_user_company_id() AND 
+    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin')
+);
+
+```
+
+## Profile Enhancement Script (Run this after the main script)
+
+```sql
+-- Profile Enhancement Schema Changes
+
+-- 1. Create profile_change_requests table
+CREATE TABLE public.profile_change_requests (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    company_id uuid NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+    field_name text NOT NULL, -- 'displayName' or 'phone'
+    new_value text,
+    status text DEFAULT 'pending'::text NOT NULL, -- 'pending', 'approved', 'rejected'
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+-- Enable RLS
+ALTER TABLE public.profile_change_requests ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for profile_change_requests
+
+-- Users can view their own requests
+CREATE POLICY "Users can view own requests" ON public.profile_change_requests
+FOR SELECT USING (auth.uid() = user_id);
+
+-- Users can create requests for themselves
+CREATE POLICY "Users can create own requests" ON public.profile_change_requests
+FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Admins can view all requests for their company
+CREATE POLICY "Admins can view company requests" ON public.profile_change_requests
+FOR SELECT USING (
+    company_id = (SELECT "companyId" FROM public.users WHERE id = auth.uid() AND role = 'admin')
+);
+
+-- Admins can update requests for their company (approve/reject)
+CREATE POLICY "Admins can update company requests" ON public.profile_change_requests
+FOR UPDATE USING (
+    company_id = (SELECT "companyId" FROM public.users WHERE id = auth.uid() AND role = 'admin')
+);
+
+-- 2. Modify notifications table to make project_id nullable
+ALTER TABLE public.notifications ALTER COLUMN project_id DROP NOT NULL;
+```

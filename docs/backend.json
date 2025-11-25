@@ -1,0 +1,340 @@
+
+{
+  "entities": {
+    "Company": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Company",
+      "type": "object",
+      "description": "Represents a company using the application.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the company."
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "The UID of the user who owns the company."
+        },
+        "address": {
+          "type": "string",
+          "description": "The physical address of the company."
+        },
+        "phone": {
+          "type": "string",
+          "description": "The contact phone number for the company."
+        },
+        "website": {
+          "type": "string",
+          "format": "uri",
+          "description": "The company's website URL."
+        },
+        "businessType": {
+          "type": "string",
+          "enum": ["general_contractor", "sub_contractor", "developer", "architectural_firm", "other"],
+          "description": "The type of business."
+        },
+        "companySize": {
+          "type": "string",
+          "enum": ["1-10", "11-50", "51-200", "201-500", "500+"],
+          "description": "The number of employees in the company."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the company was created."
+        }
+      },
+      "required": ["name", "ownerId", "address", "phone", "businessType", "companySize"]
+    },
+    "Invite": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Invite",
+      "type": "object",
+      "description": "Represents an invitation for a user to join a company.",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The email of the user being invited."
+        },
+        "companyId": {
+          "type": "string",
+          "description": "The ID of the company the user is invited to."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "manager", "member"],
+          "description": "The role assigned to the user upon joining."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "accepted"],
+          "description": "The status of the invitation."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the invite was created."
+        }
+      },
+      "required": ["email", "companyId", "role", "status"]
+    },
+    "Material": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Material",
+      "type": "object",
+      "description": "Represents a type of construction material.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the material."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the material (e.g., Concrete, Steel)."
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the material."
+        },
+        "unit": {
+          "type": "string",
+          "description": "Unit of measurement for the material (e.g., cubic meters, tons)."
+        },
+        "costPerUnit": {
+          "type": "number",
+          "description": "Cost per unit of the material."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the material (e.g., Cement, Steel)."
+        },
+        "supplier": {
+          "type": "string",
+          "description": "The name of the material supplier."
+        },
+        "currentStock": {
+          "type": "number",
+          "description": "Current quantity of the material in stock."
+        },
+        "minStock": {
+          "type": "number",
+          "description": "Minimum required stock level for the material."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "unit",
+        "costPerUnit",
+        "category",
+        "supplier",
+        "currentStock",
+        "minStock"
+      ]
+    },
+    "Expense": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Expense",
+      "type": "object",
+      "description": "Represents a project expense.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the expense."
+        },
+        "projectId": {
+          "type": "string",
+          "description": "The ID of the project this expense belongs to."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who logged the expense."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The monetary value of the expense."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the expense (e.g., Labor, Materials, Equipment)."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the expense."
+        },
+        "expenseDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date the expense was incurred."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the expense was logged."
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "userId",
+        "amount",
+        "category",
+        "description",
+        "expenseDate"
+      ]
+    },
+    "Notification": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Notification",
+      "type": "object",
+      "description": "Represents a user notification.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the notification."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user this notification is for."
+        },
+        "projectId": {
+          "type": "string",
+          "description": "The ID of the project this notification belongs to."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the notification."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the notification."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the notification was created."
+        },
+        "read": {
+          "type": "boolean",
+          "description": "Whether the user has read the notification."
+        },
+        "link": {
+          "type": "string",
+          "description": "A URL to navigate to when the notification is clicked."
+        },
+        "category": {
+          "type": "string",
+          "enum": ["team", "inventory", "approvals"],
+          "description": "The category of the notification."
+        },
+        "icon": {
+          "type": "string",
+          "description": "The name of the lucide-react icon to display."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "projectId",
+        "title",
+        "description",
+        "timestamp",
+        "read",
+        "link",
+        "category",
+        "icon"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "google.com"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/companies/{companyId}",
+        "definition": {
+          "entityName": "Company",
+          "schema": { "$ref": "#/backend/entities/Company" },
+          "description": "Stores information about a company.",
+          "params": [{
+            "name": "companyId",
+            "description": "The unique identifier of the company."
+          }]
+        }
+      },
+       {
+        "path": "/invites/{inviteId}",
+        "definition": {
+          "entityName": "Invite",
+          "schema": { "$ref": "#/backend/entities/Invite" },
+          "description": "Stores invitations for users to join a company.",
+          "params": [{
+            "name": "inviteId",
+            "description": "The unique identifier of the invite."
+          }]
+        }
+      },
+      {
+        "path": "/materials/{materialId}",
+        "definition": {
+          "entityName": "Material",
+          "schema": {
+            "$ref": "#/backend/entities/Material"
+          },
+          "description": "Stores information about construction materials.",
+          "params": [
+            {
+              "name": "materialId",
+              "description": "The unique identifier of the material."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/projects/{projectId}/expenses/{expenseId}",
+        "definition": {
+          "entityName": "Expense",
+          "schema": {
+            "$ref": "#/backend/entities/Expense"
+          },
+          "description": "Stores expenses related to a specific project.",
+          "params": [
+            {
+              "name": "projectId",
+              "description": "The unique identifier of the project."
+            },
+            {
+              "name": "expenseId",
+              "description": "The unique identifier of the expense."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/projects/{projectId}/notifications/{notificationId}",
+        "definition": {
+          "entityName": "Notification",
+          "schema": {
+            "$ref": "#/backend/entities/Notification"
+          },
+          "description": "Stores user notifications within a specific project.",
+          "params": [
+            {
+              "name": "projectId",
+              "description": "The unique identifier of the project."
+            },
+            {
+              "name": "notificationId",
+              "description": "The unique identifier of the notification."
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
