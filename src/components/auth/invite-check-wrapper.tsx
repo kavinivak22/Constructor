@@ -46,8 +46,9 @@ export function InviteCheckWrapper() {
         const result = await acceptInvite(inviteId)
 
         if (result.success) {
-            // Force a full page reload to ensure everything updates
-            window.location.href = '/'
+            // Force a refresh to ensure everything updates
+            router.refresh()
+            router.push('/')
         } else {
             alert('Failed to accept invite: ' + (result.error || 'Unknown error'))
             setAcceptingId(null)
@@ -64,7 +65,7 @@ export function InviteCheckWrapper() {
 
     async function handleLogout() {
         await supabase.auth.signOut()
-        window.location.href = '/login'
+        router.push('/login')
     }
 
     if (loading) {

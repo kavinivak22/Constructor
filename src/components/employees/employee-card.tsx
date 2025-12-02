@@ -10,17 +10,29 @@ import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { type Project, type User as AppUser } from "@/lib/data";
 import { cn } from "@/lib/utils";
-import { Edit, FolderKanban, Mail, Phone } from "lucide-react";
+import { Edit, FolderKanban, Mail, Phone, UserMinus } from "lucide-react";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 interface EmployeeCardProps {
     employee: AppUser;
     projects: Project[];
     onEdit?: (employee: AppUser) => void;
     onStatusChange?: (employee: AppUser, newStatus: 'active' | 'inactive') => void;
+    onRemove?: (employee: AppUser) => void;
     isCurrentUser: boolean;
 }
 
-export function EmployeeCard({ employee, projects, onEdit, onStatusChange, isCurrentUser }: EmployeeCardProps) {
+export function EmployeeCard({ employee, projects, onEdit, onStatusChange, onRemove, isCurrentUser }: EmployeeCardProps) {
 
     const roleVariant: { [key: string]: 'default' | 'secondary' | 'outline' } = {
         admin: 'default',
@@ -91,18 +103,49 @@ export function EmployeeCard({ employee, projects, onEdit, onStatusChange, isCur
             </CardContent>
             {isInteractive && (
                 <CardFooter className="border-t pt-4 flex items-center justify-between">
-                    <span className={cn(
-                        "text-sm font-semibold",
-                        employee.status === 'active' ? 'text-green-600' : 'text-red-600'
-                    )}>
-                        {employee.status === 'active' ? 'Active' : 'Inactive'}
-                    </span>
-                    <Switch
-                        checked={employee.status === 'active'}
-                        onCheckedChange={(checked) => onStatusChange(employee, checked ? 'active' : 'inactive')}
-                        disabled={isCurrentUser}
-                        aria-label={`Toggle status for ${employee.displayName}`}
-                    />
+                    <div className="flex items-center gap-2">
+                        <Switch
+                            checked={employee.status === 'active'}
+                            onCheckedChange={(checked) => onStatusChange(employee, checked ? 'active' : 'inactive')}
+                            disabled={isCurrentUser}
+                            aria-label={`Toggle status for ${employee.displayName}`}
+                        />
+                        <span className={cn(
+                            "text-sm font-semibold",
+                            employee.status === 'active' ? 'text-green-600' : 'text-red-600'
+                        )}>
+                            {employee.status === 'active' ? 'Active' : 'Inactive'}
+                        </span>
+                    </div>
+
+                    {!isCurrentUser && (
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                                    <UserMinus className="w-4 h-4 mr-1" />
+                                    Remove
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Remove Employee?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Are you sure you want to remove <b>{employee.displayName}</b> from the company?
+                                        This action cannot be undone. They will lose access to all company data.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                        onClick={() => onRemove?.(employee)}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                        Remove
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    )}
                 </CardFooter>
             )}
         </Card>

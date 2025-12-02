@@ -47,7 +47,6 @@ export default function LoginPage() {
       .single();
 
     if (user && user.status === 'inactive') {
-      await supabase.auth.signOut();
       setAccessDenied(true);
       return false;
     }
@@ -67,7 +66,6 @@ export default function LoginPage() {
         const canLogin = await checkUserStatus(data.user.id);
         if (canLogin) {
           router.push('/');
-          router.refresh();
         }
       } else {
         // This case should ideally not be hit if error is null, but as a safeguard:
@@ -138,7 +136,7 @@ export default function LoginPage() {
               Your account has been marked as inactive. Please contact your company administrator for assistance.
             </p>
             <div className="flex flex-col gap-3 mt-6">
-              <Button onClick={() => setAccessDenied(false)} variant="outline">Back to Login</Button>
+              <Button onClick={async () => { await supabase.auth.signOut(); setAccessDenied(false); }} variant="outline">Back to Login</Button>
               <Button onClick={handleResign} variant="destructive">Resign from Company</Button>
             </div>
           </div>
@@ -174,6 +172,7 @@ export default function LoginPage() {
                   type="email"
                   placeholder="m@example.com"
                   required
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />

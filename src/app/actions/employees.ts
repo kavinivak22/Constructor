@@ -343,6 +343,35 @@ export async function resignFromCompany() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error('Unauthorized')
 
+        // Fetch user profile for history logging
+        const { data: userProfile } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', user.id)
+            .single()
+
+        if (!userProfile?.companyId) throw new Error('Not in a company')
+
+        // Log to employment_history before clearing
+        const { error: historyError } = await supabase
+            .from('employment_history')
+            .insert({
+                user_id: user.id,
+                company_id: userProfile.companyId,
+                role: userProfile.role,
+                exit_reason: 'resigned',
+                user_details: {
+                    displayName: userProfile.displayName,
+                    email: userProfile.email,
+                    phone: userProfile.phone,
+                    photoURL: userProfile.photoURL
+                }
+            })
+
+        if (historyError) {
+            console.error('Error logging employment history:', historyError)
+        }
+
         // Clear company assignment
         const { error } = await supabase
             .from('users')
@@ -360,6 +389,106 @@ export async function resignFromCompany() {
         return { success: true }
     } catch (error: any) {
         console.error('Error resigning from company:', error)
+        return { success: false, error: error.message }
+    }
+}
+
+export async function getExEmployees() {
+    const cookieStore = cookies()
+    const supabase = createServerActionClient({ cookies: () => cookieStore })
+
+    try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return []
+
+        // Check if admin
+        const { data: currentUser } = await supabase
+            .from('users')
+            .select('role, companyId')
+            .eq('id', user.id)
+            .single()
+
+        if (!currentUser || currentUser.role !== 'admin' || !currentUser.companyId) {
+            return []
+        }
+
+        const { data: history } = await supabase
+            .from('employment_history')
+            .select('*')
+            .eq('company_id', currentUser.companyId)
+            .order('exit_date', { ascending: false })
+
+        return history || []
+    } catch (error) {
+        console.error('Error fetching ex-employees:', error)
+        return []
+    }
+}
+
+export async function removeEmployee(employeeId: string) {
+    const cookieStore = cookies()
+    const supabase = createServerActionClient({ cookies: () => cookieStore })
+
+    try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('Unauthorized')
+
+        // Verify current user is admin
+        const { data: currentUser } = await supabase
+            .from('users')
+            .select('role, companyId')
+            .eq('id', user.id)
+            .single()
+
+        if (!currentUser || currentUser.role !== 'admin' || !currentUser.companyId) {
+            throw new Error('Only admins can remove employees')
+        }
+
+        // Get employee to remove
+        const { data: employee } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', employeeId)
+            .eq('companyId', currentUser.companyId)
+            .single()
+
+        if (!employee) throw new Error('Employee not found')
+
+        // Log to employment_history
+        const { error: historyError } = await supabase
+            .from('employment_history')
+            .insert({
+                user_id: employee.id,
+                company_id: currentUser.companyId,
+                role: employee.role,
+                exit_reason: 'removed',
+                user_details: {
+                    displayName: employee.displayName,
+                    email: employee.email,
+                    phone: employee.phone,
+                    photoURL: employee.photoURL
+                }
+            })
+
+        if (historyError) console.error('Error logging history:', historyError)
+
+        // Remove from company
+        const { error } = await supabase
+            .from('users')
+            .update({
+                companyId: null,
+                role: 'member',
+                projectIds: [],
+                status: 'active', // Reset to active so they can join elsewhere
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', employeeId)
+
+        if (error) throw error
+
+        return { success: true }
+    } catch (error: any) {
+        console.error('Error removing employee:', error)
         return { success: false, error: error.message }
     }
 }

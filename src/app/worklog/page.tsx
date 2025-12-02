@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -12,17 +11,18 @@ import { useMemo, useState, useEffect } from 'react';
 import { Project } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { PlusCircle, ClipboardPen } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PlaceholderPage } from '@/components/placeholder-page';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { useSupabase } from '@/supabase/provider';
+import { CreateWorklogDialog } from '@/components/worklog/create-worklog-dialog';
+import { WorklogList } from '@/components/worklog/worklog-list';
 
 export default function WorklogPage() {
   const { supabase, user } = useSupabase();
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -86,6 +86,9 @@ export default function WorklogPage() {
     }
   }, [projects, selectedProjectId]);
 
+  const handleWorklogCreated = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -114,12 +117,12 @@ export default function WorklogPage() {
               </Select>
             )
           )}
-          <Link href="/projects/create" className="w-full md:w-auto">
-            <Button className='w-full'>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Create Project
-            </Button>
-          </Link>
+          {selectedProjectId && (
+            <CreateWorklogDialog
+              projectId={selectedProjectId}
+              onSuccess={handleWorklogCreated}
+            />
+          )}
         </div>
       </header>
       <main className="flex-1 p-4 overflow-y-auto md:p-6">
@@ -140,17 +143,10 @@ export default function WorklogPage() {
           </div>
         )}
         {selectedProjectId && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Worklogs for {selectedProject?.name}</CardTitle>
-              <CardDescription>
-                Log attendance, hours, tasks, and material usage for each worker daily. This feature is coming soon.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <PlaceholderPage title="Worklog Feature Coming Soon" description="The daily worklog system is under construction." icon={ClipboardPen} noHeader={true} />
-            </CardContent>
-          </Card>
+          <WorklogList
+            projectId={selectedProjectId}
+            refreshTrigger={refreshTrigger}
+          />
         )}
       </main>
     </div>

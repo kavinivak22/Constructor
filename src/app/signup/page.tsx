@@ -28,7 +28,7 @@ const getFriendlyErrorMessage = (error: any): string => {
       if (error.message.includes('password should be at least 6 characters')) {
         return 'Password must be at least 6 characters long.';
       }
-       if (error.message.includes('Failed to send a request to the Edge Function')) {
+      if (error.message.includes('Failed to send a request to the Edge Function')) {
         return "A server-side error occurred during signup. Please try again later.";
       }
       return error.message;
@@ -56,10 +56,6 @@ export default function SignupPage() {
         provider: 'google',
         options: {
           redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:9002'}/auth/callback`,
-           data: {
-             full_name: displayName,
-             avatar_url: ''
-          }
         },
       });
       if (error) throw error;
@@ -75,27 +71,27 @@ export default function SignupPage() {
     setIsLoading(true);
     setError(null);
     try {
-        const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-                // This data is passed to the 'on_auth_user_created' trigger
-                data: {
-                    full_name: displayName,
-                    // You can add other metadata here if needed
-                }
-            }
-        });
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          // This data is passed to the 'on_auth_user_created' trigger
+          data: {
+            full_name: displayName,
+            // You can add other metadata here if needed
+          }
+        }
+      });
 
-        if (error) throw error;
+      if (error) throw error;
 
-        // If we reach here, Supabase will handle sending the confirmation email
-        // (if enabled in your project settings). We just need to show a message.
-        // For testing, since email confirmation is off, the user is logged in immediately.
-        
-        // After a successful sign-up, Supabase automatically authenticates the user.
-        // We just need to trigger a page refresh to let the main layout handle routing.
-        router.push('/');
+      // If we reach here, Supabase will handle sending the confirmation email
+      // (if enabled in your project settings). We just need to show a message.
+      // For testing, since email confirmation is off, the user is logged in immediately.
+
+      // After a successful sign-up, Supabase automatically authenticates the user.
+      // We just need to trigger a page refresh to let the main layout handle routing.
+      router.push('/');
 
     } catch (error: any) {
       setError(getFriendlyErrorMessage(error));
@@ -153,6 +149,7 @@ export default function SignupPage() {
                   type="email"
                   placeholder="m@example.com"
                   required
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
