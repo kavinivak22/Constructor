@@ -47,9 +47,10 @@ import { useToast } from '@/components/ui/use-toast';
 interface WorklogListProps {
     projectId: string;
     refreshTrigger?: number; // Prop to trigger refresh
+    highlightWorklogId?: string | null;
 }
 
-export function WorklogList({ projectId, refreshTrigger }: WorklogListProps) {
+export function WorklogList({ projectId, refreshTrigger, highlightWorklogId }: WorklogListProps) {
     const [worklogs, setWorklogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -60,6 +61,9 @@ export function WorklogList({ projectId, refreshTrigger }: WorklogListProps) {
 
     // Key to force re-render/fetch
     const [fetchKey, setFetchKey] = useState(0);
+
+    // Refs for scrolling
+    const worklogRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
     const fetchWorklogs = async () => {
         setLoading(true);
@@ -75,6 +79,21 @@ export function WorklogList({ projectId, refreshTrigger }: WorklogListProps) {
             fetchWorklogs();
         }
     }, [projectId, refreshTrigger, fetchKey]);
+
+    // Scroll to highlighted worklog
+    useEffect(() => {
+        if (!loading && highlightWorklogId && worklogs.length > 0) {
+            const element = worklogRefs.current[highlightWorklogId];
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Optional: Add a temporary highlight class
+                element.classList.add('ring-2', 'ring-primary');
+                setTimeout(() => {
+                    element.classList.remove('ring-2', 'ring-primary');
+                }, 2000);
+            }
+        }
+    }, [loading, highlightWorklogId, worklogs]);
 
     const handleDelete = async () => {
         if (!deletingWorklogId) return;
@@ -213,13 +232,14 @@ export function WorklogList({ projectId, refreshTrigger }: WorklogListProps) {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredWorklogs.map((log, index) => (
-                        <WorklogFeedCard
-                            key={log.id}
-                            worklog={log}
-                            index={index}
-                            onEdit={() => setEditingWorklog(log)}
-                            onDelete={() => setDeletingWorklogId(log.id)}
-                        />
+                        <div key={log.id} ref={(el) => { worklogRefs.current[log.id] = el; }}>
+                            <WorklogFeedCard
+                                worklog={log}
+                                index={index}
+                                onEdit={() => setEditingWorklog(log)}
+                                onDelete={() => setDeletingWorklogId(log.id)}
+                            />
+                        </div>
                     ))}
                 </div>
             )}

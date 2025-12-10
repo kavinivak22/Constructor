@@ -31,6 +31,7 @@ export type User = {
   permissions?: Record<string, any>;
   companyId: string | null;
   status: 'active' | 'inactive';
+  created_at?: string;
 };
 
 export type Company = {

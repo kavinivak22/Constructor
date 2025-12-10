@@ -1,5 +1,6 @@
 'use client';
 
+import { useSearchParams } from 'next/navigation';
 import {
   Select,
   SelectContent,
@@ -19,6 +20,10 @@ import { WorklogList } from '@/components/worklog/worklog-list';
 
 export default function WorklogPage() {
   const { supabase, user } = useSupabase();
+  const searchParams = useSearchParams();
+  const urlProjectId = searchParams.get('projectId');
+  const urlWorklogId = searchParams.get('worklogId');
+
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
@@ -70,7 +75,6 @@ export default function WorklogPage() {
     fetchProjects();
   }, [supabase, user]);
 
-
   const handleProjectChange = (projectId: string) => {
     setSelectedProjectId(projectId);
   };
@@ -79,12 +83,23 @@ export default function WorklogPage() {
     return projects?.find(p => p.id === selectedProjectId) ?? null;
   }, [projects, selectedProjectId]);
 
-  // Set first project as selected by default
+  // Set selected project based on URL or default to first
   useEffect(() => {
-    if (projects && projects.length > 0 && !selectedProjectId) {
-      setSelectedProjectId(projects[0].id);
+    if (projects && projects.length > 0) {
+      if (urlProjectId) {
+        // Verify the user has access to this project (it should be in the fetched projects list)
+        const projectExists = projects.find(p => p.id === urlProjectId);
+        if (projectExists) {
+          setSelectedProjectId(urlProjectId);
+          return;
+        }
+      }
+
+      if (!selectedProjectId) {
+        setSelectedProjectId(projects[0].id);
+      }
     }
-  }, [projects, selectedProjectId]);
+  }, [projects, selectedProjectId, urlProjectId]);
 
   const handleWorklogCreated = () => {
     setRefreshTrigger(prev => prev + 1);
@@ -92,7 +107,7 @@ export default function WorklogPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 border-b md:px-6 shrink-0 bg-background sticky top-0 z-10">
+      <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 border-b md:px-6 shrink-0 bg-background sticky top-0 z-40">
         <div className="flex items-center gap-2">
           <h1 className="text-xl md:text-2xl font-bold tracking-tight font-headline">
             Daily Worklog
@@ -146,6 +161,7 @@ export default function WorklogPage() {
           <WorklogList
             projectId={selectedProjectId}
             refreshTrigger={refreshTrigger}
+            highlightWorklogId={urlWorklogId}
           />
         )}
       </main>

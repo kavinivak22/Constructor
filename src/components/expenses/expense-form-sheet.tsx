@@ -41,12 +41,12 @@ import { CalendarIcon, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useSupabase } from '@/supabase/provider';
-import { doc, setDoc, addDoc, collection, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState } from 'react';
-import { type Expense } from '@/lib/data';
+import { type Expense, type Project } from '@/lib/data';
 
 const formSchema = z.object({
+  projectId: z.string().optional(),
   amount: z.preprocess(
     (a) => parseFloat(z.string().parse(a)),
     z.number().positive('Amount must be a positive number.')
@@ -54,13 +54,16 @@ const formSchema = z.object({
   category: z.string().nonempty('Please select a category.'),
   description: z.string().min(3, 'Description must be at least 3 characters.'),
   expenseDate: z.date({ required_error: 'An expense date is required.' }),
+}).refine((data) => data.projectId || data.projectId === '', {
+  message: "Project is required",
+  path: ["projectId"],
 });
 
 interface ExpenseFormSheetProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  projectId: string;
-  expense: Expense | null;
+  projectId?: string;
+  expense?: Expense | null;
   onSuccess?: () => void;
 }
 
@@ -68,10 +71,13 @@ export function ExpenseFormSheet({ isOpen, setIsOpen, projectId, expense, onSucc
   const { supabase, user } = useSupabase();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      projectId: projectId || '',
       amount: 0,
       category: '',
       description: '',
@@ -79,9 +85,57 @@ export function ExpenseFormSheet({ isOpen, setIsOpen, projectId, expense, onSucc
     },
   });
 
+  // Fetch projects if projectId is not provided
+  useEffect(() => {
+    const fetchProjects = async () => {
+      if (!user || projectId) return;
+
+      setIsLoadingProjects(true);
+      try {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('projectIds')
+          .eq('id', user.id)
+          .single();
+
+        if (userError) throw userError;
+
+        const projectIds = userData?.projectIds || [];
+
+        if (projectIds.length === 0) {
+          setProjects([]);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .in('id', projectIds);
+
+        if (error) throw error;
+        setProjects(data || []);
+
+        // Auto-select if only one project
+        if (data && data.length === 1) {
+          form.setValue('projectId', data[0].id);
+        }
+
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+      } finally {
+        setIsLoadingProjects(false);
+      }
+    };
+
+    if (isOpen && !projectId) {
+      fetchProjects();
+    }
+  }, [isOpen, projectId, user, supabase, form]);
+
   useEffect(() => {
     if (expense) {
       form.reset({
+        projectId: projectId || expense.projectId, // Use prop or expense's projectId
         amount: expense.amount,
         category: expense.category,
         description: expense.description,
@@ -89,17 +143,20 @@ export function ExpenseFormSheet({ isOpen, setIsOpen, projectId, expense, onSucc
       });
     } else {
       form.reset({
+        projectId: projectId || '',
         amount: 0,
         category: '',
         description: '',
         expenseDate: new Date(),
       });
     }
-  }, [expense, form]);
+  }, [expense, form, projectId, isOpen]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!user || !projectId) {
-      toast({ title: 'Authentication Error', description: 'You must be logged in.', variant: 'destructive' });
+    const targetProjectId = projectId || values.projectId;
+
+    if (!user || !targetProjectId) {
+      toast({ title: 'Error', description: 'Project and User are required.', variant: 'destructive' });
       return;
     }
 
@@ -107,7 +164,7 @@ export function ExpenseFormSheet({ isOpen, setIsOpen, projectId, expense, onSucc
 
     try {
       const expenseData = {
-        projectId,
+        projectId: targetProjectId,
         userId: user.id,
         amount: values.amount,
         category: values.category,
@@ -149,16 +206,45 @@ export function ExpenseFormSheet({ isOpen, setIsOpen, projectId, expense, onSucc
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
-      <SheetContent className="sm:max-w-md">
+      <SheetContent className="w-full sm:max-w-md flex flex-col h-full">
         <SheetHeader>
           <SheetTitle>{expense ? 'Edit Expense' : 'Log New Expense'}</SheetTitle>
           <SheetDescription>
-            {expense ? 'Update the details of your expense.' : 'Add a new expense for this project.'}
+            {expense ? 'Update the details of your expense.' : 'Add a new expense.'}
           </SheetDescription>
         </SheetHeader>
-        <div className="py-4">
+        <div className="flex-1 overflow-y-auto py-4 -mx-6 px-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+
+              {/* Project Selection (Only if projectId prop is missing) */}
+              {!projectId && (
+                <FormField
+                  control={form.control}
+                  name="projectId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Project</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={isLoadingProjects ? "Loading..." : "Select a project"} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {projects.map((project) => (
+                            <SelectItem key={project.id} value={project.id}>
+                              {project.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
               <FormField
                 control={form.control}
                 name="amount"
@@ -181,7 +267,7 @@ export function ExpenseFormSheet({ isOpen, setIsOpen, projectId, expense, onSucc
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a category" />

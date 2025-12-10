@@ -1,16 +1,17 @@
-
 'use client';
 
 import { ProjectCard } from '@/components/dashboard/project-card';
 import { Project } from '@/lib/data';
 import { Button } from '@/components/ui/button';
-import { Calendar, ClipboardCheck, FileText, Package, Plus, Receipt, UserPlus, AlertTriangle } from 'lucide-react';
+import { Calendar, ClipboardCheck, FileText, Package, Plus, Receipt, UserPlus, AlertTriangle, Hammer, Image as ImageIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { AlertFlipper } from '@/components/dashboard/alert-flipper';
-import { useProjects } from '@/hooks/queries';
+import { useProjects, useRecentWorklogs } from '@/hooks/queries';
+import { QuickActions } from '@/components/dashboard/quick-actions';
+import { formatDistanceToNow } from 'date-fns';
 
 const tasks = [
     { id: "task1", label: "Approve PO #7891" },
@@ -18,12 +19,7 @@ const tasks = [
     { id: "task3", label: "Review electrical blueprints" },
 ]
 
-const activities = [
-    { icon: FileText, text: "Downtown Office Complex updated to 65% completion", time: "31 minutes ago", color: "text-blue-500" },
-    { icon: Package, text: "Low stock alert: Cement (50 bags remaining)", time: "about 2 hours ago", color: "text-orange-500" },
-    { icon: Receipt, text: "New expense added: Equipment rental - $2,500", time: "about 4 hours ago", color: "text-green-500" },
-    { icon: UserPlus, text: "John Smith added to Residential Tower Project", time: "about 8 hours ago", color: "text-purple-500" },
-]
+
 
 const alerts = [
     {
@@ -57,8 +53,71 @@ const alertVariants = {
     danger: "bg-red-50 border-red-200 text-red-800",
 }
 
+function getWorklogDescription(worklog: any) {
+    const parts = [];
+
+    // 1. Labor
+    if (worklog.labor && worklog.labor.length > 0) {
+        const firstLabor = worklog.labor[0];
+        if (firstLabor.work_description) {
+            parts.push(`${firstLabor.contractor_name}: ${firstLabor.work_description}`);
+        } else {
+            parts.push(`${firstLabor.contractor_name} worked on site`);
+        }
+    }
+
+    // 2. Materials
+    if (worklog.materials && worklog.materials.length > 0) {
+        const firstMaterial = worklog.materials[0];
+        const count = worklog.materials.length;
+        let materialText = `used ${firstMaterial.quantity_consumed} ${firstMaterial.unit || ''} of ${firstMaterial.material_name}`;
+        if (count > 1) {
+            materialText += ` and ${count - 1} other items`;
+        }
+        parts.push(materialText);
+    }
+
+    // 3. Photos
+    if (worklog.photos && worklog.photos.length > 0) {
+        const count = worklog.photos.length;
+        parts.push(`added ${count} photo${count > 1 ? 's' : ''}`);
+    }
+
+    if (parts.length === 0) {
+        return worklog.title;
+    }
+
+    // Join parts naturally
+    if (parts.length === 1) {
+        // Capitalize first letter if it's not a name (Labor usually starts with name, others might not)
+        // But "used..." and "added..." are lowercase, so we should capitalize them if they are first.
+        // Labor already starts with Name (Capitalized).
+        const text = parts[0];
+        return text.charAt(0).toUpperCase() + text.slice(1);
+    }
+
+    if (parts.length === 2) {
+        const first = parts[0];
+        return first.charAt(0).toUpperCase() + first.slice(1) + ' and ' + parts[1];
+    }
+
+    // 3 or more
+    const last = parts.pop();
+    const first = parts[0];
+    parts[0] = first.charAt(0).toUpperCase() + first.slice(1);
+    return parts.join(', ') + ', and ' + last;
+}
+
+function getWorklogIcon(worklog: any) {
+    if (worklog.labor && worklog.labor.length > 0) return Hammer;
+    if (worklog.materials && worklog.materials.length > 0) return Package;
+    if (worklog.photos && worklog.photos.length > 0) return ImageIcon;
+    return FileText;
+}
+
 export default function DashboardPage() {
     const { data: projects = [], isLoading } = useProjects();
+    const { data: recentWorklogs = [], isLoading: isLoadingWorklogs } = useRecentWorklogs();
 
     return (
         <main className="flex-1 p-4 overflow-y-auto md:p-6 bg-secondary">
@@ -70,6 +129,10 @@ export default function DashboardPage() {
                     alertVariants={alertVariants}
                     autoplayDelay={5000}
                 />
+
+
+                {/* Quick Actions */}
+                <QuickActions />
 
                 {/* Active Projects Section */}
                 <div>
@@ -132,17 +195,51 @@ export default function DashboardPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
-                                {activities.map((activity, index) => (
-                                    <div key={index} className="flex items-start space-x-3">
-                                        <div className={`mt-1 ${activity.color}`}>
-                                            <activity.icon className="h-4 w-4" />
+                                {isLoadingWorklogs ? (
+                                    [...Array(3)].map((_, i) => (
+                                        <div key={i} className="flex items-start space-x-3">
+                                            <Skeleton className="h-4 w-4 rounded-full" />
+                                            <div className="space-y-1">
+                                                <Skeleton className="h-4 w-48" />
+                                                <Skeleton className="h-3 w-24" />
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-sm">{activity.text}</p>
-                                            <p className="text-xs text-muted-foreground">{activity.time}</p>
-                                        </div>
-                                    </div>
-                                ))}
+                                    ))
+                                ) : recentWorklogs.length > 0 ? (
+                                    recentWorklogs.map((worklog: any, index: number) => {
+                                        const Icon = getWorklogIcon(worklog);
+                                        return (
+                                            <Link
+                                                href={`/worklog?projectId=${worklog.project_id}&worklogId=${worklog.id}`}
+                                                key={worklog.id}
+                                                className="relative flex items-start gap-4 group cursor-pointer p-3 -mx-3 rounded-lg hover:bg-muted/50 transition-all duration-200"
+                                            >
+                                                {/* Timeline Line */}
+                                                {index !== recentWorklogs.length - 1 && (
+                                                    <div className="absolute left-[21px] top-10 bottom-[-20px] w-px bg-border/50 group-hover:bg-border transition-colors" />
+                                                )}
+
+                                                {/* Icon Bubble */}
+                                                <div className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-background shadow-sm group-hover:border-primary/50 group-hover:text-primary transition-colors">
+                                                    <Icon className="h-4 w-4" />
+                                                </div>
+
+                                                <div className="flex-1 space-y-1 pt-0.5">
+                                                    <p className="text-sm leading-tight text-foreground/90 group-hover:text-primary transition-colors">
+                                                        <span className="font-semibold text-foreground">{worklog.project?.name}</span>
+                                                        <span className="mx-1.5 text-muted-foreground/40">•</span>
+                                                        {getWorklogDescription(worklog)}
+                                                    </p>
+                                                    <p className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wider">
+                                                        {formatDistanceToNow(new Date(worklog.date), { addSuffix: true })}
+                                                    </p>
+                                                </div>
+                                            </Link>
+                                        );
+                                    })
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">No recent activity.</p>
+                                )}
                             </div>
                         </CardContent>
                     </Card>

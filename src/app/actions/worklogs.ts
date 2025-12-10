@@ -333,3 +333,43 @@ export async function updateWorklog(worklogId: string, data: WorklogData) {
         return { success: false, error: error.message }
     }
 }
+
+export async function getRecentWorklogs(limit: number = 5) {
+    const cookieStore = cookies()
+    const supabase = createServerActionClient({ cookies: () => cookieStore })
+
+    try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('Unauthorized')
+
+        const { data, error } = await supabase
+            .from('daily_worklogs')
+            .select(`
+                *,
+                project:projects (
+                    name
+                ),
+                labor:worklog_labor_entries (
+                    contractor_name,
+                    work_description
+                ),
+                materials:worklog_materials (
+                    material_name,
+                    quantity_consumed,
+                    unit
+                ),
+                photos:worklog_photos (
+                    id
+                )
+            `)
+            .order('date', { ascending: false })
+            .limit(limit)
+
+        if (error) throw error
+
+        return { success: true, data }
+    } catch (error: any) {
+        console.error('Error fetching recent worklogs:', error)
+        return { success: false, error: error.message }
+    }
+}

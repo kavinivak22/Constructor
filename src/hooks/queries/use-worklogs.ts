@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/react-query';
-import { getWorklogs } from '@/app/actions/worklogs';
+import { getWorklogs, getRecentWorklogs } from '@/app/actions/worklogs';
 
 export function useProjectWorklogs(projectId: string | undefined) {
     return useQuery({
@@ -19,5 +19,20 @@ export function useProjectWorklogs(projectId: string | undefined) {
             return result.data || [];
         },
         enabled: !!projectId,
+    });
+}
+
+export function useRecentWorklogs(limit: number = 5) {
+    return useQuery({
+        queryKey: ['recent-worklogs', limit],
+        queryFn: async () => {
+            const result = await getRecentWorklogs(limit);
+
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to fetch recent worklogs');
+            }
+
+            return result.data || [];
+        },
     });
 }
