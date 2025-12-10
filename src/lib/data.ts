@@ -11,7 +11,13 @@ export type Project = {
   status: 'planning' | 'in progress' | 'completed';
   progress?: number;
   imageId?: string;
+  companyLogo?: string;
   companyId: string;
+  clientName?: string;
+  clientContact?: string;
+  location?: string;
+  budget?: number;
+  projectType?: string;
 };
 
 export type User = {

@@ -95,7 +95,7 @@ export function MobileBottomNav() {
               </span>
             </button>
           </SheetTrigger>
-          <SheetContent side="right" className="p-0 w-64 bg-background" data-mobile="true">
+          <SheetContent side="right" className="p-0 w-64 bg-transparent border-none" data-mobile="true">
             <SheetTitle className="sr-only">Main Menu</SheetTitle>
             <AppSidebar />
           </SheetContent>

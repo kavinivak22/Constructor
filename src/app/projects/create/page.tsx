@@ -38,6 +38,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { type User as AppUser } from '@/lib/data';
+import { compressImage } from '@/lib/compression';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Project name must be at least 2 characters.'),
@@ -67,6 +68,8 @@ export default function CreateProjectPage() {
   const [userProfile, setUserProfile] = useState<AppUser | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedLogo, setSelectedLogo] = useState<File | null>(null);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -111,13 +114,21 @@ export default function CreateProjectPage() {
       let imageId = null;
 
       if (selectedFile) {
-        const fileExt = selectedFile.name.split('.').pop();
+        // Compress image
+        let fileToUpload = selectedFile;
+        try {
+          fileToUpload = await compressImage(selectedFile);
+        } catch (e) {
+          console.warn("Compression failed", e);
+        }
+
+        const fileExt = fileToUpload.name.split('.').pop() || 'jpg';
         const fileName = `${Math.random()}.${fileExt}`;
         const filePath = `${user.id}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('project-images')
-          .upload(filePath, selectedFile);
+          .upload(filePath, fileToUpload);
 
         if (uploadError) throw uploadError;
 
@@ -128,12 +139,41 @@ export default function CreateProjectPage() {
         imageId = publicUrl;
       }
 
+      let logoId = null;
+
+      if (selectedLogo) {
+        // Compress logo
+        let logoToUpload = selectedLogo;
+        try {
+          logoToUpload = await compressImage(selectedLogo);
+        } catch (e) {
+          console.warn("Logo compression failed", e);
+        }
+
+        const fileExt = logoToUpload.name.split('.').pop() || 'jpg';
+        const fileName = `logo-${Math.random()}.${fileExt}`;
+        const filePath = `${user.id}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('project-images')
+          .upload(filePath, logoToUpload);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('project-images')
+          .getPublicUrl(filePath);
+
+        logoId = publicUrl;
+      }
+
       const { data: projectData, error: projectError } = await supabase.from('projects').insert([
         {
           ...values,
           status: 'planning', // Default status
           companyId: userProfile.companyId,
           imageId: imageId,
+          companyLogo: logoId,
         },
       ]).select().single();
 
@@ -153,7 +193,7 @@ export default function CreateProjectPage() {
         // Optional: rollback project creation or warn user
       }
 
-      if (error) throw error;
+      // if (error) throw error;
 
       toast({
         title: 'Project Created',
@@ -290,6 +330,48 @@ export default function CreateProjectPage() {
                       </FormItem>
                     )}
                   />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Company / Client Logo</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-center w-full">
+                    <label htmlFor="logo-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted relative overflow-hidden">
+                      {logoPreviewUrl ? (
+                        <img src={logoPreviewUrl} alt="Logo Preview" className="absolute inset-0 w-full h-full object-contain p-2 opacity-50 hover:opacity-40 transition-opacity" />
+                      ) : null}
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6 z-10">
+                        <Upload className="w-8 h-8 mb-4 text-muted-foreground" />
+                        <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload logo</span></p>
+                        <p className="text-xs text-muted-foreground">PNG, JPG (MAX. 2MB)</p>
+                        {selectedLogo && <p className="mt-2 text-sm font-medium text-primary">{selectedLogo.name}</p>}
+                      </div>
+                      <input
+                        id="logo-upload"
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 2 * 1024 * 1024) {
+                              toast({
+                                title: 'File too large',
+                                description: 'Logo must be less than 2MB.',
+                                variant: 'destructive',
+                              });
+                              return;
+                            }
+                            setSelectedLogo(file);
+                            setLogoPreviewUrl(URL.createObjectURL(file));
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
                 </CardContent>
               </Card>
 

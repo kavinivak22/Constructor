@@ -19,7 +19,7 @@ import {
   AreaChart,
   Bell,
   User as UserIcon,
-  Beaker,
+
 } from 'lucide-react';
 import {
   Sidebar,
@@ -39,6 +39,7 @@ import { Button } from '../ui/button';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import type { User as AppUser } from '@/lib/data';
 
 
 const links = [
@@ -65,9 +66,7 @@ const adminLinks = [
   { href: '/employees', label: 'Employees', icon: Users },
 ];
 
-const devLinks = [
-  { href: '/test-db', label: 'DB Test', icon: Beaker },
-];
+
 
 
 export function AppSidebar() {
@@ -81,6 +80,23 @@ export function AppSidebar() {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  const [userProfile, setUserProfile] = useState<AppUser | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      const fetchUserProfile = async () => {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        if (data) setUserProfile(data as AppUser);
+      };
+
+      fetchUserProfile();
+    }
+  }, [user, supabase]);
 
   const isActive = (href: string) => {
     // Handle exact match for the dashboard and startsWith for other routes
@@ -100,7 +116,7 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar className="bg-background/60 backdrop-blur-md">
+    <Sidebar className="glass border-r">
       <SidebarHeader>
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
@@ -180,28 +196,7 @@ export function AppSidebar() {
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
-        {process.env.NODE_ENV === 'development' && (
-          <>
-            <SidebarSeparator className="my-4" />
-            <p className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider group-data-[state=collapsed]:hidden">Dev</p>
-            <SidebarMenu>
-              {devLinks.map((link) => (
-                <SidebarMenuItem key={link.href}>
-                  <Link href={link.href} legacyBehavior={false} onClick={handleLinkClick}>
-                    <SidebarMenuButton
-                      isActive={isActive(link.href)}
-                      tooltip={link.label}
-                      className="justify-start font-medium"
-                    >
-                      <link.icon className="h-5 w-5" />
-                      <span className="group-data-[state=collapsed]:hidden">{link.label}</span>
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </>
-        )}
+
       </SidebarContent>
       <SidebarFooter className="p-2">
         <SidebarSeparator className="mb-2" />
@@ -209,11 +204,11 @@ export function AppSidebar() {
           <DropdownMenuTrigger asChild>
             <div className="flex items-center gap-3 p-2 rounded-md hover:bg-muted cursor-pointer group-data-[state=collapsed]:p-0 group-data-[state=collapsed]:justify-center">
               <Avatar className="h-9 w-9">
-                <AvatarImage src={user?.user_metadata.avatar_url ?? undefined} alt="User Avatar" />
-                <AvatarFallback>{user?.user_metadata.full_name?.charAt(0) || 'U'}</AvatarFallback>
+                <AvatarImage src={userProfile?.photoURL || user?.user_metadata.avatar_url || undefined} alt="User Avatar" />
+                <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.user_metadata.full_name?.charAt(0) || 'U'}</AvatarFallback>
               </Avatar>
               <div className="flex-1 group-data-[state=collapsed]:hidden">
-                <p className="text-sm font-medium leading-none truncate">{user?.user_metadata.full_name}</p>
+                <p className="text-sm font-medium leading-none truncate">{userProfile?.displayName || user?.user_metadata.full_name}</p>
                 <p className="text-xs leading-none text-muted-foreground truncate">
                   {user?.email}
                 </p>

@@ -419,7 +419,7 @@ export default function ExpensesPage() {
                       </div>
                       <div className="text-right flex flex-col items-end ml-4">
                         <p className="font-bold text-lg mb-2">{formatCurrency(expense.amount)}</p>
-                        {(userProfile?.role === 'admin' || expense.userId) && (
+                        {(userProfile?.role === 'admin' || expense.userId === user?.id) && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" className="w-8 h-8 p-0">

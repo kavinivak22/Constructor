@@ -70,6 +70,7 @@ const baseProjectSchema = {
         .optional()
         .nullable(),
     projectType: projectTypeEnum.optional().nullable(),
+    companyLogo: z.string().url().optional().nullable(),
 };
 
 // Schema for creating a new project

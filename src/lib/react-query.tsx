@@ -48,6 +48,7 @@ export const queryKeys = {
     projectMembers: (id: string) => ['projects', id, 'members'] as const,
     projectExpenses: (id: string) => ['projects', id, 'expenses'] as const,
     projectMaterials: (id: string) => ['projects', id, 'materials'] as const,
+    projectWorklogs: (id: string) => ['projects', id, 'worklogs'] as const,
 
     // Users/Employees
     users: ['users'] as const,

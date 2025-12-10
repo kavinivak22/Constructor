@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Upload, User as UserIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import ImageCropperDialog from './image-cropper-dialog';
+import { compressImage } from '@/lib/compression';
 
 interface AvatarUploadProps {
     url: string | null;
@@ -50,9 +51,21 @@ export default function AvatarUpload({ url, onUpload, editable = true }: AvatarU
             const fileExt = 'jpg'; // Cropped image is always jpeg
             const filePath = `${user.id}/${Math.random()}.${fileExt}`;
 
+            // Compress the cropped image blob
+            let fileToUpload: File | Blob = croppedImageBlob;
+            // Convert blob to file for compression utility if needed, or update utility. 
+            // My utility expects File. Let's wrap the blob in a file object effectively.
+            const tempFile = new File([croppedImageBlob], "avatar.jpg", { type: "image/jpeg" });
+
+            try {
+                fileToUpload = await compressImage(tempFile);
+            } catch (e) {
+                console.warn("Avatar compression failed", e);
+            }
+
             const { error: uploadError } = await supabase.storage
                 .from('avatars')
-                .upload(filePath, croppedImageBlob, {
+                .upload(filePath, fileToUpload, {
                     contentType: 'image/jpeg',
                     upsert: true
                 });
@@ -73,6 +86,16 @@ export default function AvatarUpload({ url, onUpload, editable = true }: AvatarU
 
             if (updateError) {
                 throw updateError;
+            }
+
+            // Update Supabase Auth Metadata
+            const { error: authUpdateError } = await supabase.auth.updateUser({
+                data: { avatar_url: publicUrl }
+            });
+
+            if (authUpdateError) {
+                console.error('Failed to update auth metadata:', authUpdateError);
+                // We don't throw here because the main profile update succeeded
             }
 
             // 2. Delete old files ONLY after successful upload and profile update

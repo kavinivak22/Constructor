@@ -33,6 +33,7 @@ const photoEntrySchema = z.object({
 
 const createWorklogSchema = z.object({
     projectId: z.string().uuid(),
+    title: z.string().min(1, "Title is required"),
     date: z.string().refine((val) => !isNaN(Date.parse(val)), "Invalid date"),
     labor: z.array(laborEntrySchema),
     materials: z.array(materialEntrySchema),
@@ -50,14 +51,19 @@ export async function createWorklog(data: WorklogData) {
     const validated = createWorklogSchema.safeParse(data)
 
     if (!validated.success) {
+        const fieldErrors = validated.error.flatten().fieldErrors;
+        console.error("Validation Errors:", JSON.stringify(fieldErrors, null, 2));
+        const errorMessages = Object.entries(fieldErrors)
+            .map(([field, errors]) => `${field}: ${errors?.join(', ')}`)
+            .join(' | ');
         return {
             success: false,
-            error: 'Invalid data',
-            fieldErrors: validated.error.flatten().fieldErrors,
+            error: `Validation failed: ${errorMessages}`,
+            fieldErrors: fieldErrors,
         }
     }
 
-    const { projectId, date, labor, materials, photos } = validated.data
+    const { projectId, title, date, labor, materials, photos } = validated.data
 
     try {
         const { data: { user } } = await supabase.auth.getUser()
@@ -68,6 +74,7 @@ export async function createWorklog(data: WorklogData) {
             .from('daily_worklogs')
             .insert({
                 project_id: projectId,
+                title: title,
                 date: date,
                 created_by: user.id,
             })
@@ -175,6 +182,154 @@ export async function getWorklogs(projectId: string) {
         return { success: true, data }
     } catch (error: any) {
         console.error('Error fetching worklogs:', error)
+        return { success: false, error: error.message }
+    }
+}
+
+export async function deleteWorklog(worklogId: string) {
+    const cookieStore = cookies()
+    const supabase = createServerActionClient({ cookies: () => cookieStore })
+
+    try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('Unauthorized')
+
+        // Fetch Worklog to check ownership
+        const { data: worklog, error: fetchError } = await supabase
+            .from('daily_worklogs')
+            .select('*, project:projects(companyId)')
+            .eq('id', worklogId)
+            .single()
+
+        if (fetchError || !worklog) throw new Error('Worklog not found')
+
+        // Fetch User Role to check if Admin
+        const { data: userData } = await supabase
+            .from('users')
+            .select('role, companyId')
+            .eq('id', user.id)
+            .single()
+
+        const isAdmin = userData?.role === 'admin'
+        const isOwner = worklog.created_by === user.id
+        const isCompanyAdmin = isAdmin && userData?.companyId === worklog.project.companyId
+
+        if (!isOwner && !isCompanyAdmin) {
+            throw new Error('You do not have permission to delete this worklog.')
+        }
+
+        const { error: deleteError } = await supabase
+            .from('daily_worklogs')
+            .delete()
+            .eq('id', worklogId)
+
+        if (deleteError) throw deleteError
+
+        return { success: true }
+    } catch (error: any) {
+        console.error('Error deleting worklog:', error)
+        return { success: false, error: error.message }
+    }
+}
+
+export async function updateWorklog(worklogId: string, data: WorklogData) {
+    const cookieStore = cookies()
+    const supabase = createServerActionClient({ cookies: () => cookieStore })
+
+    const validated = createWorklogSchema.safeParse(data)
+    if (!validated.success) return { success: false, error: 'Validation failed' }
+
+    const { title, date, labor, materials, photos } = validated.data
+
+    try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('Unauthorized')
+
+        // 1. Permission Check
+        const { data: worklog, error: fetchError } = await supabase
+            .from('daily_worklogs')
+            .select('*, project:projects(companyId)')
+            .eq('id', worklogId)
+            .single()
+
+        if (fetchError || !worklog) throw new Error('Worklog not found')
+
+        const { data: userData } = await supabase
+            .from('users')
+            .select('role, companyId')
+            .eq('id', user.id)
+            .single()
+
+        const isAdmin = userData?.role === 'admin'
+        const isOwner = worklog.created_by === user.id
+        const isCompanyAdmin = isAdmin && userData?.companyId === worklog.project.companyId
+
+        if (!isOwner && !isCompanyAdmin) {
+            throw new Error('Permission denied')
+        }
+
+        // 2. Update Basic Info
+        const { error: updateError } = await supabase
+            .from('daily_worklogs')
+            .update({ title, date })
+            .eq('id', worklogId)
+
+        if (updateError) throw updateError
+
+        // 3. Clear existing related data (simpler than syncing)
+        await supabase.from('worklog_labor_entries').delete().eq('worklog_id', worklogId)
+        await supabase.from('worklog_materials').delete().eq('worklog_id', worklogId)
+        await supabase.from('worklog_photos').delete().eq('worklog_id', worklogId)
+
+        // 4. Re-insert Labor
+        for (const entry of labor) {
+            const { data: laborEntry, error: laborError } = await supabase
+                .from('worklog_labor_entries')
+                .insert({
+                    worklog_id: worklogId,
+                    contractor_name: entry.contractorName,
+                    category: entry.category,
+                    work_description: entry.workDescription,
+                    payment_status: entry.paymentStatus,
+                })
+                .select().single()
+            if (laborError) throw laborError
+
+            const workerCounts = entry.workers.map(w => ({
+                labor_entry_id: laborEntry.id,
+                worker_type: w.workerType,
+                count: w.count,
+            }))
+            if (workerCounts.length > 0) {
+                await supabase.from('worklog_worker_counts').insert(workerCounts)
+            }
+        }
+
+        // 5. Re-insert Materials
+        const materialRecords = materials.map(m => ({
+            worklog_id: worklogId,
+            project_material_id: m.projectMaterialId || null,
+            material_name: m.materialName,
+            quantity_consumed: m.quantityConsumed,
+            unit: m.unit,
+        }))
+        if (materialRecords.length > 0) {
+            await supabase.from('worklog_materials').insert(materialRecords)
+        }
+
+        // 6. Re-insert Photos
+        const photoRecords = photos.map(p => ({
+            worklog_id: worklogId,
+            photo_url: p.photoUrl,
+            caption: p.caption,
+        }))
+        if (photoRecords.length > 0) {
+            await supabase.from('worklog_photos').insert(photoRecords)
+        }
+
+        return { success: true }
+    } catch (error: any) {
+        console.error('Error updating worklog:', error)
         return { success: false, error: error.message }
     }
 }

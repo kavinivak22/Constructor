@@ -14,30 +14,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useProject, useProjectMembersCount } from '@/hooks/queries';
+import { useProjectWorklogs } from '@/hooks/queries/use-worklogs';
+import { CreateWorklogDialog } from '@/components/worklog/create-worklog-dialog';
 
-const recentUpdates = [
-    {
-        progress: 65,
-        title: 'Foundation work completed',
-        date: '2024-03-15',
-        description: 'Successfully completed the foundation work including concrete pouring and reinforcement installation.',
-        imageUrl: 'https://picsum.photos/seed/1/600/400'
-    },
-    {
-        progress: 55,
-        title: 'Structural framework 80% done',
-        date: '2024-03-01',
-        description: 'Major progress on structural framework. Steel beams installed and welding work in progress.',
-        imageUrl: 'https://picsum.photos/seed/2/600/400'
-    },
-    {
-        progress: 40,
-        title: 'Ground preparation finished',
-        date: '2024-02-15',
-        description: 'Ground leveling and excavation completed. Site ready for foundation work.',
-        imageUrl: 'https://picsum.photos/seed/3/600/400'
-    },
-];
+
 
 const projectTasks = [
     { id: 'task1', label: 'Complete electrical wiring inspection', date: 'Mar 20, 2024', done: false },
@@ -63,6 +43,8 @@ export default function ProjectDetailsPage() {
     // Use React Query hooks for data fetching
     const { data: project, isLoading, error } = useProject(projectIdString);
     const { data: memberCount = 0 } = useProjectMembersCount(projectIdString);
+
+    const { data: worklogs = [] } = useProjectWorklogs(projectIdString);
 
     const getFormattedDate = (date: string | undefined, formatStr: string = 'MMM d, yyyy') => {
         if (!date) return 'N/A';
@@ -108,7 +90,14 @@ export default function ProjectDetailsPage() {
                     <h1 className="text-xl md:text-2xl font-bold tracking-tight font-headline truncate">
                         {project.name}
                     </h1>
-                    <p className="text-sm text-muted-foreground">ABC Corp</p>
+                    <div className="flex items-center gap-2 mt-1">
+                        {project.companyLogo && (
+                            <div className="relative w-5 h-5 rounded-full overflow-hidden shrink-0">
+                                <Image src={project.companyLogo} alt={project.clientName || 'Client'} fill className="object-cover" />
+                            </div>
+                        )}
+                        <p className="text-sm text-muted-foreground">{project.clientName || 'Internal Project'}</p>
+                    </div>
                 </div>
                 <div className="flex items-center gap-2 ml-auto">
                     <div className="text-sm text-muted-foreground hidden sm:block">Current Stage:</div>
@@ -176,35 +165,78 @@ export default function ProjectDetailsPage() {
                     <Button variant="outline" asChild>
                         <Link href={`/projects/${projectId}/expenses`}>View Expenses</Link>
                     </Button>
-                    <Button variant="outline">Add Update</Button>
+                    <CreateWorklogDialog
+                        projectId={projectIdString}
+                        trigger={<Button variant="outline">Add Update</Button>}
+                        onSuccess={() => window.location.reload()}
+                    />
                 </div>
 
-                <div>
-                    <h2 className="text-xl font-bold mb-4">Recent Updates</h2>
-                    <Carousel opts={{ align: "start", loop: true }} className="w-full">
-                        <CarouselContent className="-ml-4">
-                            {recentUpdates.map((update, index) => (
-                                <CarouselItem key={index} className="pl-4 md:basis-1/2 lg:basis-1/3">
-                                    <Card>
-                                        <CardContent className="p-0">
-                                            <Image src={update.imageUrl} alt={update.title} width={600} height={400} className="rounded-t-lg aspect-[3/2] object-cover" data-ai-hint="construction update" />
-                                            <div className='p-4'>
-                                                <div className="flex justify-between items-center text-xs text-muted-foreground mb-2">
-                                                    <p className='font-semibold text-primary'>{update.progress}% Complete</p>
-                                                    <p>{format(new Date(update.date), 'MMM dd, yyyy')}</p>
-                                                </div>
-                                                <h3 className="font-bold mb-1">{update.title}</h3>
-                                                <p className="text-sm text-muted-foreground">{update.description}</p>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                </CarouselItem>
-                            ))}
-                        </CarouselContent>
-                        <CarouselPrevious variant="ghost" className="absolute left-2 top-1/2 -translate-y-1/2 z-10 hidden sm:flex h-8 w-8 rounded-full bg-white/50 hover:bg-white/75 text-foreground" />
-                        <CarouselNext variant="ghost" className="absolute right-2 top-1/2 -translate-y-1/2 z-10 hidden sm:flex h-8 w-8 rounded-full bg-white/50 hover:bg-white/75 text-foreground" />
-                    </Carousel>
-                </div>
+                {worklogs.length > 0 && (
+                    <div>
+                        <h2 className="text-xl font-bold mb-4">Recent Updates</h2>
+                        <Carousel opts={{ align: "start", loop: true }} className="w-full">
+                            <CarouselContent className="-ml-4">
+                                {worklogs.map((worklog: any, index: number) => {
+                                    // Aggregate descriptions from labor entries
+                                    const description = worklog.labor?.map((l: any) => l.work_description).filter(Boolean).join('. ') || 'No description provided.';
+
+                                    // Use explicit title if available, otherwise generate smart title
+                                    let title = worklog.title || 'Daily Log';
+
+                                    // If title is the default "Daily Log", try to generate a more descriptive one for backward compatibility
+                                    if (!worklog.title || worklog.title === 'Daily Log') {
+                                        // 1. Try to use categories
+                                        const categories = Array.from(new Set(worklog.labor?.map((l: any) => l.category).filter(Boolean))) as string[];
+                                        if (categories.length > 0) {
+                                            title = categories.slice(0, 2).join(' & ') + (categories.length > 2 ? '...' : '') + ' Work';
+                                        }
+                                        // 2. Try to use photo caption
+                                        else if (worklog.photos?.[0]?.caption) {
+                                            title = worklog.photos[0].caption;
+                                        }
+                                        // 3. Fallback to description summary
+                                        else if (description !== 'No description provided.') {
+                                            // Take first sentence or first 40 chars
+                                            const firstSentence = description.split(/[.!?]/)[0];
+                                            title = firstSentence.length > 40 ? firstSentence.substring(0, 40) + '...' : firstSentence;
+                                        }
+                                    }
+
+                                    // Use first photo or placeholder
+                                    const imageUrl = worklog.photos?.[0]?.photo_url || 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=2940&auto=format&fit=crop';
+
+                                    return (
+                                        <CarouselItem key={worklog.id} className="pl-4 basis-[85%] md:basis-1/2 lg:basis-1/3">
+                                            <Card className="h-full">
+                                                <CardContent className="p-0 flex flex-col h-full">
+                                                    <div className="relative aspect-[3/2] w-full overflow-hidden rounded-t-lg">
+                                                        <Image
+                                                            src={imageUrl}
+                                                            alt={title}
+                                                            fill
+                                                            className="object-cover"
+                                                            data-ai-hint="construction update"
+                                                        />
+                                                    </div>
+                                                    <div className='p-4 flex-1 flex flex-col'>
+                                                        <div className="flex justify-between items-center text-xs text-muted-foreground mb-2">
+                                                            <p>{format(new Date(worklog.date), 'MMM dd, yyyy')}</p>
+                                                        </div>
+                                                        <h3 className="font-bold mb-1 line-clamp-1">{title}</h3>
+                                                        <p className="text-sm text-muted-foreground line-clamp-3">{description}</p>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        </CarouselItem>
+                                    );
+                                })}
+                            </CarouselContent>
+                            <CarouselPrevious variant="ghost" className="absolute left-2 top-1/2 -translate-y-1/2 z-10 hidden sm:flex h-8 w-8 rounded-full bg-white/50 hover:bg-white/75 text-foreground" />
+                            <CarouselNext variant="ghost" className="absolute right-2 top-1/2 -translate-y-1/2 z-10 hidden sm:flex h-8 w-8 rounded-full bg-white/50 hover:bg-white/75 text-foreground" />
+                        </Carousel>
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <Card>

@@ -32,7 +32,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@400;600;700&display=swap"
           rel="stylesheet"
         />
-        <link rel="icon" href="https://api.iconify.design/lucide:hard-hat.svg?color=%23f97316" />
+        <link rel="icon" href="https://api.iconify.design/lucide:building-2.svg?color=%23f97316" />
       </head>
       <body
         className={cn(

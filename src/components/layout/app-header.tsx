@@ -9,10 +9,18 @@ import type { Notification, User as AppUser } from '@/lib/data';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/supabase/provider';
+import { Breadcrumbs } from './breadcrumbs';
+import { CommandMenu } from './command-menu';
+import { useParams } from 'next/navigation';
+import { useProject } from '@/hooks/queries';
+import Image from 'next/image';
 
 export function AppHeader() {
   const { supabase, user } = useSupabase();
   const router = useRouter();
+  const params = useParams();
+  const projectId = typeof params?.projectId === 'string' ? params.projectId : undefined;
+  const { data: project } = useProject(projectId);
   const [userProfile, setUserProfile] = useState<AppUser | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -36,7 +44,7 @@ export function AppHeader() {
       const fetchUnreadNotifications = async () => {
         const { count, error } = await supabase
           .from('notifications')
-          .select('* ', { count: 'exact', head: true })
+          .select('*', { count: 'exact', head: true })
           .eq('userId', user!.id)
           .eq('read', false)
           .in('projectId', userProfile.projectIds);
@@ -60,11 +68,22 @@ export function AppHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-4 bg-background/60 backdrop-blur-md border-b md:px-6">
-      <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-50 flex items-center justify-between h-16 px-4 glass border-b md:px-6">
+      <div className="flex items-center gap-4 flex-1">
+        {project?.companyLogo && (
+          <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0 border border-border/50">
+            <Image src={project.companyLogo} alt={project.clientName || 'Project Logo'} fill className="object-cover" />
+          </div>
+        )}
         {/* The sidebar trigger is now only part of the mobile bottom nav */}
+        <Breadcrumbs />
       </div>
-      <div className="flex items-center gap-4 ml-auto">
+
+      <div className="flex items-center gap-4">
+        <div className="hidden md:flex">
+          <CommandMenu />
+        </div>
+
         <Link href="/notifications">
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />
@@ -80,8 +99,8 @@ export function AppHeader() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Avatar className="h-9 w-9 cursor-pointer">
-              <AvatarImage src={user?.user_metadata?.avatar_url ?? undefined} alt="User Avatar" />
-              <AvatarFallback>{user?.user_metadata?.full_name?.charAt(0) || 'U'}</AvatarFallback>
+              <AvatarImage src={userProfile?.photoURL || user?.user_metadata?.avatar_url || undefined} alt="User Avatar" />
+              <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.user_metadata?.full_name?.charAt(0) || 'U'}</AvatarFallback>
             </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end">
@@ -112,3 +131,4 @@ export function AppHeader() {
     </header>
   );
 }
+

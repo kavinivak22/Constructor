@@ -68,6 +68,14 @@
     background-color: hsl(var(--selection));
   }
 
+  .glass {
+    @apply bg-background/60 backdrop-blur-xl border-white/20 shadow-lg;
+  }
+
+  .dark .glass {
+    @apply border-white/10;
+  }
+
   /* Split-Flap Display Animation */
   .flip-top-half {
     animation: flipTopHalf 0.6s cubic-bezier(0.455, 0.030, 0.515, 0.955) forwards;
