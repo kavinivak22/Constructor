@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Wand2 } from "lucide-react";
-import { readStreamableValue } from 'ai/rsc';
+import { readStreamableValue } from 'ai';
 import { useEffect, useRef, useState } from "react";
 
 const initialState: FormState = {
@@ -18,22 +18,22 @@ const initialState: FormState = {
 };
 
 function SubmitButton() {
-    const { pending } = useFormStatus();
-    return (
-        <Button type="submit" disabled={pending} size="lg" className="w-full sm:w-auto">
-            {pending ? (
-                <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating...
-                </>
-            ) : (
-                <>
-                    <Wand2 className="mr-2 h-4 w-4" />
-                    Generate Estimation
-                </>
-            )}
-        </Button>
-    );
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" disabled={pending} size="lg" className="w-full sm:w-auto">
+      {pending ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Generating...
+        </>
+      ) : (
+        <>
+          <Wand2 className="mr-2 h-4 w-4" />
+          Generate Estimation
+        </>
+      )}
+    </Button>
+  );
 }
 
 export function EstimationForm() {
@@ -51,19 +51,19 @@ export function EstimationForm() {
       });
     }
     if (state.message === "Estimation successful.") {
-        formRef.current?.reset();
-        setGeneration('');
-        if (state.estimation?.estimation) {
-          (async () => {
-            let newContent = '';
-            const streamableValue = state.estimation.estimation;
-            // @ts-ignore
-            for await (const delta of readStreamableValue(streamableValue)) {
-              newContent = `${newContent}${delta}`;
-              setGeneration(newContent);
-            }
-          })();
-        }
+      formRef.current?.reset();
+      setGeneration('');
+      if (state.estimation?.estimation) {
+        (async () => {
+          let newContent = '';
+          const streamableValue = state.estimation.estimation;
+          // @ts-ignore
+          for await (const delta of readStreamableValue(streamableValue)) {
+            newContent = `${newContent}${delta}`;
+            setGeneration(newContent);
+          }
+        })();
+      }
     }
   }, [state, toast]);
 
@@ -79,14 +79,14 @@ export function EstimationForm() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div className="space-y-2">
-                    <Label htmlFor="projectType">Project Type</Label>
-                    <Input id="projectType" name="projectType" placeholder="e.g., Residential, Commercial" required />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="projectSize">Project Size (sq ft)</Label>
-                    <Input id="projectSize" name="projectSize" placeholder="e.g., 2500" required />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="projectType">Project Type</Label>
+                <Input id="projectType" name="projectType" placeholder="e.g., Residential, Commercial" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="projectSize">Project Size (sq ft)</Label>
+                <Input id="projectSize" name="projectSize" placeholder="e.g., 2500" required />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="projectLocation">Project Location</Label>
@@ -111,17 +111,17 @@ export function EstimationForm() {
 
       {generation && (
         <Card className="solid-card">
-            <CardHeader>
-                <CardTitle className="font-headline flex items-center gap-2">
-                    <Wand2 className="text-primary"/>
-                    Generated Material Estimation
-                </CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap font-body">
-                    {generation}
-                </div>
-            </CardContent>
+          <CardHeader>
+            <CardTitle className="font-headline flex items-center gap-2">
+              <Wand2 className="text-primary" />
+              Generated Material Estimation
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap font-body">
+              {generation}
+            </div>
+          </CardContent>
         </Card>
       )}
     </div>

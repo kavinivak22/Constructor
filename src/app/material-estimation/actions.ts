@@ -1,6 +1,6 @@
 "use server";
 import { estimateMaterials, getMaterialEstimationStream, type MaterialEstimationInput, type MaterialEstimationOutput } from "@/ai/flows/material-estimation-from-project-specs";
-import { createStreamableValue } from 'ai/rsc';
+import { createStreamableValue } from 'ai';
 import { z } from "zod";
 
 const FormSchema = z.object({
