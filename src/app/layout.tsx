@@ -5,11 +5,14 @@ import './globals.css';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import { Toaster } from '@/components/ui/toaster';
+import { VoiceAssistant } from '@/components/voice/voice-assistant';
 import { SupabaseProvider, useSupabase } from '@/supabase/provider';
 import { ReactQueryProvider } from '@/lib/react-query';
 import { cn } from '@/lib/utils';
+import { LanguageProvider } from '@/lib/i18n/language-context';
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 import { AppHeader } from '@/components/layout/app-header';
+import { ThemeProvider } from '@/components/theme-provider';
 import { InviteCheckWrapper } from '@/components/auth/invite-check-wrapper';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -43,9 +46,18 @@ export default function RootLayout({
       >
         <ReactQueryProvider>
           <SupabaseProvider>
-            <SidebarProvider>
-              <MainLayout>{children}</MainLayout>
-            </SidebarProvider>
+            <LanguageProvider>
+              <SidebarProvider>
+                <ThemeProvider
+                  attribute="class"
+                  defaultTheme="system"
+                  enableSystem
+                  disableTransitionOnChange
+                >
+                  <MainLayout>{children}</MainLayout>
+                </ThemeProvider>
+              </SidebarProvider>
+            </LanguageProvider>
           </SupabaseProvider>
         </ReactQueryProvider>
       </body>
@@ -145,6 +157,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
           <AppHeader />
           <main className="flex-1 pb-20">{children}</main>
           <MobileBottomNav />
+          <VoiceAssistant />
           <Toaster />
         </div>
       );
@@ -157,6 +170,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
           <AppHeader />
           <main className="flex-1">{children}</main>
         </div>
+        <VoiceAssistant />
         <Toaster />
       </div>
     );
@@ -169,6 +183,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
     <div className="bg-background">
       {shouldShowInviteCheck && <InviteCheckWrapper />}
       {children}
+      <VoiceAssistant />
       <Toaster />
     </div>
   );

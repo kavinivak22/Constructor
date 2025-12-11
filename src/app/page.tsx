@@ -12,6 +12,7 @@ import { AlertFlipper } from '@/components/dashboard/alert-flipper';
 import { useProjects, useRecentWorklogs } from '@/hooks/queries';
 import { QuickActions } from '@/components/dashboard/quick-actions';
 import { formatDistanceToNow } from 'date-fns';
+import { useTranslation } from '@/lib/i18n/language-context';
 
 const tasks = [
     { id: "task1", label: "Approve PO #7891" },
@@ -118,6 +119,7 @@ function getWorklogIcon(worklog: any) {
 export default function DashboardPage() {
     const { data: projects = [], isLoading } = useProjects();
     const { data: recentWorklogs = [], isLoading: isLoadingWorklogs } = useRecentWorklogs();
+    const { t } = useTranslation();
 
     return (
         <main className="flex-1 p-4 overflow-y-auto md:p-6 bg-secondary">
@@ -137,8 +139,8 @@ export default function DashboardPage() {
                 {/* Active Projects Section */}
                 <div>
                     <div className="section-header">
-                        <h2 className="section-title">Active Projects</h2>
-                        <Link href="/projects" className="view-all-link">View All</Link>
+                        <h2 className="section-title">{t('dashboard.active_projects')}</h2>
+                        <Link href="/projects" className="view-all-link">{t('dashboard.view_all')}</Link>
                     </div>
                     {isLoading && (
                         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -155,14 +157,14 @@ export default function DashboardPage() {
                     {!isLoading && projects.length === 0 && (
                         <Card className="flex flex-col items-center justify-center h-64 text-center p-6">
                             <CardHeader>
-                                <CardTitle>No Projects Yet</CardTitle>
+                                <CardTitle>{t('dashboard.no_projects')}</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="max-w-sm mt-2 text-muted-foreground">Get started by creating your first project.</p>
+                                <p className="max-w-sm mt-2 text-muted-foreground">{t('dashboard.create_project_desc')}</p>
                                 <Link href="/projects/create" className='mt-4'>
                                     <Button>
                                         <Plus className="mr-2 h-4 w-4" />
-                                        Create Project
+                                        {t('dashboard.create_project')}
                                     </Button>
                                 </Link>
                             </CardContent>
@@ -174,7 +176,7 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <Card>
                         <CardHeader>
-                            <CardTitle>My Tasks</CardTitle>
+                            <CardTitle>{t('dashboard.my_tasks')}</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-3">
@@ -191,7 +193,7 @@ export default function DashboardPage() {
                     </Card>
                     <Card>
                         <CardHeader>
-                            <CardTitle>Recent Activity</CardTitle>
+                            <CardTitle>{t('dashboard.recent_activity')}</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
@@ -238,7 +240,7 @@ export default function DashboardPage() {
                                         );
                                     })
                                 ) : (
-                                    <p className="text-sm text-muted-foreground">No recent activity.</p>
+                                    <p className="text-sm text-muted-foreground">{t('dashboard.no_activity')}</p>
                                 )}
                             </div>
                         </CardContent>

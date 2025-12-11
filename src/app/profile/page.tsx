@@ -13,10 +13,12 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import AvatarUpload from './avatar-upload';
 import EditFieldDialog from './edit-field-dialog';
 import ChangePasswordDialog from './change-password-dialog';
+import { useTranslation } from '@/lib/i18n/language-context';
 
 export default function ProfilePage() {
     const { toast } = useToast();
     const { supabase, user } = useSupabase();
+    const { t } = useTranslation();
     const [profile, setProfile] = useState<any>(null);
     const [projects, setProjects] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -94,7 +96,7 @@ export default function ProfilePage() {
     if (!profile && !error) {
         return (
             <div className="flex flex-col h-full items-center justify-center">
-                <p className="text-muted-foreground">Profile not found.</p>
+                <p className="text-muted-foreground">{t('profile.not_found')}</p>
             </div>
         )
     }
@@ -161,11 +163,11 @@ export default function ProfilePage() {
                             <div className="md:col-span-1 space-y-6">
                                 <Card>
                                     <CardHeader>
-                                        <CardTitle className="text-lg">Contact Information</CardTitle>
+                                        <CardTitle className="text-lg">{t('profile.contact_info')}</CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
                                         <div className="space-y-1">
-                                            <label className="text-xs font-medium text-muted-foreground uppercase">Email</label>
+                                            <label className="text-xs font-medium text-muted-foreground uppercase">{t('profile.email')}</label>
                                             <div className="flex items-center gap-2 text-sm">
                                                 <Mail className="h-4 w-4 text-muted-foreground" />
                                                 {profile.email}
@@ -173,7 +175,7 @@ export default function ProfilePage() {
                                         </div>
                                         <div className="space-y-1">
                                             <div className="flex items-center justify-between">
-                                                <label className="text-xs font-medium text-muted-foreground uppercase">Phone</label>
+                                                <label className="text-xs font-medium text-muted-foreground uppercase">{t('profile.phone')}</label>
                                                 <EditFieldDialog
                                                     field="phone"
                                                     label="Phone Number"
@@ -188,7 +190,7 @@ export default function ProfilePage() {
                                             </div>
                                         </div>
                                         <div className="space-y-1">
-                                            <label className="text-xs font-medium text-muted-foreground uppercase">Joined</label>
+                                            <label className="text-xs font-medium text-muted-foreground uppercase">{t('profile.joined')}</label>
                                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                                 <Calendar className="h-4 w-4" />
                                                 {profile.created_at ? format(new Date(profile.created_at), 'MMMM d, yyyy') : 'Unknown'}
@@ -206,15 +208,15 @@ export default function ProfilePage() {
                                     <CardHeader>
                                         <CardTitle className="text-lg flex items-center gap-2">
                                             <Briefcase className="h-5 w-5 text-primary" />
-                                            Projects
+                                            {t('profile.projects_title')}
                                         </CardTitle>
                                         <CardDescription>
-                                            Projects you are currently working on.
+                                            {t('profile.projects_desc')}
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent>
                                         {projects.length === 0 ? (
-                                            <p className="text-sm text-muted-foreground">No projects assigned yet.</p>
+                                            <p className="text-sm text-muted-foreground">{t('profile.no_projects')}</p>
                                         ) : (
                                             <div className="grid gap-4">
                                                 {projects.map((project) => (
@@ -236,7 +238,7 @@ export default function ProfilePage() {
                                                         </div>
                                                         {project.endDate && (
                                                             <div className="text-xs text-muted-foreground text-right">
-                                                                <p>Due</p>
+                                                                <p>{t('profile.due')}</p>
                                                                 <p>{format(new Date(project.endDate), 'MMM d, yyyy')}</p>
                                                             </div>
                                                         )}
@@ -251,18 +253,18 @@ export default function ProfilePage() {
                                     <CardHeader>
                                         <CardTitle className="text-lg flex items-center gap-2">
                                             <Shield className="h-5 w-5 text-primary" />
-                                            Security & Login
+                                            {t('profile.security_title')}
                                         </CardTitle>
                                         <CardDescription>
-                                            Manage your password and account security preferences.
+                                            {t('profile.security_desc')}
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent className="space-y-6">
                                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg bg-background gap-4">
                                             <div className="space-y-1">
-                                                <p className="font-medium">Password</p>
+                                                <p className="font-medium">{t('profile.password')}</p>
                                                 <p className="text-sm text-muted-foreground">
-                                                    Last changed never (or unknown)
+                                                    {t('profile.password_unknown')}
                                                 </p>
                                             </div>
                                             <ChangePasswordDialog />

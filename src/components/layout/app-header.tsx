@@ -14,10 +14,12 @@ import { CommandMenu } from './command-menu';
 import { useParams } from 'next/navigation';
 import { useProject } from '@/hooks/queries';
 import Image from 'next/image';
+import { useTranslation } from '@/lib/i18n/language-context';
 
 export function AppHeader() {
   const { supabase, user } = useSupabase();
   const router = useRouter();
+  const { t } = useTranslation();
   const params = useParams();
   const projectId = typeof params?.projectId === 'string' ? params.projectId : undefined;
   const { data: project } = useProject(projectId);
@@ -87,7 +89,7 @@ export function AppHeader() {
         <Link href="/notifications">
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />
-            <span className="sr-only">Notifications</span>
+            <span className="sr-only">{t('common.notifications')}</span>
             {unreadCount > 0 && (
               <div className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
                 {unreadCount}
@@ -116,13 +118,13 @@ export function AppHeader() {
             <DropdownMenuItem asChild>
               <Link href="/profile">
                 <UserIcon className="mr-2 h-4 w-4" />
-                <span>Profile</span>
+                <span>{t('common.profile')}</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
-              <span>Log out</span>
+              <span>{t('common.logout')}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

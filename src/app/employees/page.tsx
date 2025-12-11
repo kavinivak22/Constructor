@@ -14,10 +14,12 @@ import { useSupabase } from '@/supabase/provider';
 import { useEffect } from 'react';
 import { getPendingInvites } from '@/app/actions/employees';
 import { PendingInvitesList, PendingInvite } from '@/components/employees/pending-invites-list';
+import { useTranslation } from '@/lib/i18n/language-context';
 
 export default function EmployeesPage() {
     const { toast } = useToast();
     const { supabase } = useSupabase();
+    const { t } = useTranslation();
 
     const [searchQuery, setSearchQuery] = useState('');
     const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -165,7 +167,7 @@ export default function EmployeesPage() {
         return (
             <div className="flex flex-col h-full">
                 <header className="flex items-center justify-between gap-4 p-4 border-b md:px-6 shrink-0 bg-background sticky top-0 z-10">
-                    <h1 className="text-2xl font-bold tracking-tight font-headline">Employees</h1>
+                    <h1 className="text-2xl font-bold tracking-tight font-headline">{t('employees.page_headline')}</h1>
                     <Skeleton className="h-10 w-32" />
                 </header>
                 <main className="flex-1 p-4 overflow-y-auto md:p-6">
@@ -187,7 +189,7 @@ export default function EmployeesPage() {
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex items-center justify-between">
                             <h1 className="text-2xl font-bold tracking-tight font-headline">
-                                {isAdmin ? 'Employee Management' : 'My Colleagues'}
+                                {isAdmin ? t('employees.management_title') : t('employees.colleagues_title')}
                             </h1>
                             {/* Mobile Tab Toggle - Visible only on small screens */}
                             {isAdmin && (
@@ -196,13 +198,13 @@ export default function EmployeesPage() {
                                         onClick={() => setActiveTab('current')}
                                         className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeTab === 'current' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                                     >
-                                        Current
+                                        {t('employees.tab_current')}
                                     </button>
                                     <button
                                         onClick={() => setActiveTab('ex')}
                                         className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeTab === 'ex' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                                     >
-                                        Ex
+                                        {t('employees.tab_ex')}
                                     </button>
                                 </div>
                             )}
@@ -215,13 +217,13 @@ export default function EmployeesPage() {
                                     onClick={() => setActiveTab('current')}
                                     className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${activeTab === 'current' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                                 >
-                                    Current
+                                    {t('employees.tab_current')}
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('ex')}
                                     className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${activeTab === 'ex' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                                 >
-                                    Ex-Employees
+                                    {t('employees.tab_ex')}
                                 </button>
                             </div>
                         )}
@@ -232,7 +234,7 @@ export default function EmployeesPage() {
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         type="search"
-                                        placeholder={isAdmin ? "Search..." : "Search colleagues..."}
+                                        placeholder={isAdmin ? t('employees.search_placeholder') : t('employees.search_colleagues')}
                                         className="pl-9 h-9"
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -242,8 +244,8 @@ export default function EmployeesPage() {
                             {isAdmin && activeTab === 'current' && (
                                 <Button onClick={handleAddNew} size="sm" className="shrink-0">
                                     <PlusCircle className="w-4 h-4 md:mr-2" />
-                                    <span className="hidden md:inline">Add Employee</span>
-                                    <span className="md:hidden">Add</span>
+                                    <span className="hidden md:inline">{t('employees.add_employee')}</span>
+                                    <span className="md:hidden">{t('employees.add')}</span>
                                 </Button>
                             )}
                         </div>
@@ -269,11 +271,11 @@ export default function EmployeesPage() {
                             ) : (
                                 <div className="flex flex-col items-center justify-center h-full text-center rounded-lg border-2 border-dashed bg-card/50 p-6">
                                     <Users className="w-12 h-12 mb-4 text-muted-foreground" />
-                                    <h2 className="text-2xl font-bold font-headline">{isAdmin ? "No Employees Found" : "No Colleagues Found"}</h2>
+                                    <h2 className="text-2xl font-bold font-headline">{isAdmin ? t('employees.no_employees_title') : t('employees.no_colleagues_title')}</h2>
                                     <p className="max-w-sm mt-2 text-muted-foreground">
                                         {isAdmin
-                                            ? "Get started by adding your first employee to the company."
-                                            : "You are not assigned to any projects with other team members."
+                                            ? t('employees.no_employees_desc')
+                                            : t('employees.no_colleagues_desc')
                                         }
                                     </p>
                                 </div>
@@ -289,10 +291,10 @@ export default function EmployeesPage() {
                                     <table className="w-full text-sm text-left">
                                         <thead className="bg-muted/50 text-muted-foreground font-medium border-b">
                                             <tr>
-                                                <th className="px-4 py-3">Name</th>
-                                                <th className="px-4 py-3">Role</th>
-                                                <th className="px-4 py-3">Exit Date</th>
-                                                <th className="px-4 py-3">Reason</th>
+                                                <th className="px-4 py-3">{t('employees.table.name')}</th>
+                                                <th className="px-4 py-3">{t('employees.table.role')}</th>
+                                                <th className="px-4 py-3">{t('employees.table.exit_date')}</th>
+                                                <th className="px-4 py-3">{t('employees.table.reason')}</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y">
@@ -317,8 +319,8 @@ export default function EmployeesPage() {
                             ) : (
                                 <div className="flex flex-col items-center justify-center py-12 text-center rounded-lg border-2 border-dashed bg-card/50">
                                     <Users className="w-12 h-12 mb-4 text-muted-foreground" />
-                                    <h2 className="text-lg font-semibold">No Ex-Employees</h2>
-                                    <p className="text-sm text-muted-foreground">History of employees who left the company will appear here.</p>
+                                    <h2 className="text-lg font-semibold">{t('employees.no_ex_employees_title')}</h2>
+                                    <p className="text-sm text-muted-foreground">{t('employees.no_ex_employees_desc')}</p>
                                 </div>
                             )}
                         </div>

@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  serverExternalPackages: ['@ffmpeg-installer/ffmpeg', 'fluent-ffmpeg', '@xenova/transformers'],
+  transpilePackages: ['ai', '@ai-sdk/google', '@ai-sdk/provider-utils'],
   images: {
     remotePatterns: [
       {

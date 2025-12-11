@@ -22,10 +22,12 @@ import { ChatMessage as ChatMessageType } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useSearchParams } from 'next/navigation';
 import { useSupabase } from '@/supabase/provider';
+import { useTranslation } from '@/lib/i18n/language-context';
 
 
 export default function TeamHubPage() {
   const { user } = useSupabase();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const projectIdFromUrl = searchParams.get('projectId');
 
@@ -90,7 +92,7 @@ export default function TeamHubPage() {
       <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 border-b md:px-6 shrink-0 bg-background sticky top-0 z-10">
         <div className="flex items-center gap-2">
           <h1 className="text-xl md:text-2xl font-bold tracking-tight font-headline">
-            Team Communication Hub
+            {t('team_hub.title')}
           </h1>
         </div>
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 w-full md:w-auto">
@@ -100,7 +102,7 @@ export default function TeamHubPage() {
             projects && projects.length > 0 && (
               <Select onValueChange={handleProjectChange} value={selectedProjectId ?? undefined}>
                 <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue placeholder="Select a project" />
+                  <SelectValue placeholder={t('team_hub.select_project_placeholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   {projects.map(project => (
@@ -115,7 +117,7 @@ export default function TeamHubPage() {
           <Link href="/projects/create" className="w-full md:w-auto">
             <Button className='w-full'>
               <PlusCircle className="mr-2 h-4 w-4" />
-              Create Project
+              {t('team_hub.create_project')}
             </Button>
           </Link>
         </div>
@@ -123,15 +125,15 @@ export default function TeamHubPage() {
       <main className="flex-1 p-4 overflow-y-auto md:p-6">
         {!selectedProjectId && !isLoadingProjects && (
           <div className="flex flex-col items-center justify-center h-full text-center rounded-lg border-2 border-dashed bg-card/50">
-            <h2 className="text-2xl font-bold font-headline">No Project Selected</h2>
+            <h2 className="text-2xl font-bold font-headline">{t('team_hub.no_project_selected')}</h2>
             <p className="max-w-sm mt-2 text-muted-foreground">
-              {projects && projects.length > 0 ? 'Please select a project to view its chat.' : 'Create a project to get started.'}
+              {projects && projects.length > 0 ? t('team_hub.select_project_desc') : t('team_hub.create_project_desc')}
             </p>
             {(!projects || projects.length === 0) && (
               <Link href="/projects/create" className='mt-4'>
                 <Button>
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  Create Project
+                  {t('team_hub.create_project')}
                 </Button>
               </Link>
             )}
@@ -140,9 +142,9 @@ export default function TeamHubPage() {
         {selectedProjectId && (
           <Card className="flex flex-col h-[calc(100vh-10rem)]">
             <CardHeader>
-              <CardTitle>Team Chat for {selectedProject?.name}</CardTitle>
+              <CardTitle>{t('team_hub.chat_title')} {selectedProject?.name}</CardTitle>
               <CardDescription>
-                Real-time messaging with your project team.
+                {t('team_hub.chat_desc')}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden">

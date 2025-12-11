@@ -17,9 +17,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSupabase } from '@/supabase/provider';
 import { CreateWorklogDialog } from '@/components/worklog/create-worklog-dialog';
 import { WorklogList } from '@/components/worklog/worklog-list';
+import { useTranslation } from '@/lib/i18n/language-context';
 
 export default function WorklogPage() {
   const { supabase, user } = useSupabase();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const urlProjectId = searchParams.get('projectId');
   const urlWorklogId = searchParams.get('worklogId');
@@ -110,7 +112,7 @@ export default function WorklogPage() {
       <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 border-b md:px-6 shrink-0 bg-background sticky top-0 z-40">
         <div className="flex items-center gap-2">
           <h1 className="text-xl md:text-2xl font-bold tracking-tight font-headline">
-            Daily Worklog
+            {t('worklog.title')}
           </h1>
         </div>
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 w-full md:w-auto">
@@ -143,15 +145,15 @@ export default function WorklogPage() {
       <main className="flex-1 p-4 overflow-y-auto md:p-6">
         {!selectedProjectId && !isLoadingProjects && (
           <div className="flex flex-col items-center justify-center h-full text-center rounded-lg border-2 border-dashed bg-card/50">
-            <h2 className="text-2xl font-bold font-headline">No Project Selected</h2>
+            <h2 className="text-2xl font-bold font-headline">{t('worklog.no_project_selected')}</h2>
             <p className="max-w-sm mt-2 text-muted-foreground">
-              {projects && projects.length > 0 ? 'Please select a project to view its worklogs.' : 'Create a project to get started.'}
+              {projects && projects.length > 0 ? t('worklog.select_project_desc') : t('worklog.create_project_desc')}
             </p>
             {(!projects || projects.length === 0) && (
               <Link href="/projects/create" className='mt-4'>
                 <Button>
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  Create Project
+                  {t('worklog.create_project')}
                 </Button>
               </Link>
             )}

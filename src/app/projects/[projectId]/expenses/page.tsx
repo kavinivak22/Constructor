@@ -39,6 +39,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { useSupabase } from '@/supabase/provider';
 import { ExpenseFormSheet } from '@/components/expenses/expense-form-sheet';
+import { useTranslation } from '@/lib/i18n/language-context';
 
 interface jsPDFWithAutoTable extends jsPDF {
   autoTable: (options: any) => jsPDFWithAutoTable;
@@ -54,6 +55,7 @@ const categoryIcons: { [key: string]: React.ElementType } = {
 };
 
 export default function ExpensesPage() {
+  const { t } = useTranslation();
   const { projectId } = useParams();
   const router = useRouter();
   const { toast } = useToast();
@@ -276,13 +278,13 @@ export default function ExpensesPage() {
           </Button>
           <div className="flex-1">
             <h1 className="text-xl md:text-2xl font-bold tracking-tight font-headline">
-              Project Expenses
+              {t('project_expenses.title')}
             </h1>
             <p className="text-sm text-muted-foreground">{project?.name || 'Loading...'}</p>
           </div>
           <Button onClick={handleAddNew}>
             <PlusCircle className="w-4 h-4 mr-2" />
-            Log Expense
+            {t('project_expenses.add_expense')}
           </Button>
         </header>
 
@@ -295,7 +297,7 @@ export default function ExpensesPage() {
                     <IndianRupee className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Filtered Expenses</p>
+                    <p className="text-sm text-muted-foreground">{t('project_expenses.total_spent')}</p>
                     <p className="text-2xl font-bold">{formatCurrency(totalExpenses)}</p>
                   </div>
                 </CardContent>
@@ -304,7 +306,7 @@ export default function ExpensesPage() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
-                    placeholder="Search expenses..."
+                    placeholder={t('project_expenses.search_placeholder')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10"
@@ -332,7 +334,7 @@ export default function ExpensesPage() {
                             format(dateRange.from, "LLL dd, y")
                           )
                         ) : (
-                          <span>Filter by date...</span>
+                          <span>{t('common.filter')} by date...</span>
                         )}
                       </Button>
                     </PopoverTrigger>
@@ -365,7 +367,7 @@ export default function ExpensesPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {expenseCategories.map(category => (
-                        <SelectItem key={category} value={category} className="capitalize">{category === 'all' ? 'All Categories' : category}</SelectItem>
+                        <SelectItem key={category} value={category} className="capitalize">{category === 'all' ? t('project_expenses.all_categories') : category}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -381,7 +383,7 @@ export default function ExpensesPage() {
                   </div>
                   <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={filteredExpenses.length === 0} className="w-full sm:w-auto">
                     <FileDown className="mr-2 h-4 w-4" />
-                    Export
+                    {t('common.export')}
                   </Button>
                 </div>
               </div>
@@ -427,8 +429,8 @@ export default function ExpensesPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEdit(expense)}>Edit</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDeleteRequest(expense)} className="text-red-600">Delete</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEdit(expense)}>{t('common.edit')}</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDeleteRequest(expense)} className="text-red-600">{t('common.delete')}</DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         )}
@@ -442,7 +444,7 @@ export default function ExpensesPage() {
             {!isLoading && filteredExpenses.length === 0 && (
               <div>
                 <Card className="flex flex-col items-center justify-center h-64 text-center p-6 bg-card/80 border-2 border-dashed">
-                  <h3 className="text-xl font-bold font-headline">No Expenses Found</h3>
+                  <h3 className="text-xl font-bold font-headline">{t('project_expenses.no_expenses')}</h3>
                   <p className="max-w-sm mt-2 text-muted-foreground">
                     {expenses && expenses.length > 0 ? 'No expenses match your current filters.' : 'No expenses logged yet. Click "Log Expense" to add one.'}
                   </p>
@@ -470,8 +472,8 @@ export default function ExpensesPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive hover:bg-destructive/90">{t('common.delete')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

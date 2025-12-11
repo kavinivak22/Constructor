@@ -19,17 +19,22 @@ import {
 } from '@/components/ui/sheet';
 import { AppSidebar } from './app-sidebar';
 import { useSidebar } from '../ui/sidebar';
+import { useTranslation } from '@/lib/i18n/language-context';
 
-const mainNavItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutGrid },
-  { href: '/projects', label: 'Projects', icon: FolderKanban },
-  { href: '/purchase-orders', label: 'Orders', icon: ShoppingCart },
-  { href: '/team-hub', label: 'Messages', icon: MessageSquare },
-];
+// Static definition removed, moved inside component
+
 
 export function MobileBottomNav() {
   const pathname = usePathname();
   const { openMobile, setOpenMobile } = useSidebar();
+  const { t } = useTranslation();
+
+  const mainNavItems = [
+    { href: '/', label: t('common.dashboard'), icon: LayoutGrid },
+    { href: '/projects', label: t('common.projects'), icon: FolderKanban },
+    { href: '/purchase-orders', label: t('common.purchase_orders'), icon: ShoppingCart },
+    { href: '/team-hub', label: t('common.team_hub'), icon: MessageSquare },
+  ];
 
   const isActive = (href: string) => {
     return pathname === href;
@@ -91,7 +96,7 @@ export function MobileBottomNav() {
                 <MoreHorizontal className="h-5 w-5 stroke-2" />
               </div>
               <span className="text-[10px] font-medium opacity-70 group-hover:opacity-100 transition-all duration-300">
-                More
+                {t('common.more') || 'More'}
               </span>
             </button>
           </SheetTrigger>

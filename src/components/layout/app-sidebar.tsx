@@ -39,32 +39,13 @@ import { Button } from '../ui/button';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { useTranslation } from '@/lib/i18n/language-context';
 import type { User as AppUser } from '@/lib/data';
 
 
-const links = [
-  { href: '/', label: 'Dashboard', icon: LayoutGrid },
-  { href: '/projects', label: 'Projects', icon: FolderKanban },
-  { href: '/inventory', label: 'Inventory', icon: Package },
-  { href: '/purchase-orders', label: 'Purchase Orders', icon: ShoppingCart },
-  { href: '/worklog', label: 'Daily Worklog', icon: ClipboardPen },
-  { href: '/team-hub', label: 'Team Hub', icon: MessageSquare },
-  { href: '/analytics', label: 'Analytics', icon: AreaChart },
-];
 
-const aiLinks = [
-  { href: '/material-estimation', label: 'AI Estimation', icon: Wand2 },
-];
+// Removed static link definitions in favor of dynamic ones inside component
 
-const personalLinks = [
-  { href: '/notifications', label: 'Notifications', icon: Bell },
-  { href: '/personal-pouch', label: 'Personal Pouch', icon: Wallet },
-  { href: '/project-pouch', label: 'Project Pouch', icon: Briefcase },
-]
-
-const adminLinks = [
-  { href: '/employees', label: 'Employees', icon: Users },
-];
 
 
 
@@ -75,6 +56,33 @@ export function AppSidebar() {
   const { supabase, user } = useSupabase();
   const [isClient, setIsClient] = useState(false);
   const { setOpenMobile } = useSidebar();
+  const { t } = useTranslation();
+
+
+  // Memoize links to update when language changes
+  const links = [
+    { href: '/', label: t('common.dashboard'), icon: LayoutGrid },
+    { href: '/projects', label: t('common.projects'), icon: FolderKanban },
+    { href: '/inventory', label: t('common.inventory'), icon: Package },
+    { href: '/purchase-orders', label: t('common.purchase_orders'), icon: ShoppingCart },
+    { href: '/worklog', label: t('common.daily_worklog'), icon: ClipboardPen },
+    { href: '/team-hub', label: t('common.team_hub'), icon: MessageSquare },
+    { href: '/analytics', label: t('common.analytics'), icon: AreaChart },
+  ];
+
+  const aiLinks = [
+    { href: '/material-estimation', label: t('common.ai_estimation'), icon: Wand2 },
+  ];
+
+  const personalLinks = [
+    { href: '/notifications', label: t('common.notifications'), icon: Bell },
+    { href: '/personal-pouch', label: t('common.personal_pouch'), icon: Wallet },
+    { href: '/project-pouch', label: t('common.project_pouch'), icon: Briefcase },
+  ]
+
+  const adminLinks = [
+    { href: '/employees', label: t('common.employees'), icon: Users },
+  ];
 
 
   useEffect(() => {
@@ -143,7 +151,7 @@ export function AppSidebar() {
           ))}
         </SidebarMenu>
         <SidebarSeparator className="my-4" />
-        <p className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider group-data-[state=collapsed]:hidden">AI Tools</p>
+        <p className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider group-data-[state=collapsed]:hidden">{t('common.ai_tools')}</p>
         <SidebarMenu>
           {aiLinks.map((link) => (
             <SidebarMenuItem key={link.href}>
@@ -161,7 +169,7 @@ export function AppSidebar() {
           ))}
         </SidebarMenu>
         <SidebarSeparator className="my-4" />
-        <p className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider group-data-[state=collapsed]:hidden">Pouch</p>
+        <p className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider group-data-[state=collapsed]:hidden">{t('common.pouch')}</p>
         <SidebarMenu>
           {personalLinks.map((link) => (
             <SidebarMenuItem key={link.href}>
@@ -179,7 +187,7 @@ export function AppSidebar() {
           ))}
         </SidebarMenu>
         <SidebarSeparator className="my-4" />
-        <p className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider group-data-[state=collapsed]:hidden">Admin</p>
+        <p className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider group-data-[state=collapsed]:hidden">{t('common.admin')}</p>
         <SidebarMenu>
           {adminLinks.map((link) => (
             <SidebarMenuItem key={link.href}>
@@ -219,13 +227,19 @@ export function AppSidebar() {
             <DropdownMenuItem asChild>
               <Link href="/profile">
                 <UserIcon className="mr-2 h-4 w-4" />
-                <span>Profile</span>
+                <span>{t('common.profile')}</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/settings">
+                <Settings className="mr-2 h-4 w-4" />
+                <span>{t('common.settings')}</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
-              <span>Log out</span>
+              <span>{t('common.logout')}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

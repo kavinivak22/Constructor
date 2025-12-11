@@ -3,7 +3,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { type Project } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Users, DollarSign, Edit, CheckCircle, Clock, ArrowLeft } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
@@ -16,7 +16,7 @@ import Link from 'next/link';
 import { useProject, useProjectMembersCount } from '@/hooks/queries';
 import { useProjectWorklogs } from '@/hooks/queries/use-worklogs';
 import { CreateWorklogDialog } from '@/components/worklog/create-worklog-dialog';
-
+import { useTranslation } from '@/lib/i18n/language-context';
 
 
 const projectTasks = [
@@ -36,6 +36,7 @@ const upcomingWorks = [
 
 
 export default function ProjectDetailsPage() {
+    const { t } = useTranslation();
     const { projectId } = useParams();
     const router = useRouter();
     const projectIdString = Array.isArray(projectId) ? projectId[0] : projectId;
@@ -66,13 +67,13 @@ export default function ProjectDetailsPage() {
             <div className="flex flex-col h-full">
                 <header className="flex items-center gap-2 p-4 border-b md:px-6 shrink-0 bg-background sticky top-0 z-10">
                     <h1 className="text-xl md:text-2xl font-bold tracking-tight font-headline">
-                        Project Not Found
+                        {t('project_details.not_found_title')}
                     </h1>
                 </header>
                 <main className="flex-1 p-4 overflow-y-auto md:p-6 bg-secondary">
                     <Card>
                         <CardContent className='p-6'>
-                            <p>The project you are looking for does not exist or you do not have permission to view it.</p>
+                            <p>{t('project_details.not_found_desc')}</p>
                         </CardContent>
                     </Card>
                 </main>
@@ -100,7 +101,7 @@ export default function ProjectDetailsPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2 ml-auto">
-                    <div className="text-sm text-muted-foreground hidden sm:block">Current Stage:</div>
+                    <div className="text-sm text-muted-foreground hidden sm:block">{t('project_details.current_stage')}</div>
                     <Badge variant="outline" className="capitalize shrink-0">
                         Foundation
                     </Badge>
@@ -108,19 +109,19 @@ export default function ProjectDetailsPage() {
                 <Button variant="outline" size="sm" asChild>
                     <Link href="#">
                         <Edit className="mr-2 h-3 w-3" />
-                        Edit
+                        {t('common.edit')}
                     </Link>
                 </Button>
             </header>
             <main className="flex-1 p-4 overflow-y-auto md:p-6 space-y-6">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Overall Progress</CardTitle>
+                        <CardTitle>{t('project_details.overall_progress')}</CardTitle>
                     </CardHeader>
                     <CardContent className='space-y-4'>
                         <div>
                             <div className="flex justify-between items-center text-sm font-medium text-muted-foreground mb-2">
-                                <p>Progress</p>
+                                <p>{t('project_details.progress')}</p>
                                 <p className="font-semibold text-foreground text-lg">{project.progress ?? 0}%</p>
                             </div>
                             <Progress value={project.progress ?? 0} aria-label={`${project.progress ?? 0}% complete`} className="h-2" />
@@ -129,28 +130,28 @@ export default function ProjectDetailsPage() {
                             <div className='flex items-center gap-2'>
                                 <Calendar className="h-4 w-4" />
                                 <div>
-                                    <p className='text-xs'>End Date</p>
+                                    <p className='text-xs'>{t('project_details.end_date')}</p>
                                     <p className='font-semibold text-foreground'>{getFormattedDate(project.endDate as string)}</p>
                                 </div>
                             </div>
                             <div className='flex items-center gap-2'>
                                 <DollarSign className="h-4 w-4" />
                                 <div>
-                                    <p className='text-xs'>Budget</p>
+                                    <p className='text-xs'>{t('project_details.budget')}</p>
                                     <p className='font-semibold text-foreground'>$850k</p>
                                 </div>
                             </div>
                             <div className='flex items-center gap-2'>
                                 <Users className="h-4 w-4" />
                                 <div>
-                                    <p className='text-xs'>Team Size</p>
-                                    <p className='font-semibold text-foreground'>{memberCount} members</p>
+                                    <p className='text-xs'>{t('project_details.team_size')}</p>
+                                    <p className='font-semibold text-foreground'>{memberCount} {t('project_details.members')}</p>
                                 </div>
                             </div>
                             <div className='flex items-center gap-2'>
                                 <Progress value={65} className="w-6 h-6" />
                                 <div>
-                                    <p className='text-xs'>Spent</p>
+                                    <p className='text-xs'>{t('project_details.spent')}</p>
                                     <p className='font-semibold text-foreground'>65%</p>
                                 </div>
                             </div>
@@ -160,29 +161,29 @@ export default function ProjectDetailsPage() {
 
                 <div className='flex flex-wrap gap-2'>
                     <Button asChild>
-                        <Link href={`/projects/${projectId}/materials`}>View Materials</Link>
+                        <Link href={`/projects/${projectId}/materials`}>{t('project_details.view_materials')}</Link>
                     </Button>
                     <Button variant="outline" asChild>
-                        <Link href={`/projects/${projectId}/expenses`}>View Expenses</Link>
+                        <Link href={`/projects/${projectId}/expenses`}>{t('project_details.view_expenses')}</Link>
                     </Button>
                     <CreateWorklogDialog
                         projectId={projectIdString}
-                        trigger={<Button variant="outline">Add Update</Button>}
+                        trigger={<Button variant="outline">{t('project_details.add_update')}</Button>}
                         onSuccess={() => window.location.reload()}
                     />
                 </div>
 
                 {worklogs.length > 0 && (
                     <div>
-                        <h2 className="text-xl font-bold mb-4">Recent Updates</h2>
+                        <h2 className="text-xl font-bold mb-4">{t('project_details.recent_updates')}</h2>
                         <Carousel opts={{ align: "start", loop: true }} className="w-full">
                             <CarouselContent className="-ml-4">
                                 {worklogs.map((worklog: any, index: number) => {
                                     // Aggregate descriptions from labor entries
-                                    const description = worklog.labor?.map((l: any) => l.work_description).filter(Boolean).join('. ') || 'No description provided.';
+                                    const description = worklog.labor?.map((l: any) => l.work_description).filter(Boolean).join('. ') || t('project_details.no_desc');
 
                                     // Use explicit title if available, otherwise generate smart title
-                                    let title = worklog.title || 'Daily Log';
+                                    let title = worklog.title || t('project_details.daily_log');
 
                                     // If title is the default "Daily Log", try to generate a more descriptive one for backward compatibility
                                     if (!worklog.title || worklog.title === 'Daily Log') {
@@ -196,7 +197,7 @@ export default function ProjectDetailsPage() {
                                             title = worklog.photos[0].caption;
                                         }
                                         // 3. Fallback to description summary
-                                        else if (description !== 'No description provided.') {
+                                        else if (description !== t('project_details.no_desc')) {
                                             // Take first sentence or first 40 chars
                                             const firstSentence = description.split(/[.!?]/)[0];
                                             title = firstSentence.length > 40 ? firstSentence.substring(0, 40) + '...' : firstSentence;
@@ -243,7 +244,7 @@ export default function ProjectDetailsPage() {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <CheckCircle className="text-primary h-5 w-5" />
-                                Project Tasks
+                                {t('project_details.project_tasks')}
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -256,12 +257,12 @@ export default function ProjectDetailsPage() {
                                     </div>
                                 </div>
                             ))}
-                            <Button variant="outline" className="w-full mt-4">Add Task</Button>
+                            <Button variant="outline" className="w-full mt-4">{t('project_details.add_task')}</Button>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader>
-                            <CardTitle>Upcoming Works</CardTitle>
+                            <CardTitle>{t('project_details.upcoming_works')}</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {upcomingWorks.map(work => (
@@ -284,23 +285,23 @@ export default function ProjectDetailsPage() {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Budget Overview</CardTitle>
+                        <CardTitle>{t('project_details.budget_overview')}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-2">
                             <div className="flex justify-between text-sm">
-                                <span>Total Budget</span>
+                                <span>{t('project_details.total_budget')}</span>
                                 <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(budget)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span>Amount Spent</span>
+                                <span>{t('project_details.amount_spent')}</span>
                                 <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(spent)}</span>
                             </div>
                             <div className="relative h-4 rounded-full bg-muted overflow-hidden">
                                 <div className="absolute top-0 left-0 h-full bg-primary" style={{ width: `${spentPercentage}%` }}></div>
                             </div>
                             <div className="flex justify-between text-sm font-bold">
-                                <span>Remaining</span>
+                                <span>{t('project_details.remaining')}</span>
                                 <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(remaining)}</span>
                             </div>
                         </div>

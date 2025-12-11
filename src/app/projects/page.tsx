@@ -17,9 +17,11 @@ import { useSupabase } from '@/supabase/provider';
 import { useEffect, useMemo, useState } from 'react';
 import { ProjectCard } from '@/components/dashboard/project-card';
 import { Card } from '@/components/ui/card';
+import { useTranslation } from '@/lib/i18n/language-context';
 
 export default function ProjectsPage() {
   const { supabase, user } = useSupabase();
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortOrder, setSortOrder] = useState('newest');
@@ -90,12 +92,12 @@ export default function ProjectsPage() {
     <div className="flex flex-col h-full">
       <header className="flex flex-row items-center justify-between gap-4 p-4 border-b md:px-6 shrink-0 bg-background sticky top-0 z-10">
         <h1 className="text-2xl font-bold tracking-tight font-headline">
-          Projects
+          {t('projects.title')}
         </h1>
         <Link href="/projects/create">
           <Button>
             <Plus className="mr-2" />
-            New Project
+            {t('projects.new_project')}
           </Button>
         </Link>
       </header>
@@ -105,7 +107,7 @@ export default function ProjectsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search projects..."
+              placeholder={t('projects.search_placeholder')}
               className="pl-10 w-full"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -116,15 +118,15 @@ export default function ProjectsPage() {
               <div className="flex items-center gap-2">
                 <Filter className="h-4 w-4" />
                 <span className="hidden sm:inline">
-                  <SelectValue placeholder="All Status" />
+                  <SelectValue placeholder={t('projects.status_filter')} />
                 </span>
               </div>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="planning">Planning</SelectItem>
-              <SelectItem value="in progress">In Progress</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="all">{t('projects.status.all')}</SelectItem>
+              <SelectItem value="planning">{t('projects.status.planning')}</SelectItem>
+              <SelectItem value="in progress">{t('projects.status.in_progress')}</SelectItem>
+              <SelectItem value="completed">{t('projects.status.completed')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -145,9 +147,9 @@ export default function ProjectsPage() {
 
         {!isLoading && filteredAndSortedProjects.length === 0 && (
           <Card className="flex flex-col items-center justify-center h-64 text-center p-6 bg-card">
-            <h3 className="text-xl font-bold font-headline">No Projects Found</h3>
+            <h3 className="text-xl font-bold font-headline">{t('projects.no_projects_found')}</h3>
             <p className="max-w-sm mt-2 text-muted-foreground">
-              No projects match your current filters. Try adjusting your search or filter criteria.
+              {t('projects.no_projects_desc')}
             </p>
           </Card>
         )}

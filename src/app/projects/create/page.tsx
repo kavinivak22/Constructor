@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -39,28 +38,10 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { type User as AppUser } from '@/lib/data';
 import { compressImage } from '@/lib/compression';
-
-const formSchema = z.object({
-  name: z.string().min(2, 'Project name must be at least 2 characters.'),
-  projectType: z.string().nonempty('Please select a project type.'),
-  description: z.string().min(10, 'Description must be at least 10 characters.'),
-  clientName: z.string().optional(),
-  clientContact: z.string().optional(),
-  location: z.string().optional(),
-  startDate: z.date({
-    required_error: 'A start date is required.',
-  }),
-  endDate: z.date({
-    required_error: 'An end date is required.',
-  }),
-  budget: z.preprocess(
-    (a) => parseFloat(z.string().parse(a)),
-    z.number().positive('Budget must be a positive number.')
-  ),
-});
-
+import { useTranslation } from '@/lib/i18n/language-context';
 
 export default function CreateProjectPage() {
+  const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { supabase, user } = useSupabase();
   const router = useRouter();
@@ -86,6 +67,25 @@ export default function CreateProjectPage() {
       fetchUserProfile();
     }
   }, [user, supabase]);
+
+  const formSchema = z.object({
+    name: z.string().min(2, 'Project name must be at least 2 characters.'),
+    projectType: z.string().nonempty('Please select a project type.'),
+    description: z.string().min(10, 'Description must be at least 10 characters.'),
+    clientName: z.string().optional(),
+    clientContact: z.string().optional(),
+    location: z.string().optional(),
+    startDate: z.date({
+      required_error: 'A start date is required.',
+    }),
+    endDate: z.date({
+      required_error: 'An end date is required.',
+    }),
+    budget: z.preprocess(
+      (a) => parseFloat(z.string().parse(a)),
+      z.number().positive('Budget must be a positive number.')
+    ),
+  });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -167,6 +167,7 @@ export default function CreateProjectPage() {
         logoId = publicUrl;
       }
 
+      // ... rest of the logic remains same, just ensuring variables are accessible
       const { data: projectData, error: projectError } = await supabase.from('projects').insert([
         {
           ...values,
@@ -190,19 +191,16 @@ export default function CreateProjectPage() {
 
       if (userUpdateError) {
         console.error("Failed to add project to user", userUpdateError);
-        // Optional: rollback project creation or warn user
       }
 
-      // if (error) throw error;
-
       toast({
-        title: 'Project Created',
-        description: 'Your new project has been created successfully.',
+        title: t('project_create.toast_success_title'),
+        description: t('project_create.toast_success_desc'),
       });
       router.push('/');
     } catch (error: any) {
       toast({
-        title: 'Error creating project',
+        title: t('project_create.toast_error_title'),
         description: error.message,
         variant: 'destructive',
       });
@@ -218,7 +216,7 @@ export default function CreateProjectPage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-xl md:text-2xl font-bold tracking-tight font-headline">
-          Create New Project
+          {t('project_create.title')}
         </h1>
       </header>
       <main className="flex-1 p-4 overflow-y-auto md:p-6">
@@ -227,7 +225,7 @@ export default function CreateProjectPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Project Information</CardTitle>
+                  <CardTitle>{t('project_create.section_info')}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <FormField
@@ -235,9 +233,9 @@ export default function CreateProjectPage() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Project Name *</FormLabel>
+                        <FormLabel>{t('project_create.name_label')}</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., Downtown Office Complex" {...field} />
+                          <Input placeholder={t('project_create.name_placeholder')} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -248,11 +246,11 @@ export default function CreateProjectPage() {
                     name="projectType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Project Type *</FormLabel>
+                        <FormLabel>{t('project_create.type_label')}</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select project type" />
+                              <SelectValue placeholder={t('project_create.type_placeholder')} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -271,10 +269,10 @@ export default function CreateProjectPage() {
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Description</FormLabel>
+                        <FormLabel>{t('project_create.desc_label')}</FormLabel>
                         <FormControl>
                           <Textarea
-                            placeholder="Brief description of the project..."
+                            placeholder={t('project_create.desc_placeholder')}
                             className="resize-none"
                             {...field}
                           />
@@ -288,7 +286,7 @@ export default function CreateProjectPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Client Information</CardTitle>
+                  <CardTitle>{t('project_create.section_client')}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <FormField
@@ -296,9 +294,9 @@ export default function CreateProjectPage() {
                     name="clientName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Client Name</FormLabel>
+                        <FormLabel>{t('project_create.client_name_label')}</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., ABC Corporation" {...field} />
+                          <Input placeholder={t('project_create.client_name_placeholder')} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -309,9 +307,9 @@ export default function CreateProjectPage() {
                     name="clientContact"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Client Contact</FormLabel>
+                        <FormLabel>{t('project_create.client_contact_label')}</FormLabel>
                         <FormControl>
-                          <Input placeholder="contact@example.com or +1234567890" {...field} />
+                          <Input placeholder={t('project_create.client_contact_placeholder')} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -322,9 +320,9 @@ export default function CreateProjectPage() {
                     name="location"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Location</FormLabel>
+                        <FormLabel>{t('project_create.location_label')}</FormLabel>
                         <FormControl>
-                          <Input placeholder="123 Main St, City, State" {...field} />
+                          <Input placeholder={t('project_create.location_placeholder')} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -335,7 +333,7 @@ export default function CreateProjectPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Company / Client Logo</CardTitle>
+                  <CardTitle>{t('project_create.section_logo')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-center w-full">
@@ -345,7 +343,7 @@ export default function CreateProjectPage() {
                       ) : null}
                       <div className="flex flex-col items-center justify-center pt-5 pb-6 z-10">
                         <Upload className="w-8 h-8 mb-4 text-muted-foreground" />
-                        <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload logo</span></p>
+                        <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">{t('project_create.upload_logo_text')}</span></p>
                         <p className="text-xs text-muted-foreground">PNG, JPG (MAX. 2MB)</p>
                         {selectedLogo && <p className="mt-2 text-sm font-medium text-primary">{selectedLogo.name}</p>}
                       </div>
@@ -377,7 +375,7 @@ export default function CreateProjectPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Project Timeline & Budget</CardTitle>
+                  <CardTitle>{t('project_create.section_timeline')}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -386,7 +384,7 @@ export default function CreateProjectPage() {
                       name="startDate"
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
-                          <FormLabel>Start Date *</FormLabel>
+                          <FormLabel>{t('project_create.start_date_label')}</FormLabel>
                           <Popover>
                             <PopoverTrigger asChild>
                               <FormControl>
@@ -400,7 +398,7 @@ export default function CreateProjectPage() {
                                   {field.value ? (
                                     format(field.value, 'PPP')
                                   ) : (
-                                    <span>Pick a date</span>
+                                    <span>{t('project_create.pick_date')}</span>
                                   )}
                                   <CalendarIcon className="w-4 h-4 ml-auto opacity-50" />
                                 </Button>
@@ -424,7 +422,7 @@ export default function CreateProjectPage() {
                       name="endDate"
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
-                          <FormLabel>End Date *</FormLabel>
+                          <FormLabel>{t('project_create.end_date_label')}</FormLabel>
                           <Popover>
                             <PopoverTrigger asChild>
                               <FormControl>
@@ -438,7 +436,7 @@ export default function CreateProjectPage() {
                                   {field.value ? (
                                     format(field.value, 'PPP')
                                   ) : (
-                                    <span>Pick a date</span>
+                                    <span>{t('project_create.pick_date')}</span>
                                   )}
                                   <CalendarIcon className="w-4 h-4 ml-auto opacity-50" />
                                 </Button>
@@ -463,7 +461,7 @@ export default function CreateProjectPage() {
                     name="budget"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Budget (₹) *</FormLabel>
+                        <FormLabel>{t('project_create.budget_label')}</FormLabel>
                         <FormControl>
                           <div className="relative">
                             <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">₹</span>
@@ -479,7 +477,7 @@ export default function CreateProjectPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Project Photos</CardTitle>
+                  <CardTitle>{t('project_create.section_photos')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-center w-full">
@@ -489,7 +487,7 @@ export default function CreateProjectPage() {
                       ) : null}
                       <div className="flex flex-col items-center justify-center pt-5 pb-6 z-10">
                         <Upload className="w-8 h-8 mb-4 text-muted-foreground" />
-                        <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span> or drag and drop</p>
+                        <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">{t('project_create.upload_photo_text')}</span> or drag and drop</p>
                         <p className="text-xs text-muted-foreground">SVG, PNG, JPG or GIF (MAX. 5MB)</p>
                         {selectedFile && <p className="mt-2 text-sm font-medium text-primary">{selectedFile.name}</p>}
                       </div>
@@ -522,7 +520,7 @@ export default function CreateProjectPage() {
               <div className="flex justify-end gap-2">
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Create Project
+                  {t('project_create.submit_button')}
                 </Button>
               </div>
             </form>
