@@ -11,12 +11,14 @@ import { useToast } from '@/hooks/use-toast';
 import { useSupabase } from '@/supabase/provider';
 
 const getFriendlyErrorMessage = (error: any): string => {
+  console.error('Login error detail:', error);
   if (error?.message) {
     if (error.message.includes('Invalid login credentials')) {
       return 'Invalid email or password. Please check your credentials and try again.';
     }
+    return `Login error: ${error.message}`;
   }
-  return 'An unexpected error occurred during login. Please try again.';
+  return `An unexpected error occurred during login: ${error?.toString() || 'Unknown error'}. Please try again.`;
 };
 
 export default function LoginPage() {
