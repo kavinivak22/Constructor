@@ -91,3 +91,25 @@ This script will:
   - Modified [worklogs.ts](file:///c:/Users/Kavin%20Bharathi/OneDrive/Desktop/Constructor-a1f734a624c5e868a1ea2e0e062255c9495e6b1c/src/app/actions/worklogs.ts) to parse `workDoneQuantity` and `workDoneUnit` in the server-side validator, and write these values to the `worklog_labor_entries` table on create and update inserts.
   - Modified [worklog-list.tsx](file:///c:/Users/Kavin%20Bharathi/OneDrive/Desktop/Constructor-a1f734a624c5e868a1ea2e0e062255c9495e6b1c/src/components/worklog/worklog-list.tsx) to render a visual badge (e.g. `Work Done: 500 sq ft`) next to the contractor description inside the expandable details view.
 * **Verification**: Ran `npm run typecheck` which passed successfully. Verified dev server compiles and updates cleanly.
+
+### 17. Employee Invite Validation and Rejoin ✅
+* **Problem**: Inviting existing or former employees was not handled gracefully, causing database errors or redundant invitations.
+* **Fix**:
+  - Implemented real-time check of invited email against active and former employees.
+  - Displays appropriate warnings: red error for active employees (disables button) and amber warning for ex-employees.
+  - Converts submit button to "Rejoin" when an ex-employee email is detected, instantly reactivating their profile and restoring permissions instead of sending a new email invite.
+
+### 18. Dynamic Task Checklists & Upcoming Work Plans ✅
+* **Problem**: Checklist lists for My Tasks, Project Tasks, and Upcoming Works were static placeholders. Completing tasks triggered trigger deadlocks due to self-modifications in a BEFORE UPDATE trigger.
+* **Fix**:
+  - Wired up personal tasks checklist to the App Dashboard (`src/app/page.tsx`) with inline edit and delete actions appearing on hover.
+  - Wired up shared project tasks to the Project details page (`src/app/projects/[projectId]/page.tsx`). Assigned employees are now mandatory when creating a project task.
+  - Added project tasks edit dialog (`src/components/projects/edit-task-dialog.tsx`) and delete functionality.
+  - Added upcoming works planning milestones with estimated start dates and durations.
+  - Restructured trigger function `calculate_task_priority` in PostgreSQL to remove nested `UPDATE` queries, preventing locked transaction errors (code 27000).
+
+### 19. Pre-authentication Fetch Error Guard ✅
+* **Problem**: Vercel logs showed `Error: Unauthorized` entries on root page load prior to client-side auth redirection taking effect.
+* **Fix**:
+  - Guarded client-side `useEffect` in `src/app/page.tsx` to return early if the `user` is not loaded.
+  - Updated the `useRecentWorklogs` React Query hook with `enabled: !!user` to prevent calling the server action prior to auth completion.
