@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/react-query';
 import { getWorklogs, getRecentWorklogs } from '@/app/actions/worklogs';
+import { useSupabase } from '@/supabase/provider';
 
 export function useProjectWorklogs(projectId: string | undefined) {
     return useQuery({
@@ -23,9 +24,12 @@ export function useProjectWorklogs(projectId: string | undefined) {
 }
 
 export function useRecentWorklogs(limit: number = 5) {
+    const { user } = useSupabase();
+
     return useQuery({
-        queryKey: ['recent-worklogs', limit],
+        queryKey: ['recent-worklogs', limit, user?.id],
         queryFn: async () => {
+            if (!user) return [];
             const result = await getRecentWorklogs(limit);
 
             if (!result.success) {
@@ -34,5 +38,6 @@ export function useRecentWorklogs(limit: number = 5) {
 
             return result.data || [];
         },
+        enabled: !!user,
     });
 }

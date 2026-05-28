@@ -143,6 +143,7 @@ export default function DashboardPage() {
     const [isLoadingTasks, setIsLoadingTasks] = useState(true);
 
     useEffect(() => {
+        if (!user) return;
         const fetchPersonalTasks = async () => {
             setIsLoadingTasks(true);
             const data = await getPersonalTasks();
@@ -150,7 +151,7 @@ export default function DashboardPage() {
             setIsLoadingTasks(false);
         };
         fetchPersonalTasks();
-    }, []);
+    }, [user]);
 
     const handleToggleTask = async (taskId: string, currentStatus: string) => {
         setPersonalTasks(prev =>
