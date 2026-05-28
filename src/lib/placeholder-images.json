@@ -1,0 +1,52 @@
+{
+  "placeholderImages": [
+    {
+      "id": "downtown-office",
+      "description": "A modern downtown office building under construction.",
+      "imageUrl": "https://images.unsplash.com/photo-1646608220368-c604d8e8130f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxvZmZpY2UlMjBjb25zdHJ1Y3Rpb258ZW58MHx8fHwxNzYzMjI2ODA1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "office construction"
+    },
+    {
+      "id": "suburban-villa",
+      "description": "A luxury suburban villa being built.",
+      "imageUrl": "https://images.unsplash.com/photo-1612935089040-89195ef54677?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxob3VzZSUyMGNvbnN0cnVjdGlvbnxlbnwwfHx8fDE3NjMyMjY4MDV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "house construction"
+    },
+    {
+      "id": "coastal-bridge",
+      "description": "Repair work on a large coastal bridge.",
+      "imageUrl": "https://images.unsplash.com/photo-1603287696448-61d5b81cb720?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxicmlkZ2UlMjBjb25zdHJ1Y3Rpb258ZW58MHx8fHwxNzYzMjI2ODA1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "bridge construction"
+    },
+    {
+      "id": "city-park",
+      "description": "A new fountain being installed in a city park.",
+      "imageUrl": "https://images.unsplash.com/photo-1708211030643-2c68771ffb88?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxwYXJrJTIwZm91bnRhaW58ZW58MHx8fHwxNzYzMjI2ODA1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "park fountain"
+    },
+    {
+      "id": "high-rise",
+      "description": "Construction of a new high-rise apartment building.",
+      "imageUrl": "https://images.unsplash.com/photo-1634250878303-0c059dc54c4b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxza3lzY3JhcGVyJTIwY29uc3RydWN0aW9ufGVufDB8fHx8MTc2MzIyNjgwNXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "skyscraper construction"
+    },
+    {
+      "id": "retail-center",
+      "description": "The interior build-out of a new retail shopping center.",
+      "imageUrl": "https://images.unsplash.com/photo-1639335725730-ecb4ffa98044?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8cmV0YWlsJTIwY29uc3RydWN0aW9ufGVufDB8fHx8MTc2MzIyNjgwNXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "retail construction"
+    },
+    {
+      "id": "historic-theatre",
+      "description": "Restoration work on an old, historic theatre.",
+      "imageUrl": "https://images.unsplash.com/photo-1746913480863-4951a4ba425c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHx0aGVhdHJlJTIwcmVzdG9yYXRpb258ZW58MHx8fHwxNzYzMjI2ODA1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "theatre restoration"
+    },
+    {
+      "id": "lakeside-house",
+      "description": "A modern house being built by a lake.",
+      "imageUrl": "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxtb2Rlcm4lMjBob3VzZXxlbnwwfHx8fDE3NjMxODgxNTV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "modern house"
+    }
+  ]
+}
