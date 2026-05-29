@@ -19,6 +19,7 @@ import {
   AreaChart,
   Bell,
   User as UserIcon,
+  Coins,
 
 } from 'lucide-react';
 import {
@@ -60,6 +61,12 @@ const personalLinks = [
   { href: '/notifications', label: 'Notifications', icon: Bell },
   { href: '/personal-pouch', label: 'Personal Pouch', icon: Wallet },
   { href: '/project-pouch', label: 'Project Pouch', icon: Briefcase },
+]
+
+const financialLinks = [
+  { href: '/financials/salary-profiles', label: 'Salary Profiles', icon: Wallet },
+  { href: '/financials/payday', label: 'Weekly Pay-Day', icon: Coins },
+  { href: '/expenses', label: 'Project Expenses', icon: Briefcase },
 ]
 
 const adminLinks = [
@@ -185,6 +192,28 @@ export function AppSidebar() {
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
+        {(userProfile?.role === 'admin' || userProfile?.role === 'manager') && (
+          <>
+            <SidebarSeparator className="my-4" />
+            <p className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider group-data-[state=collapsed]:hidden">Financials</p>
+            <SidebarMenu>
+              {financialLinks.map((link) => (
+                <SidebarMenuItem key={link.href}>
+                  <Link href={link.href} legacyBehavior={false} onClick={handleLinkClick}>
+                    <SidebarMenuButton
+                      isActive={isActive(link.href)}
+                      tooltip={link.label}
+                      className="justify-start font-medium"
+                    >
+                      <link.icon className="h-5 w-5" />
+                      <span className="group-data-[state=collapsed]:hidden">{link.label}</span>
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </>
+        )}
         {userProfile?.role === 'admin' && (
           <>
             <SidebarSeparator className="my-4" />
