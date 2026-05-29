@@ -16,18 +16,29 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Loader2 } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 
 export function InviteCheckWrapper() {
     const router = useRouter()
-    const { supabase } = useSupabase()
+    const { supabase, user } = useSupabase()
+    const { toast } = useToast()
     const [invites, setInvites] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [acceptingId, setAcceptingId] = useState<string | null>(null)
     const [showNoInviteDialog, setShowNoInviteDialog] = useState(false)
+    const [isEmailUnverified, setIsEmailUnverified] = useState(false)
+    const [resending, setResending] = useState(false)
 
     useEffect(() => {
-        checkInvites()
-    }, [])
+        if (user) {
+            if (!user.email_confirmed_at) {
+                setIsEmailUnverified(true)
+                setLoading(false)
+            } else {
+                checkInvites()
+            }
+        }
+    }, [user])
 
     async function checkInvites() {
         const pendingInvites = await getUserPendingInvites()
@@ -68,11 +79,70 @@ export function InviteCheckWrapper() {
         router.push('/login')
     }
 
+    async function handleResendVerification() {
+        if (!user?.email) return
+        setResending(true)
+        const { error } = await supabase.auth.resend({
+            type: 'signup',
+            email: user.email,
+            options: {
+                emailRedirectTo: `${window.location.origin}/auth/callback`
+            }
+        })
+        setResending(false)
+
+        if (error) {
+            toast({
+                title: 'Error resending email',
+                description: error.message || 'Failed to resend verification email.',
+                variant: 'destructive'
+            })
+        } else {
+            toast({
+                title: 'Email Sent',
+                description: 'Verification email has been resent successfully. Please check your inbox.',
+            })
+        }
+    }
+
     if (loading) {
         return (
             <div className="fixed inset-0 bg-background flex items-center justify-center z-[9999]">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
+        )
+    }
+
+    // Show "Email Verification Required" dialog
+    if (isEmailUnverified) {
+        return (
+            <AlertDialog open={true}>
+                <AlertDialogContent className="z-[9999]">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-2xl">Email Verification Required</AlertDialogTitle>
+                        <AlertDialogDescription className="text-base pt-2">
+                            An invitation has been sent to <strong>{user?.email}</strong>.
+                            <br /><br />
+                            Please check your inbox and click the link in the verification email to confirm your account and accept the invitation.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
+                        <Button onClick={handleLogout} variant="outline" className="w-full sm:w-auto">
+                            Log Out
+                        </Button>
+                        <Button onClick={handleResendVerification} disabled={resending} className="w-full sm:w-auto">
+                            {resending ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Resending...
+                                </>
+                            ) : (
+                                'Resend Verification Email'
+                            )}
+                        </Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         )
     }
 

@@ -208,11 +208,11 @@ export async function getUserPendingInvites() {
             return []
         }
 
-        // Get all pending invites for this email
+        // Get all pending invites for this email (case-insensitive match)
         const { data: invites, error } = await supabase
             .from('invites')
             .select('*, companies(name)')
-            .eq('email', user.email)
+            .ilike('email', user.email)
             .eq('status', 'pending')
 
         if (error) {
@@ -249,12 +249,12 @@ export async function acceptInvite(inviteId: string) {
 
         if (!user || !user.email) throw new Error('Unauthorized')
 
-        // Verify invite exists and belongs to user
+        // Verify invite exists and belongs to user (case-insensitive email match)
         const { data: invite, error: inviteError } = await supabase
             .from('invites')
             .select('*')
             .eq('id', inviteId)
-            .eq('email', user.email)
+            .ilike('email', user.email)
             .eq('status', 'pending')
             .single()
 

@@ -75,6 +75,7 @@ export default function SignupPage() {
         email,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
           // This data is passed to the 'on_auth_user_created' trigger
           data: {
             full_name: displayName,
@@ -85,13 +86,13 @@ export default function SignupPage() {
 
       if (error) throw error;
 
-      // If we reach here, Supabase will handle sending the confirmation email
-      // (if enabled in your project settings). We just need to show a message.
-      // For testing, since email confirmation is off, the user is logged in immediately.
-
-      // After a successful sign-up, Supabase automatically authenticates the user.
-      // We just need to trigger a page refresh to let the main layout handle routing.
-      router.push('/');
+      // If Supabase returns a session, the user is authenticated immediately (e.g. email confirmation disabled).
+      if (data.session) {
+        router.push('/');
+      } else {
+        // Otherwise, email confirmation is enabled and the user needs to click the link in their email.
+        setEmailSent(true);
+      }
 
     } catch (error: any) {
       setError(getFriendlyErrorMessage(error));
@@ -120,12 +121,19 @@ export default function SignupPage() {
           </div>
 
           {emailSent ? (
-            <div className="rounded-lg border-l-4 border-green-500 bg-green-50 p-4 text-green-700">
-              <div className="flex items-center gap-3">
-                <CheckCircle className="h-5 w-5" />
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-6 text-foreground space-y-3 backdrop-blur-md">
+              <div className="flex items-start gap-4">
+                <div className="bg-primary/10 p-2 rounded-lg border border-primary/20 text-primary shrink-0">
+                  <CheckCircle className="h-6 w-6" />
+                </div>
                 <div>
-                  <h3 className="font-bold">Check your inbox</h3>
-                  <p className="text-sm">A confirmation link has been sent to {email}. Click it to complete your registration.</p>
+                  <h3 className="text-lg font-bold font-headline text-foreground">Verify Your Email</h3>
+                  <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                    A confirmation link has been sent to <strong className="text-foreground">{email}</strong>.
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                    Please check your inbox and click the link to confirm your account and accept your invitation. Once verified, you will be automatically logged in.
+                  </p>
                 </div>
               </div>
             </div>
