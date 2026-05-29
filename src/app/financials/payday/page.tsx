@@ -895,7 +895,7 @@ export default function PaydayPage() {
 
                 {/* Dialog: Generate Weekly Payout Run */}
                 <Dialog open={isGenOpen} onOpenChange={setIsGenOpen}>
-                    <DialogContent className="sm:max-w-[450px] glass-card border-muted/30 text-foreground bg-background/95 backdrop-blur-xl">
+                    <DialogContent className="sm:max-w-[450px] border-muted/30 text-foreground bg-background/95 backdrop-blur-xl">
                         <DialogHeader>
                             <DialogTitle className="text-xl font-bold font-headline flex items-center gap-2">
                                 <Calendar className="h-5 w-5 text-primary" /> Run Weekly Pay-Day
@@ -963,7 +963,7 @@ export default function PaydayPage() {
 
                 {/* Dialog: Create Custom Payout Item */}
                 <Dialog open={isCustomOpen} onOpenChange={setIsCustomOpen}>
-                    <DialogContent className="sm:max-w-[480px] glass-card border-muted/30 text-foreground bg-background/95 backdrop-blur-xl">
+                    <DialogContent className="sm:max-w-[480px] border-muted/30 text-foreground bg-background/95 backdrop-blur-xl">
                         <DialogHeader>
                             <DialogTitle className="text-xl font-bold font-headline flex items-center gap-2">
                                 <Plus className="h-5 w-5 text-primary" /> Add Custom Payout Item

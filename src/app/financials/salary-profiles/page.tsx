@@ -370,7 +370,7 @@ export default function SalaryProfilesPage() {
 
                 {/* Create/Edit Profile Dialog */}
                 <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                    <DialogContent className="sm:max-w-[500px] glass-card border-muted/30 text-foreground bg-background/95 backdrop-blur-xl">
+                    <DialogContent className="sm:max-w-[500px] border-muted/30 text-foreground bg-background/95 backdrop-blur-xl">
                         <DialogHeader>
                             <DialogTitle className="text-xl font-bold font-headline">
                                 {editingProfile ? 'Edit Salary Profile' : 'Create Salary Profile'}
