@@ -25,7 +25,7 @@ export async function getSalaryProfiles() {
 
         const { data: profiles, error } = await supabase
             .from('salary_profiles')
-            .select('*, users:user_id(display_name, email, role)')
+            .select('*, users:user_id(display_name, email, role), contractors:contractor_id(name)')
             .eq('company_id', userProfile.company_id)
             .order('created_at', { ascending: false })
 
@@ -41,6 +41,8 @@ export async function saveSalaryProfile(data: {
     id?: string
     user_id?: string | null
     worker_name?: string | null
+    contractor_id?: string | null
+    worker_type?: string | null
     payment_type: 'monthly' | 'daily_wage' | 'hourly'
     rate: number
     bank_name?: string
@@ -67,6 +69,8 @@ export async function saveSalaryProfile(data: {
             company_id: userProfile.company_id,
             user_id: data.user_id || null,
             worker_name: data.worker_name || null,
+            contractor_id: data.contractor_id || null,
+            worker_type: data.worker_type || null,
             payment_type: data.payment_type,
             rate: data.rate,
             bank_name: data.bank_name || null,
@@ -74,6 +78,7 @@ export async function saveSalaryProfile(data: {
             ifsc_code: data.ifsc_code || null,
             updated_at: new Date().toISOString()
         }
+
 
         if (data.id) {
             const { error } = await supabase
@@ -229,7 +234,7 @@ export async function createWeeklyPayoutRun(weekStartDate: string, weekEndDate: 
         // 2. Fetch all active salary profiles
         const { data: profiles } = await supabase
             .from('salary_profiles')
-            .select('*, users:user_id(display_name)')
+            .select('*, users:user_id(display_name), contractors:contractor_id(name)')
             .eq('company_id', companyId)
 
         // 3. Fetch daily labor log entries for attendance calculation
@@ -242,6 +247,7 @@ export async function createWeeklyPayoutRun(weekStartDate: string, weekEndDate: 
 
         const worklogIds = worklogs?.map(w => w.id) || []
         let laborEntries: any[] = []
+        let workerCounts: any[] = []
 
         if (worklogIds.length > 0) {
             const { data: lEntries } = await supabase
@@ -249,43 +255,86 @@ export async function createWeeklyPayoutRun(weekStartDate: string, weekEndDate: 
                 .select('*')
                 .in('worklog_id', worklogIds)
             laborEntries = lEntries || []
+
+            const laborEntryIds = laborEntries.map(le => le.id)
+            if (laborEntryIds.length > 0) {
+                const { data: wCounts } = await supabase
+                    .from('worklog_worker_counts')
+                    .select('*')
+                    .in('labor_entry_id', laborEntryIds)
+                workerCounts = wCounts || []
+            }
         }
 
         // 4. Auto-generate payout items for Salary / Wage profiles
         if (profiles) {
             for (const profile of profiles) {
-                const recipientName = profile.worker_name || profile.users?.display_name || 'Worker'
+                let recipientName = 'Worker'
+                let recipientId: string | null = null
                 let amountDue = 0
                 let details = ''
 
-                if (profile.payment_type === 'monthly') {
-                    // For monthly salary, default to monthly rate (can be adjusted)
-                    amountDue = Number(profile.rate)
-                    details = 'Monthly Salary Rate'
-                } else if (profile.payment_type === 'daily_wage') {
-                    // Count days worked in the daily worklogs
-                    const nameToMatch = (profile.worker_name || profile.users?.display_name || '').toLowerCase().trim()
-                    const daysWorked = laborEntries.filter(entry => {
-                        const contractor = (entry.contractor_name || '').toLowerCase().trim()
-                        return contractor.includes(nameToMatch) || nameToMatch.includes(contractor)
-                    }).length
+                if (profile.contractor_id) {
+                    // Contractor worker profile
+                    recipientName = `${profile.contractors?.name || 'Contractor'} (${profile.worker_type || 'Worker'})`
+                    recipientId = profile.contractor_id
+                    
+                    if (profile.payment_type === 'monthly') {
+                        amountDue = Number(profile.rate)
+                        details = `Monthly Rate: ${profile.worker_type}`
+                    } else if (profile.payment_type === 'daily_wage') {
+                        // Calculate total man-days for this contractor and worker type
+                        const contractorName = (profile.contractors?.name || '').toLowerCase().trim()
+                        const targetWorkerType = (profile.worker_type || '').toLowerCase().trim()
 
-                    amountDue = daysWorked * Number(profile.rate)
-                    details = `Daily Wage: ${daysWorked} days worked @ ₹${profile.rate}/day`
+                        const matchingLaborEntries = laborEntries.filter(entry => {
+                            const name = (entry.contractor_name || '').toLowerCase().trim()
+                            return name.includes(contractorName) || contractorName.includes(name)
+                        })
+                        const matchingLaborEntryIds = matchingLaborEntries.map(le => le.id)
+
+                        const totalManDays = workerCounts
+                            .filter(wc => matchingLaborEntryIds.includes(wc.labor_entry_id) && (wc.worker_type || '').toLowerCase().trim() === targetWorkerType)
+                            .reduce((sum, wc) => sum + Number(wc.count || 0), 0)
+
+                        amountDue = totalManDays * Number(profile.rate)
+                        details = `Daily Wage (Contractor): ${totalManDays} man-days of ${profile.worker_type} @ ₹${profile.rate}/day`
+                    } else {
+                        amountDue = Number(profile.rate)
+                        details = `Hourly Wage: ${profile.worker_type}`
+                    }
                 } else {
-                    amountDue = Number(profile.rate)
-                    details = 'Hourly Wage'
+                    // Employee / External worker profile
+                    recipientName = profile.worker_name || profile.users?.display_name || 'Worker'
+                    recipientId = profile.user_id
+
+                    if (profile.payment_type === 'monthly') {
+                        amountDue = Number(profile.rate)
+                        details = 'Monthly Salary Rate'
+                    } else if (profile.payment_type === 'daily_wage') {
+                        const nameToMatch = recipientName.toLowerCase().trim()
+                        const daysWorked = laborEntries.filter(entry => {
+                            const contractor = (entry.contractor_name || '').toLowerCase().trim()
+                            return contractor.includes(nameToMatch) || nameToMatch.includes(contractor)
+                        }).length
+
+                        amountDue = daysWorked * Number(profile.rate)
+                        details = `Daily Wage: ${daysWorked} days worked @ ₹${profile.rate}/day`
+                    } else {
+                        amountDue = Number(profile.rate)
+                        details = 'Hourly Wage'
+                    }
                 }
 
                 // Find a project ID from worklogs to link this labor expense to (optional)
                 const linkedWorklog = worklogs?.find(w => 
-                    laborEntries.some(le => le.worklog_id === w.id && le.contractor_name?.toLowerCase().includes(recipientName.toLowerCase()))
+                    laborEntries.some(le => le.worklog_id === w.id && le.contractor_name?.toLowerCase().includes((profile.contractors?.name || recipientName).toLowerCase()))
                 )
 
                 payoutItems.push({
                     payout_id: payoutId,
-                    recipient_type: profile.payment_type === 'monthly' ? 'employee_salary' : 'labor_wage',
-                    recipient_id: profile.user_id,
+                    recipient_type: (profile.payment_type === 'monthly' && !profile.contractor_id) ? 'employee_salary' : 'labor_wage',
+                    recipient_id: recipientId,
                     recipient_name: recipientName,
                     amount_due: amountDue,
                     amount_paid: amountDue,

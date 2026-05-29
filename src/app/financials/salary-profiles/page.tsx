@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { getSalaryProfiles, saveSalaryProfile, deleteSalaryProfile, getCompanyUsers } from '@/app/actions/financials'
+import { getContractors } from '@/app/actions/contractors'
 import { useToast } from '@/hooks/use-toast'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,12 +12,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Plus, Edit2, Trash2, Search, Building2, CreditCard, User, Landmark } from 'lucide-react'
+import { Loader2, Plus, Edit2, Trash2, Search, Building2, CreditCard, User, Landmark, Users } from 'lucide-react'
 
 interface SalaryProfile {
     id: string
     user_id: string | null
     worker_name: string | null
+    contractor_id: string | null
+    worker_type: string | null
     payment_type: 'monthly' | 'daily_wage' | 'hourly'
     rate: number
     bank_name: string | null
@@ -27,6 +30,9 @@ interface SalaryProfile {
         email: string
         role: string
     } | null
+    contractors?: {
+        name: string
+    } | null
 }
 
 interface CompanyUser {
@@ -36,10 +42,19 @@ interface CompanyUser {
     role: string
 }
 
+interface Contractor {
+    id: string
+    name: string
+    category?: string
+}
+
+const COMMON_WORKER_TYPES = ['Mason', 'MC (Mason Coolie)', 'FC (Female Coolie)', 'Carpenter', 'Bar Bender', 'Electrician', 'Plumber', 'Helper', 'Painter', 'Supervisor']
+
 export default function SalaryProfilesPage() {
     const { toast } = useToast()
     const [profiles, setProfiles] = useState<SalaryProfile[]>([])
     const [users, setUsers] = useState<CompanyUser[]>([])
+    const [contractors, setContractors] = useState<Contractor[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
@@ -49,8 +64,11 @@ export default function SalaryProfilesPage() {
     const [editingProfile, setEditingProfile] = useState<SalaryProfile | null>(null)
     
     // Form state
-    const [workerSource, setWorkerSource] = useState<'registered' | 'external'>('registered')
+    const [workerSource, setWorkerSource] = useState<'registered' | 'contractor' | 'external'>('registered')
     const [selectedUserId, setSelectedUserId] = useState<string>('')
+    const [selectedContractorId, setSelectedContractorId] = useState<string>('')
+    const [workerTypeSelect, setWorkerTypeSelect] = useState<string>('Mason')
+    const [customWorkerType, setCustomWorkerType] = useState('')
     const [externalName, setExternalName] = useState('')
     const [paymentType, setPaymentType] = useState<'monthly' | 'daily_wage' | 'hourly'>('daily_wage')
     const [rate, setRate] = useState('')
@@ -61,12 +79,16 @@ export default function SalaryProfilesPage() {
     const loadData = async () => {
         setIsLoading(true)
         try {
-            const [profilesData, usersData] = await Promise.all([
+            const [profilesData, usersData, contractorsRes] = await Promise.all([
                 getSalaryProfiles(),
-                getCompanyUsers()
+                getCompanyUsers(),
+                getContractors()
             ])
             setProfiles(profilesData as SalaryProfile[])
             setUsers(usersData as CompanyUser[])
+            if (contractorsRes.success && contractorsRes.data) {
+                setContractors(contractorsRes.data as Contractor[])
+            }
         } catch (error) {
             console.error('Error loading financials data:', error)
             toast({
@@ -89,10 +111,25 @@ export default function SalaryProfilesPage() {
             if (profile.user_id) {
                 setWorkerSource('registered')
                 setSelectedUserId(profile.user_id)
+                setSelectedContractorId('')
                 setExternalName('')
+            } else if (profile.contractor_id) {
+                setWorkerSource('contractor')
+                setSelectedUserId('')
+                setSelectedContractorId(profile.contractor_id)
+                setExternalName('')
+                const isCommon = COMMON_WORKER_TYPES.includes(profile.worker_type || '')
+                if (isCommon) {
+                    setWorkerTypeSelect(profile.worker_type || 'Mason')
+                    setCustomWorkerType('')
+                } else {
+                    setWorkerTypeSelect('custom')
+                    setCustomWorkerType(profile.worker_type || '')
+                }
             } else {
                 setWorkerSource('external')
                 setSelectedUserId('')
+                setSelectedContractorId('')
                 setExternalName(profile.worker_name || '')
             }
             setPaymentType(profile.payment_type)
@@ -104,6 +141,9 @@ export default function SalaryProfilesPage() {
             setEditingProfile(null)
             setWorkerSource('registered')
             setSelectedUserId('')
+            setSelectedContractorId('')
+            setWorkerTypeSelect('Mason')
+            setCustomWorkerType('')
             setExternalName('')
             setPaymentType('daily_wage')
             setRate('')
@@ -126,6 +166,26 @@ export default function SalaryProfilesPage() {
             return
         }
 
+        if (workerSource === 'contractor') {
+            if (!selectedContractorId) {
+                toast({
+                    title: 'Error',
+                    description: 'Please select a Contractor.',
+                    variant: 'destructive'
+                })
+                return
+            }
+            const finalWorkerType = workerTypeSelect === 'custom' ? customWorkerType : workerTypeSelect
+            if (!finalWorkerType.trim()) {
+                toast({
+                    title: 'Error',
+                    description: 'Please enter a worker type (e.g. Mason, MC, FC).',
+                    variant: 'destructive'
+                })
+                return
+            }
+        }
+
         if (workerSource === 'external' && !externalName.trim()) {
             toast({
                 title: 'Error',
@@ -146,9 +206,13 @@ export default function SalaryProfilesPage() {
 
         setIsSubmitting(true)
         try {
+            const finalWorkerType = workerTypeSelect === 'custom' ? customWorkerType : workerTypeSelect
+            
             const res = await saveSalaryProfile({
                 id: editingProfile?.id,
                 user_id: workerSource === 'registered' ? selectedUserId : null,
+                contractor_id: workerSource === 'contractor' ? selectedContractorId : null,
+                worker_type: workerSource === 'contractor' ? finalWorkerType : null,
                 worker_name: workerSource === 'external' ? externalName : null,
                 payment_type: paymentType,
                 rate: Number(rate),
@@ -160,14 +224,18 @@ export default function SalaryProfilesPage() {
             if (res.success) {
                 toast({
                     title: 'Success',
-                    description: editingProfile ? 'Salary profile updated' : 'Salary profile created',
+                    description: editingProfile ? 'Wage profile updated' : 'Wage profile created',
                 })
                 setIsOpen(false)
                 loadData()
             } else {
+                let errorMsg = res.error || 'Failed to save salary profile'
+                if (errorMsg.includes('one_profile_per_contractor_worker_type')) {
+                    errorMsg = 'A wage profile already exists for this contractor and worker type.'
+                }
                 toast({
                     title: 'Error',
-                    description: res.error || 'Failed to save salary profile',
+                    description: errorMsg,
                     variant: 'destructive'
                 })
             }
@@ -184,14 +252,14 @@ export default function SalaryProfilesPage() {
     }
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this salary profile?')) return
+        if (!confirm('Are you sure you want to delete this wage profile?')) return
 
         try {
             const res = await deleteSalaryProfile(id)
             if (res.success) {
                 toast({
                     title: 'Success',
-                    description: 'Salary profile deleted'
+                    description: 'Wage profile deleted'
                 })
                 loadData()
             } else {
@@ -212,10 +280,12 @@ export default function SalaryProfilesPage() {
     }
 
     const filteredProfiles = profiles.filter(profile => {
-        const name = profile.worker_name || profile.users?.display_name || ''
+        const name = profile.worker_name || profile.users?.display_name || profile.contractors?.name || ''
+        const type = profile.worker_type || ''
         const bank = profile.bank_name || ''
         const acc = profile.account_number || ''
         return name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+            type.toLowerCase().includes(searchQuery.toLowerCase()) || 
             bank.toLowerCase().includes(searchQuery.toLowerCase()) || 
             acc.includes(searchQuery)
     })
@@ -238,7 +308,7 @@ export default function SalaryProfilesPage() {
                             Salary & Wage Profiles
                         </h1>
                         <p className="text-muted-foreground mt-1">
-                            Manage wage structures, payout types, and banking info for registered staff and external daily laborers.
+                            Manage wage structures, payout types, and banking info for staff, contractors, and daily laborers.
                         </p>
                     </div>
                     <Button onClick={() => handleOpenDialog()} className="bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 transition-all font-medium self-start sm:self-auto">
@@ -258,7 +328,7 @@ export default function SalaryProfilesPage() {
                                 <div className="relative w-full md:w-72">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
-                                        placeholder="Search by worker name, bank..."
+                                        placeholder="Search by worker or contractor..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                         className="pl-9 w-full bg-background/50 border-muted/30 focus-visible:ring-primary"
@@ -295,22 +365,46 @@ export default function SalaryProfilesPage() {
                                         </TableHeader>
                                         <TableBody>
                                             {filteredProfiles.map((profile) => {
-                                                const isRegistered = !!profile.user_id
-                                                const displayName = profile.worker_name || profile.users?.display_name || 'Worker'
-                                                const email = profile.users?.email
+                                                let isType = 'external'
+                                                let displayName = 'Worker'
+                                                let subText = ''
+                                                
+                                                if (profile.user_id) {
+                                                    isType = 'registered'
+                                                    displayName = profile.users?.display_name || 'Worker'
+                                                    subText = profile.users?.email || ''
+                                                } else if (profile.contractor_id) {
+                                                    isType = 'contractor'
+                                                    displayName = profile.contractors?.name || 'Contractor'
+                                                    subText = `Worker Type: ${profile.worker_type || 'General'}`
+                                                } else {
+                                                    displayName = profile.worker_name || 'External Worker'
+                                                }
                                                 
                                                 return (
                                                     <TableRow key={profile.id} className="border-muted/15 hover:bg-muted/5 transition-colors">
                                                         <TableCell className="font-medium">
                                                             <div className="flex flex-col">
                                                                 <span>{displayName}</span>
-                                                                {email && <span className="text-xs text-muted-foreground font-normal">{email}</span>}
+                                                                {subText && <span className="text-xs text-muted-foreground font-normal">{subText}</span>}
                                                             </div>
                                                         </TableCell>
                                                         <TableCell>
-                                                            <Badge variant={isRegistered ? 'default' : 'outline'} className={isRegistered ? 'bg-primary/20 text-primary border-primary/30' : 'bg-muted/20 text-muted-foreground border-muted/30'}>
-                                                                {isRegistered ? 'Registered User' : 'External Laborer'}
-                                                            </Badge>
+                                                            {isType === 'registered' && (
+                                                                <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+                                                                    Registered User
+                                                                </Badge>
+                                                            )}
+                                                            {isType === 'contractor' && (
+                                                                <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
+                                                                    Contractor
+                                                                </Badge>
+                                                            )}
+                                                            {isType === 'external' && (
+                                                                <Badge variant="outline" className="bg-muted/20 text-muted-foreground border-muted/30">
+                                                                    External Laborer
+                                                                </Badge>
+                                                            )}
                                                         </TableCell>
                                                         <TableCell className="capitalize">
                                                             <Badge variant="secondary" className="font-normal border border-muted-foreground/10 bg-muted/30">
@@ -373,7 +467,7 @@ export default function SalaryProfilesPage() {
                     <DialogContent className="sm:max-w-[500px] border-muted/30 text-foreground bg-background/95 backdrop-blur-xl">
                         <DialogHeader>
                             <DialogTitle className="text-xl font-bold font-headline">
-                                {editingProfile ? 'Edit Salary Profile' : 'Create Salary Profile'}
+                                {editingProfile ? 'Edit Wage Profile' : 'Create Wage Profile'}
                             </DialogTitle>
                             <DialogDescription>
                                 Set the base wage rate and bank info. This will auto-compile payout entries on payday.
@@ -384,20 +478,27 @@ export default function SalaryProfilesPage() {
                             
                             {/* Worker Source Toggle (Only editable for new profiles) */}
                             {!editingProfile && (
-                                <div className="grid grid-cols-2 gap-2 bg-muted/20 p-1 rounded-lg border border-muted/10">
+                                <div className="grid grid-cols-3 gap-2 bg-muted/20 p-1 rounded-lg border border-muted/10">
                                     <button
                                         type="button"
-                                        className={`py-1.5 text-xs font-medium rounded-md transition-all ${workerSource === 'registered' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:text-foreground'}`}
+                                        className={`py-1.5 text-[11px] font-medium rounded-md transition-all ${workerSource === 'registered' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:text-foreground'}`}
                                         onClick={() => setWorkerSource('registered')}
                                     >
                                         Registered User
                                     </button>
                                     <button
                                         type="button"
-                                        className={`py-1.5 text-xs font-medium rounded-md transition-all ${workerSource === 'external' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:text-foreground'}`}
+                                        className={`py-1.5 text-[11px] font-medium rounded-md transition-all ${workerSource === 'contractor' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:text-foreground'}`}
+                                        onClick={() => setWorkerSource('contractor')}
+                                    >
+                                        Contractor
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`py-1.5 text-[11px] font-medium rounded-md transition-all ${workerSource === 'external' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:text-foreground'}`}
                                         onClick={() => setWorkerSource('external')}
                                     >
-                                        External Laborer
+                                        External Labor
                                     </button>
                                 </div>
                             )}
@@ -424,6 +525,59 @@ export default function SalaryProfilesPage() {
                                                 ))}
                                             </SelectContent>
                                         </Select>
+                                    )
+                                ) : workerSource === 'contractor' ? (
+                                    editingProfile ? (
+                                        <div className="p-2 border border-muted/20 rounded bg-muted/10 text-sm font-medium flex items-center gap-2">
+                                            <Users className="h-4 w-4 text-muted-foreground" />
+                                            {editingProfile.contractors?.name || 'Contractor'} - {editingProfile.worker_type}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            <Select onValueChange={setSelectedContractorId} value={selectedContractorId}>
+                                                <SelectTrigger className="w-full bg-background border-muted/30">
+                                                    <SelectValue placeholder="Select contractor" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {contractors.map((c) => (
+                                                        <SelectItem key={c.id} value={c.id}>
+                                                            {c.name} {c.category ? `(${c.category})` : ''}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+
+                                            <div className="space-y-1.5">
+                                                <Label htmlFor="worker_type">Worker Type</Label>
+                                                <Select onValueChange={setWorkerTypeSelect} value={workerTypeSelect}>
+                                                    <SelectTrigger className="w-full bg-background border-muted/30">
+                                                        <SelectValue placeholder="Select worker category" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {COMMON_WORKER_TYPES.map((type) => (
+                                                            <SelectItem key={type} value={type}>
+                                                                {type}
+                                                            </SelectItem>
+                                                        ))}
+                                                        <SelectItem value="custom">Other / Custom Type...</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            {workerTypeSelect === 'custom' && (
+                                                <div className="space-y-1.5 animate-in fade-in duration-200">
+                                                    <Label htmlFor="custom_worker_type">Enter Custom Worker Type</Label>
+                                                    <Input
+                                                        id="custom_worker_type"
+                                                        placeholder="e.g. Mason, MC, FC"
+                                                        value={customWorkerType}
+                                                        onChange={(e) => setCustomWorkerType(e.target.value)}
+                                                        className="bg-background border-muted/30 focus-visible:ring-primary"
+                                                        required
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
                                     )
                                 ) : (
                                     <Input
