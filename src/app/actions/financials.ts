@@ -42,9 +42,9 @@ export async function saveSalaryProfile(data: {
     user_id?: string | null
     worker_name?: string | null
     contractor_id?: string | null
-    worker_type?: string | null
+    rates?: Record<string, number> | null
     payment_type: 'monthly' | 'daily_wage' | 'hourly'
-    rate: number
+    rate?: number
     bank_name?: string
     account_number?: string
     ifsc_code?: string
@@ -70,14 +70,15 @@ export async function saveSalaryProfile(data: {
             user_id: data.user_id || null,
             worker_name: data.worker_name || null,
             contractor_id: data.contractor_id || null,
-            worker_type: data.worker_type || null,
+            rates: data.rates || {},
             payment_type: data.payment_type,
-            rate: data.rate,
+            rate: data.rate || 0,
             bank_name: data.bank_name || null,
             account_number: data.account_number || null,
             ifsc_code: data.ifsc_code || null,
             updated_at: new Date().toISOString()
         }
+
 
 
         if (data.id) {
