@@ -694,3 +694,143 @@ export async function getProjects() {
     }
 }
 
+export async function getPayoutItemBreakdown(payoutItemId: string) {
+    const supabase = await createClient()
+
+    try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('Unauthorized')
+
+        // 1. Fetch the payout item
+        const { data: item, error: itemError } = await supabase
+            .from('payout_items')
+            .select(`
+                *,
+                payout:payout_id(week_start_date, week_end_date, company_id)
+            `)
+            .eq('id', payoutItemId)
+            .single()
+
+        if (itemError || !item) throw new Error('Payout item not found')
+
+        const payout = item.payout
+        const weekStart = payout.week_start_date
+        const weekEnd = payout.week_end_date
+
+        if (item.recipient_type === 'labor_wage' || item.recipient_type === 'employee_salary') {
+            // Find daily worklog entries in range
+            const { data: worklogs } = await supabase
+                .from('daily_worklogs')
+                .select('id, date, title, project:project_id(name)')
+                .gte('date', weekStart)
+                .lte('date', weekEnd)
+                .order('date', { ascending: true })
+
+            const worklogIds = worklogs?.map(w => w.id) || []
+            let laborEntries: any[] = []
+            let workerCounts: any[] = []
+
+            if (worklogIds.length > 0) {
+                // Fetch labor entries
+                const { data: lEntries } = await supabase
+                    .from('worklog_labor_entries')
+                    .select('*')
+                    .in('worklog_id', worklogIds)
+                laborEntries = lEntries || []
+
+                const laborEntryIds = laborEntries.map(le => le.id)
+                if (laborEntryIds.length > 0) {
+                    const { data: wCounts } = await supabase
+                        .from('worklog_worker_counts')
+                        .select('*')
+                        .in('labor_entry_id', laborEntryIds)
+                    workerCounts = wCounts || []
+                }
+            }
+
+            // Now filter entries matching this recipient
+            let matchedLogs: any[] = []
+
+            // Contractor match or worker name match
+            let contractorName = ''
+            let workerCategoryFilter = ''
+
+            if (item.recipient_name.includes('(')) {
+                const parts = item.recipient_name.split('(')
+                contractorName = parts[0].trim().toLowerCase()
+                workerCategoryFilter = parts[1].replace(')', '').trim().toLowerCase()
+            } else {
+                contractorName = item.recipient_name.trim().toLowerCase()
+            }
+
+            for (const entry of laborEntries) {
+                const entryContractor = (entry.contractor_name || '').toLowerCase().trim()
+                const isContractorMatch = entryContractor.includes(contractorName) || contractorName.includes(entryContractor)
+                
+                if (isContractorMatch) {
+                    const worklog = worklogs?.find(w => w.id === entry.worklog_id)
+                    if (!worklog) continue
+
+                    // Get counts for this entry
+                    const entryCounts = workerCounts.filter(wc => wc.labor_entry_id === entry.id)
+                    
+                    // Filter counts by category if it's a specific contractor worker type
+                    const filteredCounts = workerCategoryFilter 
+                        ? entryCounts.filter(wc => (wc.worker_type || '').toLowerCase().trim() === workerCategoryFilter)
+                        : entryCounts
+
+                    if (filteredCounts.length > 0 || !workerCategoryFilter) {
+                        let projectName = 'General'
+                        if (worklog.project) {
+                            if (Array.isArray(worklog.project)) {
+                                projectName = (worklog.project as any[])[0]?.name || 'General'
+                            } else {
+                                projectName = (worklog.project as any).name || 'General'
+                            }
+                        }
+
+                        matchedLogs.push({
+                            date: worklog.date,
+                            worklogTitle: worklog.title,
+                            projectName: projectName,
+                            workDescription: entry.work_description,
+                            category: entry.category,
+                            workers: filteredCounts.map(c => ({
+                                type: c.worker_type,
+                                count: c.count
+                            }))
+                        })
+                    }
+                }
+            }
+
+            return {
+                type: 'labor',
+                recipientName: item.recipient_name,
+                details: matchedLogs
+            }
+        } else if (item.recipient_type === 'vendor_payment') {
+            if (!item.recipient_id) return { type: 'vendor', details: [] }
+
+            const { data: poItems, error: poError } = await supabase
+                .from('purchase_order_items')
+                .select('*')
+                .eq('po_id', item.recipient_id)
+
+            if (poError) throw poError
+
+            return {
+                type: 'vendor',
+                recipientName: item.recipient_name,
+                details: poItems || []
+            }
+        }
+
+        return { type: 'other', details: [] }
+    } catch (error) {
+        console.error('Error fetching payout item breakdown:', error)
+        return { type: 'error', details: [] }
+    }
+}
+
+

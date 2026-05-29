@@ -9,7 +9,8 @@ import {
     createCustomPayoutItem,
     processWeeklyPayout,
     deleteWeeklyPayout,
-    getProjects
+    getProjects,
+    getPayoutItemBreakdown
 } from '@/app/actions/financials'
 import { useToast } from '@/hooks/use-toast'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -108,6 +109,15 @@ export default function PaydayPage() {
     const [editStatus, setEditStatus] = useState<'pending' | 'paid' | 'held'>('pending')
     const [editNotes, setEditNotes] = useState('')
 
+    // Dialog: Payout Breakdown
+    const [isOpenBreakdown, setIsOpenBreakdown] = useState(false)
+    const [breakdownData, setBreakdownData] = useState<{
+        type: 'labor' | 'vendor' | 'other' | 'error'
+        recipientName: string
+        details: any[]
+    } | null>(null)
+    const [isBreakdownLoading, setIsBreakdownLoading] = useState(false)
+
     const loadRuns = async () => {
         setIsLoading(true)
         try {
@@ -161,6 +171,25 @@ export default function PaydayPage() {
         setSelectedRun(null)
         setItems([])
         loadRuns()
+    }
+
+    const handleOpenBreakdown = async (itemId: string) => {
+        setIsOpenBreakdown(true)
+        setIsBreakdownLoading(true)
+        setBreakdownData(null)
+        try {
+            const res = await getPayoutItemBreakdown(itemId)
+            setBreakdownData(res as any)
+        } catch (error) {
+            console.error('Error loading breakdown:', error)
+            toast({
+                title: 'Error',
+                description: 'Failed to load detailed breakdown logs.',
+                variant: 'destructive'
+            })
+        } finally {
+            setIsBreakdownLoading(false)
+        }
     }
 
     const handleGenerateRun = async (e: React.FormEvent) => {
@@ -763,13 +792,28 @@ export default function PaydayPage() {
                                                     return (
                                                         <TableRow key={item.id} className="border-muted/15 hover:bg-muted/5 transition-colors">
                                                             <TableCell className="font-semibold text-foreground">
-                                                                <div className="flex items-center gap-2">
-                                                                    {item.recipient_type === 'vendor_payment' ? (
-                                                                        <Store className="h-3.5 w-3.5 text-purple-400" />
-                                                                    ) : (
-                                                                        <User className="h-3.5 w-3.5 text-sky-400" />
-                                                                    )}
-                                                                    <span>{item.recipient_name}</span>
+                                                                <div className="flex flex-col">
+                                                                    <div className="flex items-center gap-2">
+                                                                        {item.recipient_type === 'vendor_payment' ? (
+                                                                            <Store className="h-3.5 w-3.5 text-purple-400" />
+                                                                        ) : (
+                                                                            <User className="h-3.5 w-3.5 text-sky-400" />
+                                                                        )}
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => handleOpenBreakdown(item.id)}
+                                                                            className="hover:underline hover:text-primary text-left font-semibold"
+                                                                        >
+                                                                            {item.recipient_name}
+                                                                        </button>
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleOpenBreakdown(item.id)}
+                                                                        className="text-[10px] text-muted-foreground hover:text-primary text-left mt-0.5 w-max block font-normal cursor-pointer"
+                                                                    >
+                                                                        View detailed breakdown
+                                                                    </button>
                                                                 </div>
                                                             </TableCell>
                                                             <TableCell>
@@ -1066,6 +1110,102 @@ export default function PaydayPage() {
                                 </Button>
                             </DialogFooter>
                         </form>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Dialog: Payout Item Breakdown */}
+                <Dialog open={isOpenBreakdown} onOpenChange={setIsOpenBreakdown}>
+                    <DialogContent className="sm:max-w-[600px] border-muted/30 text-foreground bg-background/95 backdrop-blur-xl max-h-[85vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle className="text-xl font-bold font-headline flex items-center gap-2">
+                                <Activity className="h-5 w-5 text-primary" /> Payout Detailed Breakdown
+                            </DialogTitle>
+                            <DialogDescription>
+                                Detailed daily logs and items making up the payout for <span className="font-semibold text-foreground">{breakdownData?.recipientName}</span>.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        {isBreakdownLoading ? (
+                            <div className="flex flex-col items-center justify-center py-12 gap-3">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                <p className="text-sm text-muted-foreground">Fetching detailed logs...</p>
+                            </div>
+                        ) : !breakdownData || breakdownData.details.length === 0 ? (
+                            <div className="text-center py-8 text-muted-foreground text-sm">
+                                No detailed logs or items found for this payout period.
+                            </div>
+                        ) : breakdownData.type === 'labor' ? (
+                            <div className="space-y-4 py-2">
+                                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Daily Attendance & Worklogs</div>
+                                <div className="space-y-3">
+                                    {breakdownData.details.map((log: any, idx: number) => (
+                                        <div key={idx} className="bg-muted/10 border border-muted/20 p-3 rounded-lg space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                                                    <Calendar className="h-3.5 w-3.5 text-primary" />
+                                                    <span>{log.date}</span>
+                                                </div>
+                                                <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border-primary/20">
+                                                    {log.projectName}
+                                                </Badge>
+                                            </div>
+                                            <div className="text-xs font-medium text-foreground/90">
+                                                <span className="text-muted-foreground">Log:</span> {log.worklogTitle}
+                                            </div>
+                                            {log.workDescription && (
+                                                <div className="text-xs text-muted-foreground/80 leading-relaxed bg-background/40 p-2 rounded">
+                                                    <span className="font-semibold text-foreground/80 block mb-0.5">Description:</span>
+                                                    {log.workDescription}
+                                                </div>
+                                            )}
+                                            <div className="flex flex-wrap gap-1.5 pt-1">
+                                                {log.workers.map((w: any, wIdx: number) => (
+                                                    <Badge key={wIdx} variant="outline" className="text-[10px] bg-background border-muted/30">
+                                                        {w.type}: <span className="font-semibold text-foreground ml-1">{w.count}</span>
+                                                    </Badge>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : breakdownData.type === 'vendor' ? (
+                            <div className="space-y-3 py-2">
+                                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Material Purchase Order Items</div>
+                                <div className="border border-muted/20 rounded-lg overflow-hidden">
+                                    <Table>
+                                        <TableHeader className="bg-muted/5">
+                                            <TableRow className="border-muted/20">
+                                                <TableHead className="text-xs">Material</TableHead>
+                                                <TableHead className="text-xs">Qty</TableHead>
+                                                <TableHead className="text-xs">Unit Price</TableHead>
+                                                <TableHead className="text-right text-xs">Total</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {breakdownData.details.map((item: any, idx: number) => (
+                                                <TableRow key={idx} className="border-muted/15">
+                                                    <TableCell className="text-xs font-medium text-foreground">{item.material_name}</TableCell>
+                                                    <TableCell className="text-xs font-mono">{Number(item.quantity).toLocaleString()}</TableCell>
+                                                    <TableCell className="text-xs font-mono">₹{Number(item.unit_price).toLocaleString('en-IN')}</TableCell>
+                                                    <TableCell className="text-right text-xs font-mono font-semibold text-foreground">₹{Number(item.total_price).toLocaleString('en-IN')}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 text-muted-foreground text-sm">
+                                Standard or manual payout item. Detailed logs are only available for compiled labor logs and purchase orders.
+                            </div>
+                        )}
+
+                        <DialogFooter className="pt-4 border-t border-muted/10">
+                            <Button type="button" onClick={() => setIsOpenBreakdown(false)} className="bg-primary hover:opacity-90">
+                                Close Breakdown
+                            </Button>
+                        </DialogFooter>
                     </DialogContent>
                 </Dialog>
 
