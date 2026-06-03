@@ -508,6 +508,9 @@ export async function updatePayoutItem(id: string, data: {
     status?: 'pending' | 'paid' | 'held'
     notes?: string
     payout_class?: 'rate' | 'nmr'
+    recipient_name?: string
+    reference_details?: string | null
+    project_id?: string | null
 }) {
     const supabase = await createClient()
 
@@ -543,7 +546,6 @@ export async function updatePayoutItem(id: string, data: {
 
         // Trigger payment reconciliation for linked labor logs or PO
         const statusToApply = data.status || item.status
-        const amountPaidToApply = data.amount_paid !== undefined ? data.amount_paid : item.amount_paid
 
         if (item.recipient_type === 'labor_wage' || item.recipient_type === 'employee_salary') {
             if (item.reference_details?.startsWith('{')) {
@@ -578,6 +580,255 @@ export async function updatePayoutItem(id: string, data: {
         return { success: true }
     } catch (error: any) {
         console.error('Error updating payout item:', error)
+        return { success: false, error: error.message }
+    }
+}
+
+export async function deletePayoutItem(id: string) {
+    const supabase = await createClient()
+
+    try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('Unauthorized')
+
+        const { data: userProfile } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+        if (userProfile?.role !== 'admin') {
+            throw new Error('Only admins can delete payout items')
+        }
+
+        // 1. Fetch the item first to get its parent payout_id and linked details for reconciliation
+        const { data: item, error: fetchError } = await supabase
+            .from('payout_items')
+            .select('*')
+            .eq('id', id)
+            .single()
+
+        if (fetchError || !item) throw new Error('Payout item not found')
+
+        // 2. Delete the item
+        const { error: deleteError } = await supabase
+            .from('payout_items')
+            .delete()
+            .eq('id', id)
+
+        if (deleteError) throw deleteError
+
+        // 3. Trigger payment reconciliation for linked labor logs or PO
+        if (item.recipient_type === 'labor_wage' || item.recipient_type === 'employee_salary') {
+            if (item.reference_details?.startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(item.reference_details)
+                    const laborEntryIds = parsed.labor_entry_ids || []
+                    if (laborEntryIds.length > 0) {
+                        await reconcileLaborPayments(supabase, laborEntryIds)
+                    }
+                } catch (e) {
+                    // ignore
+                }
+            }
+        } else if (item.recipient_type === 'vendor_payment' && item.recipient_id) {
+            await reconcilePOPayment(supabase, item.recipient_id)
+        }
+
+        // 4. Recompute the Weekly Payout total amount
+        const { data: allItems } = await supabase
+            .from('payout_items')
+            .select('amount_paid')
+            .eq('payout_id', item.payout_id)
+
+        const totalPaid = (allItems || []).reduce((sum, i) => sum + Number(i.amount_paid), 0)
+
+        await supabase
+            .from('weekly_payouts')
+            .update({ total_amount: totalPaid })
+            .eq('id', item.payout_id)
+
+        revalidatePath('/financials/payday')
+        return { success: true }
+    } catch (error: any) {
+        console.error('Error deleting payout item:', error)
+        return { success: false, error: error.message }
+    }
+}
+
+export async function bulkUpdatePayoutItems(ids: string[], updates: {
+    status?: 'pending' | 'paid' | 'held'
+    project_id?: string | null
+}) {
+    const supabase = await createClient()
+
+    try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('Unauthorized')
+
+        const { data: userProfile } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+        if (userProfile?.role !== 'admin') {
+            throw new Error('Only admins can edit payout items')
+        }
+
+        if (ids.length === 0) return { success: true }
+
+        // Fetch all items to get payout_id and linked items for reconciliation
+        const { data: items, error: fetchError } = await supabase
+            .from('payout_items')
+            .select('*')
+            .in('id', ids)
+
+        if (fetchError || !items) throw new Error('Payout items not found')
+
+        // Update items in database
+        const payload: any = {}
+        if (updates.status !== undefined) payload.status = updates.status
+        if (updates.project_id !== undefined) payload.project_id = updates.project_id
+
+        const { error: updateError } = await supabase
+            .from('payout_items')
+            .update(payload)
+            .in('id', ids)
+
+        if (updateError) throw updateError
+
+        // Trigger reconciliation for each affected item
+        const affectedLaborEntryIds = new Set<string>()
+        const affectedPOIds = new Set<string>()
+
+        for (const item of items) {
+            if (item.recipient_type === 'labor_wage' || item.recipient_type === 'employee_salary') {
+                if (item.reference_details?.startsWith('{')) {
+                    try {
+                        const parsed = JSON.parse(item.reference_details)
+                        const laborEntryIds = parsed.labor_entry_ids || []
+                        laborEntryIds.forEach((id: string) => affectedLaborEntryIds.add(id))
+                    } catch (e) {
+                        // ignore
+                    }
+                }
+            } else if (item.recipient_type === 'vendor_payment' && item.recipient_id) {
+                affectedPOIds.add(item.recipient_id)
+            }
+        }
+
+        if (affectedLaborEntryIds.size > 0) {
+            await reconcileLaborPayments(supabase, Array.from(affectedLaborEntryIds))
+        }
+
+        for (const poId of affectedPOIds) {
+            await reconcilePOPayment(supabase, poId)
+        }
+
+        // Recompute the Weekly Payout total amount
+        const payoutId = items[0].payout_id
+        const { data: allItems } = await supabase
+            .from('payout_items')
+            .select('amount_paid')
+            .eq('payout_id', payoutId)
+
+        const totalPaid = (allItems || []).reduce((sum, i) => sum + Number(i.amount_paid), 0)
+
+        await supabase
+            .from('weekly_payouts')
+            .update({ total_amount: totalPaid })
+            .eq('id', payoutId)
+
+        revalidatePath('/financials/payday')
+        return { success: true }
+    } catch (error: any) {
+        console.error('Error bulk updating payout items:', error)
+        return { success: false, error: error.message }
+    }
+}
+
+export async function bulkDeletePayoutItems(ids: string[]) {
+    const supabase = await createClient()
+
+    try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('Unauthorized')
+
+        const { data: userProfile } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+        if (userProfile?.role !== 'admin') {
+            throw new Error('Only admins can delete payout items')
+        }
+
+        if (ids.length === 0) return { success: true }
+
+        // Fetch all items to get payout_id and linked items for reconciliation
+        const { data: items, error: fetchError } = await supabase
+            .from('payout_items')
+            .select('*')
+            .in('id', ids)
+
+        if (fetchError || !items) throw new Error('Payout items not found')
+
+        // Delete items from database
+        const { error: deleteError } = await supabase
+            .from('payout_items')
+            .delete()
+            .in('id', ids)
+
+        if (deleteError) throw deleteError
+
+        // Trigger reconciliation for each affected item
+        const affectedLaborEntryIds = new Set<string>()
+        const affectedPOIds = new Set<string>()
+
+        for (const item of items) {
+            if (item.recipient_type === 'labor_wage' || item.recipient_type === 'employee_salary') {
+                if (item.reference_details?.startsWith('{')) {
+                    try {
+                        const parsed = JSON.parse(item.reference_details)
+                        const laborEntryIds = parsed.labor_entry_ids || []
+                        laborEntryIds.forEach((id: string) => affectedLaborEntryIds.add(id))
+                    } catch (e) {
+                        // ignore
+                    }
+                }
+            } else if (item.recipient_type === 'vendor_payment' && item.recipient_id) {
+                affectedPOIds.add(item.recipient_id)
+            }
+        }
+
+        if (affectedLaborEntryIds.size > 0) {
+            await reconcileLaborPayments(supabase, Array.from(affectedLaborEntryIds))
+        }
+
+        for (const poId of affectedPOIds) {
+            await reconcilePOPayment(supabase, poId)
+        }
+
+        // Recompute the Weekly Payout total amount
+        const payoutId = items[0].payout_id
+        const { data: allItems } = await supabase
+            .from('payout_items')
+            .select('amount_paid')
+            .eq('payout_id', payoutId)
+
+        const totalPaid = (allItems || []).reduce((sum, i) => sum + Number(i.amount_paid), 0)
+
+        await supabase
+            .from('weekly_payouts')
+            .update({ total_amount: totalPaid })
+            .eq('id', payoutId)
+
+        revalidatePath('/financials/payday')
+        return { success: true }
+    } catch (error: any) {
+        console.error('Error bulk deleting payout items:', error)
         return { success: false, error: error.message }
     }
 }

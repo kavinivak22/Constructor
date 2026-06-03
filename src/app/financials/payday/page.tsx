@@ -11,7 +11,10 @@ import {
     deleteWeeklyPayout,
     getProjects,
     getPayoutItemBreakdown,
-    splitPayoutItem
+    splitPayoutItem,
+    deletePayoutItem,
+    bulkUpdatePayoutItems,
+    bulkDeletePayoutItems
 } from '@/app/actions/financials'
 import { getContractors } from '@/app/actions/contractors'
 import { cn } from '@/lib/utils'
@@ -44,7 +47,9 @@ import {
     Activity,
     CreditCard,
     Building2,
-    Users
+    Users,
+    Download,
+    AlertTriangle
 } from 'lucide-react'
 
 interface PayoutRun {
@@ -117,6 +122,13 @@ export default function PaydayPage() {
     const [editStatus, setEditStatus] = useState<'pending' | 'paid' | 'held'>('pending')
     const [editNotes, setEditNotes] = useState('')
     const [editPayoutClass, setEditPayoutClass] = useState<'rate' | 'nmr'>('nmr')
+    const [editRecipientName, setEditRecipientName] = useState('')
+    const [editReferenceDetails, setEditReferenceDetails] = useState('')
+    const [editProjectId, setEditProjectId] = useState<string>('none')
+
+    // Bulk selections
+    const [selectedItemIds, setSelectedItemIds] = useState<string[]>([])
+    const [statusFilter, setStatusFilter] = useState('all')
 
     // Dialog: Split Payout Item
     const [isSplitOpen, setIsSplitOpen] = useState(false)
@@ -347,6 +359,9 @@ export default function PaydayPage() {
         setEditStatus(item.status)
         setEditNotes(item.notes || '')
         setEditPayoutClass(item.payout_class || 'nmr')
+        setEditRecipientName(item.recipient_name)
+        setEditReferenceDetails(item.reference_details || '')
+        setEditProjectId(item.project_id || 'none')
     }
 
     const handleSaveItemEdit = async (itemId: string) => {
@@ -365,7 +380,10 @@ export default function PaydayPage() {
                 amount_paid: Number(editAmountPaid),
                 status: editStatus,
                 notes: editNotes,
-                payout_class: editPayoutClass
+                payout_class: editPayoutClass,
+                recipient_name: editRecipientName,
+                reference_details: editReferenceDetails || null,
+                project_id: editProjectId === 'none' ? null : editProjectId
             })
 
             if (res.success) {
@@ -403,6 +421,222 @@ export default function PaydayPage() {
         } finally {
             setIsActionLoading(false)
         }
+    }
+
+    const handleDeleteItem = async (itemId: string) => {
+        if (!confirm('Are you sure you want to remove this payout item? Associated labor log entries or purchase orders will be reset to unpaid.')) return
+
+        setIsActionLoading(true)
+        try {
+            const res = await deletePayoutItem(itemId)
+            if (res.success) {
+                toast({
+                    title: 'Success',
+                    description: 'Payout item successfully removed.'
+                })
+                // Clear selection if it was selected
+                setSelectedItemIds(prev => prev.filter(id => id !== itemId))
+                // Refresh items
+                if (selectedRun) {
+                    const itemsData = await getPayoutItems(selectedRun.id)
+                    setItems(itemsData as PayoutItem[])
+                    
+                    setSelectedRun(prev => {
+                        if (!prev) return null
+                        const newTotal = itemsData.reduce((sum, item) => sum + Number(item.amount_paid), 0)
+                        return { ...prev, total_amount: newTotal }
+                    })
+                }
+            } else {
+                toast({
+                    title: 'Error',
+                    description: res.error || 'Failed to remove payout item.',
+                    variant: 'destructive'
+                })
+            }
+        } catch (error) {
+            console.error('Error removing item:', error)
+            toast({
+                title: 'Error',
+                description: 'An unexpected error occurred.',
+                variant: 'destructive'
+            })
+        } finally {
+            setIsActionLoading(false)
+        }
+    }
+
+    const handleToggleSelectItem = (id: string) => {
+        setSelectedItemIds(prev => 
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        )
+    }
+
+    const handleSelectAllFiltered = (filteredList: PayoutItem[], isChecked: boolean) => {
+        if (isChecked) {
+            const ids = filteredList.map(item => item.id)
+            setSelectedItemIds(prev => Array.from(new Set([...prev, ...ids])))
+        } else {
+            const ids = filteredList.map(item => item.id)
+            setSelectedItemIds(prev => prev.filter(x => !ids.includes(x)))
+        }
+    }
+
+    const handleBulkStatusUpdate = async (status: 'pending' | 'paid' | 'held') => {
+        if (selectedItemIds.length === 0) return
+        setIsActionLoading(true)
+        try {
+            const res = await bulkUpdatePayoutItems(selectedItemIds, { status })
+            if (res.success) {
+                toast({
+                    title: 'Success',
+                    description: `Successfully updated ${selectedItemIds.length} items.`
+                })
+                setSelectedItemIds([])
+                if (selectedRun) {
+                    const itemsData = await getPayoutItems(selectedRun.id)
+                    setItems(itemsData as PayoutItem[])
+                    
+                    setSelectedRun(prev => {
+                        if (!prev) return null
+                        const newTotal = itemsData.reduce((sum, item) => sum + Number(item.amount_paid), 0)
+                        return { ...prev, total_amount: newTotal }
+                    })
+                }
+            } else {
+                toast({
+                    title: 'Error',
+                    description: res.error || 'Failed to update items.',
+                    variant: 'destructive'
+                })
+            }
+        } catch (error) {
+            console.error('Error bulk updating:', error)
+            toast({
+                title: 'Error',
+                description: 'An unexpected error occurred.',
+                variant: 'destructive'
+            })
+        } finally {
+            setIsActionLoading(false)
+        }
+    }
+
+    const handleBulkProjectUpdate = async (projectId: string | null) => {
+        if (selectedItemIds.length === 0) return
+        setIsActionLoading(true)
+        try {
+            const res = await bulkUpdatePayoutItems(selectedItemIds, { project_id: projectId })
+            if (res.success) {
+                toast({
+                    title: 'Success',
+                    description: `Successfully re-routed ${selectedItemIds.length} items.`
+                })
+                setSelectedItemIds([])
+                if (selectedRun) {
+                    const itemsData = await getPayoutItems(selectedRun.id)
+                    setItems(itemsData as PayoutItem[])
+                }
+            } else {
+                toast({
+                    title: 'Error',
+                    description: res.error || 'Failed to re-route items.',
+                    variant: 'destructive'
+                })
+            }
+        } catch (error) {
+            console.error('Error bulk updating project:', error)
+            toast({
+                title: 'Error',
+                description: 'An unexpected error occurred.',
+                variant: 'destructive'
+            })
+        } finally {
+            setIsActionLoading(false)
+        }
+    }
+
+    const handleBulkDelete = async () => {
+        if (selectedItemIds.length === 0) return
+        if (!confirm(`Are you sure you want to remove ${selectedItemIds.length} selected items? Linked logs will be reset to unpaid.`)) return
+        setIsActionLoading(true)
+        try {
+            const res = await bulkDeletePayoutItems(selectedItemIds)
+            if (res.success) {
+                toast({
+                    title: 'Success',
+                    description: `Successfully removed ${selectedItemIds.length} items.`
+                })
+                setSelectedItemIds([])
+                if (selectedRun) {
+                    const itemsData = await getPayoutItems(selectedRun.id)
+                    setItems(itemsData as PayoutItem[])
+                    
+                    setSelectedRun(prev => {
+                        if (!prev) return null
+                        const newTotal = itemsData.reduce((sum, item) => sum + Number(item.amount_paid), 0)
+                        return { ...prev, total_amount: newTotal }
+                    })
+                }
+            } else {
+                toast({
+                    title: 'Error',
+                    description: res.error || 'Failed to remove items.',
+                    variant: 'destructive'
+                })
+            }
+        } catch (error) {
+            console.error('Error bulk deleting:', error)
+            toast({
+                title: 'Error',
+                description: 'An unexpected error occurred.',
+                variant: 'destructive'
+            })
+        } finally {
+            setIsActionLoading(false)
+        }
+    }
+
+    const handleExportCSV = () => {
+        if (!selectedRun || items.length === 0) return
+
+        // Columns: Recipient Name, Type, Project, Class, Amount Due, Amount Paid, Status, Notes
+        const headers = ['Recipient Name', 'Recipient Type', 'Project / Site', 'Classification', 'Amount Due (INR)', 'Amount Paid (INR)', 'Status', 'Notes']
+        
+        const rows = items.map(item => {
+            const projName = item.project?.name || 'General / Head Office'
+            const payoutClass = (item.payout_class || 'nmr').toUpperCase()
+            const notesText = item.notes ? item.notes.replace(/"/g, '""') : ''
+            const refDetails = item.reference_details ? item.reference_details.replace(/"/g, '""') : ''
+
+            return [
+                `"${item.recipient_name}"`,
+                `"${item.recipient_type}"`,
+                `"${projName}"`,
+                `"${payoutClass}"`,
+                item.amount_due,
+                item.amount_paid,
+                `"${item.status}"`,
+                `"${notesText || refDetails}"`
+            ]
+        })
+
+        const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n')
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.setAttribute('href', url)
+        const fileName = `payrun_${selectedRun.week_start_date}_to_${selectedRun.week_end_date}.csv`
+        link.setAttribute('download', fileName)
+        link.style.visibility = 'hidden'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+
+        toast({
+            title: 'CSV Exported',
+            description: `File ${fileName} downloaded successfully.`
+        })
     }
 
     const handleAddCustomItem = async (e: React.FormEvent) => {
@@ -583,7 +817,8 @@ export default function PaydayPage() {
             (item.notes || '').toLowerCase().includes(itemSearch.toLowerCase())
         
         const matchesType = typeFilter === 'all' || item.recipient_type === typeFilter
-        return matchesSearch && matchesType
+        const matchesStatus = statusFilter === 'all' || item.status === statusFilter
+        return matchesSearch && matchesType && matchesStatus
     })
 
     // Group items by Project -> Wages, Vendor Payments, Others
@@ -695,11 +930,27 @@ export default function PaydayPage() {
             }
         }
 
+        const isMissingBank = (item.recipient_type === 'labor_wage' || item.recipient_type === 'employee_salary') && 
+            (item.notes?.includes('Bank: N/A') || item.notes?.includes('Acc: N/A') || !item.notes)
+
         return (
-            <TableRow key={item.id} className="border-muted/15 hover:bg-muted/5 transition-colors">
+            <TableRow key={item.id} className={cn(
+                "border-muted/15 hover:bg-muted/5 transition-colors",
+                selectedItemIds.includes(item.id) && "bg-primary/5"
+            )}>
+                {selectedRun?.status !== 'paid' && (
+                    <TableCell className="w-[40px] py-3 pl-4">
+                        <input 
+                            type="checkbox"
+                            checked={selectedItemIds.includes(item.id)}
+                            onChange={() => handleToggleSelectItem(item.id)}
+                            className="rounded border-muted/30 h-4 w-4 bg-background/50 text-primary focus:ring-primary focus:ring-offset-0 focus:ring-0 cursor-pointer"
+                        />
+                    </TableCell>
+                )}
                 <TableCell className="font-semibold text-foreground py-3">
                     <div className="flex flex-col space-y-1.5">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                             {item.recipient_type === 'vendor_payment' ? (
                                 <Store className="h-3.5 w-3.5 text-purple-400" />
                             ) : isContractorWages ? (
@@ -707,16 +958,27 @@ export default function PaydayPage() {
                             ) : (
                                 <User className="h-3.5 w-3.5 text-sky-400" />
                             )}
-                            <button
-                                type="button"
-                                onClick={() => handleOpenBreakdown(item.id)}
-                                className="hover:underline hover:text-primary text-left font-semibold text-xs"
-                            >
-                                {item.recipient_name}
-                            </button>
+                            
+                            {isEditing ? (
+                                <Input
+                                    value={editRecipientName}
+                                    onChange={(e) => setEditRecipientName(e.target.value)}
+                                    className="h-8 bg-background border-muted/40 focus:ring-primary text-xs w-full max-w-[180px] px-2 py-1 font-semibold"
+                                    placeholder="Recipient Name"
+                                />
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => handleOpenBreakdown(item.id)}
+                                    className="hover:underline hover:text-primary text-left font-semibold text-xs"
+                                >
+                                    {item.recipient_name}
+                                </button>
+                            )}
+
                             {isEditing ? (
                                 <Select onValueChange={(val: any) => setEditPayoutClass(val)} value={editPayoutClass}>
-                                    <SelectTrigger className="h-6 w-20 text-[9px] bg-background border-muted/40 px-1 py-0 font-bold uppercase">
+                                    <SelectTrigger className="h-7 w-20 text-[9px] bg-background border-muted/45 px-1 py-0 font-bold uppercase">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent className="glass">
@@ -737,7 +999,33 @@ export default function PaydayPage() {
                                     {(item.payout_class || 'nmr').toUpperCase()}
                                 </Badge>
                             )}
+
+                            {isMissingBank && !isEditing && (
+                                <Badge variant="outline" className="bg-amber-500/10 text-amber-300 border-amber-500/20 text-[9px] py-0 px-1 font-medium flex items-center gap-1 select-none">
+                                    <AlertTriangle className="h-2.5 w-2.5 text-amber-400" />
+                                    No Bank Details
+                                </Badge>
+                            )}
                         </div>
+
+                        {isEditing && (
+                            <div className="mt-1.5 space-y-1 w-full max-w-[200px]">
+                                <Label className="text-[9px] uppercase font-bold tracking-wider text-muted-foreground/60">Route Project</Label>
+                                <Select onValueChange={setEditProjectId} value={editProjectId}>
+                                    <SelectTrigger className="h-7 text-[10px] bg-background border-muted/40 px-2 py-0.5">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="glass text-xs">
+                                        <SelectItem value="none" className="text-xs">No project link (General expense)</SelectItem>
+                                        {projects.map((proj) => (
+                                            <SelectItem key={proj.id} value={proj.id} className="text-xs">
+                                                {proj.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
 
                         {isContractorWages && contractorWagesData && (
                             <div className="pl-6 space-y-2 font-normal text-muted-foreground">
@@ -766,38 +1054,60 @@ export default function PaydayPage() {
                             </div>
                         )}
 
-                        <button
-                            type="button"
-                            onClick={() => handleOpenBreakdown(item.id)}
-                            className="text-[10px] text-muted-foreground hover:text-primary text-left pl-6 w-max block font-normal cursor-pointer"
-                        >
-                            View detailed breakdown
-                        </button>
+                        {!isEditing && (
+                            <button
+                                type="button"
+                                onClick={() => handleOpenBreakdown(item.id)}
+                                className="text-[10px] text-muted-foreground hover:text-primary text-left pl-6 w-max block font-normal cursor-pointer"
+                            >
+                                View detailed breakdown
+                            </button>
+                        )}
                     </div>
                 </TableCell>
+                
+                {/* Reference details cell */}
                 <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate font-normal">
-                    {isContractorWages && contractorWagesData
-                        ? `Contractor Payout (${contractorWagesData.breakdown.map(b => b.category).join(', ')})`
-                        : (item.reference_details || 'N/A')}
+                    {isEditing ? (
+                        <Input
+                            value={editReferenceDetails}
+                            onChange={(e) => setEditReferenceDetails(e.target.value)}
+                            className="h-8 bg-background border-muted/40 focus:ring-primary text-xs w-full px-2 py-1"
+                            placeholder="Reference / Particulars"
+                        />
+                    ) : (
+                        isContractorWages && contractorWagesData
+                            ? `Contractor Payout (${contractorWagesData.breakdown.map(b => b.category).join(', ')})`
+                            : (item.reference_details || 'N/A')
+                    )}
                 </TableCell>
+
                 <TableCell className="font-mono text-muted-foreground text-xs">
                     ₹{item.amount_due.toLocaleString('en-IN')}
                 </TableCell>
                 
                 {/* Amount Paid field */}
                 <TableCell>
-                    {isEditing ? (
-                        <Input
-                            type="number"
-                            value={editAmountPaid}
-                            onChange={(e) => setEditAmountPaid(e.target.value)}
-                            className="h-8 bg-background border-muted/40 focus:ring-primary w-24 px-2 py-1 font-mono text-xs"
-                        />
-                    ) : (
-                        <span className="font-mono font-semibold text-foreground text-xs">
-                            ₹{item.amount_paid.toLocaleString('en-IN')}
-                        </span>
-                    )}
+                    <div className="flex flex-col space-y-1">
+                        {isEditing ? (
+                            <Input
+                                type="number"
+                                value={editAmountPaid}
+                                onChange={(e) => setEditAmountPaid(e.target.value)}
+                                className="h-8 bg-background border-muted/40 focus:ring-primary w-24 px-2 py-1 font-mono text-xs"
+                            />
+                        ) : (
+                            <span className="font-mono font-semibold text-foreground text-xs">
+                                ₹{item.amount_paid.toLocaleString('en-IN')}
+                            </span>
+                        )}
+
+                        {(!isEditing && item.amount_paid < item.amount_due) && (
+                            <Badge variant="outline" className="bg-rose-500/10 text-rose-300 border-rose-500/20 text-[9px] py-0 px-1 font-semibold w-max select-none">
+                                Pending: ₹{(item.amount_due - item.amount_paid).toLocaleString('en-IN')}
+                            </Badge>
+                        )}
+                    </div>
                 </TableCell>
 
                 {/* Status field */}
@@ -838,7 +1148,7 @@ export default function PaydayPage() {
                 {selectedRun?.status !== 'paid' && (
                     <TableCell className="text-right">
                         {isEditing ? (
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center justify-end gap-1">
                                 <Button
                                     size="icon"
                                     variant="ghost"
@@ -876,6 +1186,14 @@ export default function PaydayPage() {
                                         Split
                                     </Button>
                                 )}
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10"
+                                    onClick={() => handleDeleteItem(item.id)}
+                                >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
                             </div>
                         )}
                     </TableCell>
@@ -1026,7 +1344,15 @@ export default function PaydayPage() {
                                     </p>
                                 </div>
 
-                                <div className="flex items-center gap-2 self-start md:self-auto">
+                                <div className="flex items-center gap-2 flex-wrap self-start md:self-auto">
+                                    <Button
+                                        onClick={handleExportCSV}
+                                        variant="outline"
+                                        className="border-muted/30 bg-background/50 hover:bg-muted/10 text-muted-foreground hover:text-foreground"
+                                    >
+                                        <Download className="mr-2 h-4 w-4" /> Export CSV
+                                    </Button>
+
                                     {selectedRun.status !== 'paid' && (
                                         <>
                                             <Button
@@ -1127,6 +1453,18 @@ export default function PaydayPage() {
                                                 <SelectItem value="other">Custom Payout</SelectItem>
                                             </SelectContent>
                                         </Select>
+
+                                        <Select onValueChange={setStatusFilter} value={statusFilter}>
+                                            <SelectTrigger className="w-[140px] bg-background/50 border-muted/30 h-9">
+                                                <SelectValue placeholder="All status" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">All Status</SelectItem>
+                                                <SelectItem value="pending">Pending</SelectItem>
+                                                <SelectItem value="paid">Paid</SelectItem>
+                                                <SelectItem value="held">Held</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                 </div>
                             </CardHeader>
@@ -1148,9 +1486,24 @@ export default function PaydayPage() {
                                     <div className="space-y-6">
                                         {sortedProjectGroups.map(([projId, group]) => (
                                             <div key={projId} className="space-y-4 border border-muted/20 rounded-xl p-4 bg-muted/5 backdrop-blur-sm shadow-inner">
-                                                <h3 className="text-sm font-bold text-foreground flex items-center gap-2 border-b border-muted/10 pb-2">
-                                                    <Building2 className="h-4 w-4 text-primary" />
-                                                    <span>{group.projectName}</span>
+                                                <h3 className="text-sm font-bold text-foreground flex items-center justify-between border-b border-muted/10 pb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <Building2 className="h-4 w-4 text-primary" />
+                                                        <span>{group.projectName}</span>
+                                                    </div>
+                                                    {selectedRun?.status !== 'paid' && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-7 px-2 hover:bg-muted/15 text-[10px] text-muted-foreground hover:text-foreground font-semibold border border-muted/10 bg-muted/5 flex items-center gap-1"
+                                                            onClick={() => {
+                                                                setCustomProjectId(projId);
+                                                                setIsCustomOpen(true);
+                                                            }}
+                                                        >
+                                                            <Plus className="h-3 w-3" /> Quick Payout
+                                                        </Button>
+                                                    )}
                                                 </h3>
 
                                                 {group.wages.length > 0 && (
@@ -1162,6 +1515,16 @@ export default function PaydayPage() {
                                                             <Table>
                                                                 <TableHeader className="bg-muted/10">
                                                                     <TableRow className="border-muted/20">
+                                                                        {selectedRun.status !== 'paid' && (
+                                                                            <TableHead className="w-[40px] pl-4">
+                                                                                <input 
+                                                                                    type="checkbox"
+                                                                                    checked={group.wages.length > 0 && group.wages.every(item => selectedItemIds.includes(item.id))}
+                                                                                    onChange={(e) => handleSelectAllFiltered(group.wages, e.target.checked)}
+                                                                                    className="rounded border-muted/30 h-4 w-4 bg-background/50 text-primary focus:ring-primary focus:ring-offset-0 focus:ring-0 cursor-pointer"
+                                                                                />
+                                                                            </TableHead>
+                                                                        )}
                                                                         <TableHead>Recipient (Contractor / Worker)</TableHead>
                                                                         <TableHead>Reference Details</TableHead>
                                                                         <TableHead>Amount Due</TableHead>
@@ -1188,6 +1551,16 @@ export default function PaydayPage() {
                                                             <Table>
                                                                 <TableHeader className="bg-muted/10">
                                                                     <TableRow className="border-muted/20">
+                                                                        {selectedRun.status !== 'paid' && (
+                                                                            <TableHead className="w-[40px] pl-4">
+                                                                                <input 
+                                                                                    type="checkbox"
+                                                                                    checked={group.vendors.length > 0 && group.vendors.every(item => selectedItemIds.includes(item.id))}
+                                                                                    onChange={(e) => handleSelectAllFiltered(group.vendors, e.target.checked)}
+                                                                                    className="rounded border-muted/30 h-4 w-4 bg-background/50 text-primary focus:ring-primary focus:ring-offset-0 focus:ring-0 cursor-pointer"
+                                                                                />
+                                                                            </TableHead>
+                                                                        )}
                                                                         <TableHead>Recipient (Supplier)</TableHead>
                                                                         <TableHead>Reference Details</TableHead>
                                                                         <TableHead>Amount Due</TableHead>
@@ -1214,6 +1587,16 @@ export default function PaydayPage() {
                                                             <Table>
                                                                 <TableHeader className="bg-muted/10">
                                                                     <TableRow className="border-muted/20">
+                                                                        {selectedRun.status !== 'paid' && (
+                                                                            <TableHead className="w-[40px] pl-4">
+                                                                                <input 
+                                                                                    type="checkbox"
+                                                                                    checked={group.others.length > 0 && group.others.every(item => selectedItemIds.includes(item.id))}
+                                                                                    onChange={(e) => handleSelectAllFiltered(group.others, e.target.checked)}
+                                                                                    className="rounded border-muted/30 h-4 w-4 bg-background/50 text-primary focus:ring-primary focus:ring-offset-0 focus:ring-0 cursor-pointer"
+                                                                                />
+                                                                            </TableHead>
+                                                                        )}
                                                                         <TableHead>Recipient</TableHead>
                                                                         <TableHead>Reference Details</TableHead>
                                                                         <TableHead>Amount Due</TableHead>
@@ -1236,6 +1619,62 @@ export default function PaydayPage() {
                                 )}
                             </CardContent>
                         </Card>
+
+                        {/* Floating Bulk Actions Bar */}
+                        {selectedItemIds.length > 0 && selectedRun.status !== 'paid' && (
+                            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-2xl px-4 animate-in fade-in slide-in-from-bottom-5 duration-300">
+                                <div className="glass shadow-2xl border border-primary/20 rounded-2xl px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background/85 backdrop-blur-xl">
+                                    <div className="flex items-center gap-2">
+                                        <Badge className="bg-primary hover:bg-primary/95 text-white font-mono rounded-full h-6 w-6 flex items-center justify-center p-0 text-xs">
+                                            {selectedItemIds.length}
+                                        </Badge>
+                                        <span className="text-xs font-semibold text-foreground">Items selected</span>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setSelectedItemIds([])}
+                                            className="text-[10px] text-muted-foreground hover:text-foreground h-6 px-1.5"
+                                        >
+                                            Clear
+                                        </Button>
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                                        <Select onValueChange={(val: any) => handleBulkStatusUpdate(val)}>
+                                            <SelectTrigger className="h-8 text-[11px] bg-background border-muted/30 w-28">
+                                                <SelectValue placeholder="Set Status" />
+                                            </SelectTrigger>
+                                            <SelectContent className="glass text-xs">
+                                                <SelectItem value="pending">Pending</SelectItem>
+                                                <SelectItem value="paid">Paid</SelectItem>
+                                                <SelectItem value="held">Held</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+
+                                        <Select onValueChange={(val) => handleBulkProjectUpdate(val === 'none' ? null : val)}>
+                                            <SelectTrigger className="h-8 text-[11px] bg-background border-muted/30 w-32 text-left">
+                                                <SelectValue placeholder="Route Project" />
+                                            </SelectTrigger>
+                                            <SelectContent className="glass text-xs">
+                                                <SelectItem value="none">No Project</SelectItem>
+                                                {projects.map(p => (
+                                                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+
+                                        <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            onClick={handleBulkDelete}
+                                            className="h-8 px-3 text-[11px] font-semibold bg-rose-600 hover:bg-rose-500"
+                                            disabled={isActionLoading}
+                                        >
+                                            <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </>
                 )}
 
