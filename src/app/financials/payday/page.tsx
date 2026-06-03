@@ -10,8 +10,11 @@ import {
     processWeeklyPayout,
     deleteWeeklyPayout,
     getProjects,
-    getPayoutItemBreakdown
+    getPayoutItemBreakdown,
+    splitPayoutItem
 } from '@/app/actions/financials'
+import { getContractors } from '@/app/actions/contractors'
+import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -39,7 +42,9 @@ import {
     User,
     Store,
     Activity,
-    CreditCard
+    CreditCard,
+    Building2,
+    Users
 } from 'lucide-react'
 
 interface PayoutRun {
@@ -71,6 +76,7 @@ interface PayoutItem {
     project?: {
         name: string
     } | null
+    payout_class?: 'rate' | 'nmr'
 }
 
 interface Project {
@@ -94,7 +100,6 @@ export default function PaydayPage() {
     const [weekStart, setWeekStart] = useState('')
     const [weekEnd, setWeekEnd] = useState('')
 
-    // Dialog: Custom Item
     const [isCustomOpen, setIsCustomOpen] = useState(false)
     const [customName, setCustomName] = useState('')
     const [customType, setCustomType] = useState<'employee_salary' | 'labor_wage' | 'vendor_payment' | 'other'>('other')
@@ -102,12 +107,22 @@ export default function PaydayPage() {
     const [customProjectId, setCustomProjectId] = useState<string>('none')
     const [customRef, setCustomRef] = useState('')
     const [customNotes, setCustomNotes] = useState('')
+    const [customPayoutClass, setCustomPayoutClass] = useState<'rate' | 'nmr'>('nmr')
+    const [customContractorId, setCustomContractorId] = useState<string>('none')
+    const [contractorsList, setContractorsList] = useState<any[]>([])
 
     // Inline edit row state
     const [editingItemId, setEditingItemId] = useState<string | null>(null)
     const [editAmountPaid, setEditAmountPaid] = useState('')
     const [editStatus, setEditStatus] = useState<'pending' | 'paid' | 'held'>('pending')
     const [editNotes, setEditNotes] = useState('')
+    const [editPayoutClass, setEditPayoutClass] = useState<'rate' | 'nmr'>('nmr')
+
+    // Dialog: Split Payout Item
+    const [isSplitOpen, setIsSplitOpen] = useState(false)
+    const [splitItem, setSplitItem] = useState<PayoutItem | null>(null)
+    const [rateSplitAmount, setRateSplitAmount] = useState('')
+    const [nmrSplitAmount, setNmrSplitAmount] = useState('')
 
     // Dialog: Payout Breakdown
     const [isOpenBreakdown, setIsOpenBreakdown] = useState(false)
@@ -147,6 +162,17 @@ export default function PaydayPage() {
     useEffect(() => {
         loadRuns()
         loadProjectsList()
+        const loadContractors = async () => {
+            try {
+                const res = await getContractors()
+                if (res.success && res.data) {
+                    setContractorsList(res.data)
+                }
+            } catch (e) {
+                console.error(e)
+            }
+        }
+        loadContractors()
     }, [])
 
     const handleSelectRun = async (run: PayoutRun) => {
@@ -189,6 +215,75 @@ export default function PaydayPage() {
             })
         } finally {
             setIsBreakdownLoading(false)
+        }
+    }
+
+    const handleOpenSplitDialog = (item: PayoutItem) => {
+        setSplitItem(item)
+        const half = Math.round(Number(item.amount_due) / 2)
+        setRateSplitAmount(half.toString())
+        setNmrSplitAmount((Number(item.amount_due) - half).toString())
+        setIsSplitOpen(true)
+    }
+
+    const handleSaveSplit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!splitItem) return
+        
+        const rateAmt = Number(rateSplitAmount)
+        const nmrAmt = Number(nmrSplitAmount)
+        const totalAmt = Number(splitItem.amount_due)
+        
+        if (isNaN(rateAmt) || isNaN(nmrAmt) || rateAmt <= 0 || nmrAmt <= 0) {
+            toast({
+                title: 'Error',
+                description: 'Please enter valid positive amounts.',
+                variant: 'destructive'
+            })
+            return
+        }
+
+        if (Math.abs((rateAmt + nmrAmt) - totalAmt) > 0.01) {
+            toast({
+                title: 'Error',
+                description: `Split amounts (₹${rateAmt + nmrAmt}) must equal the total amount due (₹${totalAmt}).`,
+                variant: 'destructive'
+            })
+            return
+        }
+
+        setIsActionLoading(true)
+        try {
+            const res = await splitPayoutItem(splitItem.id, rateAmt, nmrAmt)
+            if (res.success) {
+                toast({
+                    title: 'Payout Split Successfully',
+                    description: `Split into ₹${rateAmt.toLocaleString('en-IN')} (Rate) and ₹${nmrAmt.toLocaleString('en-IN')} (NMR).`
+                })
+                setIsSplitOpen(false)
+                setSplitItem(null)
+                
+                // Refresh items
+                if (selectedRun) {
+                    const itemsData = await getPayoutItems(selectedRun.id)
+                    setItems(itemsData as PayoutItem[])
+                }
+            } else {
+                toast({
+                    title: 'Error',
+                    description: res.error || 'Failed to split payout item.',
+                    variant: 'destructive'
+                })
+            }
+        } catch (error) {
+            console.error('Error splitting payout item:', error)
+            toast({
+                title: 'Error',
+                description: 'An unexpected error occurred.',
+                variant: 'destructive'
+            })
+        } finally {
+            setIsActionLoading(false)
         }
     }
 
@@ -251,6 +346,7 @@ export default function PaydayPage() {
         setEditAmountPaid(item.amount_paid.toString())
         setEditStatus(item.status)
         setEditNotes(item.notes || '')
+        setEditPayoutClass(item.payout_class || 'nmr')
     }
 
     const handleSaveItemEdit = async (itemId: string) => {
@@ -268,7 +364,8 @@ export default function PaydayPage() {
             const res = await updatePayoutItem(itemId, {
                 amount_paid: Number(editAmountPaid),
                 status: editStatus,
-                notes: editNotes
+                notes: editNotes,
+                payout_class: editPayoutClass
             })
 
             if (res.success) {
@@ -333,10 +430,12 @@ export default function PaydayPage() {
             const res = await createCustomPayoutItem(selectedRun.id, {
                 recipient_type: customType,
                 recipient_name: customName,
+                recipient_id: customContractorId === 'none' ? null : customContractorId,
                 amount_due: Number(customAmount),
                 project_id: customProjectId === 'none' ? null : customProjectId,
                 reference_details: customRef,
-                notes: customNotes
+                notes: customNotes,
+                payout_class: customPayoutClass
             })
 
             if (res.success) {
@@ -350,6 +449,8 @@ export default function PaydayPage() {
                 setCustomProjectId('none')
                 setCustomRef('')
                 setCustomNotes('')
+                setCustomPayoutClass('nmr')
+                setCustomContractorId('none')
                 
                 // Refresh items
                 const itemsData = await getPayoutItems(selectedRun.id)
@@ -461,13 +562,78 @@ export default function PaydayPage() {
 
     // Filter items
     const filteredItems = items.filter(item => {
+        let referenceSearchText = item.reference_details || ''
+        
+        if (item.reference_details && item.reference_details.startsWith('{')) {
+            try {
+                const parsed = JSON.parse(item.reference_details)
+                if (parsed && parsed.type === 'contractor_wages') {
+                    // Combine descriptions and categories into a search-friendly string
+                    const descriptions = (parsed.descriptions || []).join(' ')
+                    const categories = (parsed.breakdown || []).map((b: any) => b.category).join(' ')
+                    referenceSearchText = `${descriptions} ${categories}`
+                }
+            } catch (e) {
+                // Ignore parse errors, fall back to raw string
+            }
+        }
+
         const matchesSearch = item.recipient_name.toLowerCase().includes(itemSearch.toLowerCase()) || 
-            (item.reference_details || '').toLowerCase().includes(itemSearch.toLowerCase()) ||
+            referenceSearchText.toLowerCase().includes(itemSearch.toLowerCase()) ||
             (item.notes || '').toLowerCase().includes(itemSearch.toLowerCase())
         
         const matchesType = typeFilter === 'all' || item.recipient_type === typeFilter
         return matchesSearch && matchesType
     })
+
+    // Group items by Project -> Wages, Vendor Payments, Others
+    const projectGroups: Record<string, {
+        projectName: string;
+        wages: PayoutItem[];
+        vendors: PayoutItem[];
+        others: PayoutItem[];
+    }> = {};
+
+    for (const item of filteredItems) {
+        const pId = item.project_id || 'unlinked';
+        const pName = item.project?.name || 'General / Head Office';
+
+        if (!projectGroups[pId]) {
+            projectGroups[pId] = {
+                projectName: pName,
+                wages: [],
+                vendors: [],
+                others: []
+            };
+        }
+
+        if (item.recipient_type === 'employee_salary' || item.recipient_type === 'labor_wage') {
+            projectGroups[pId].wages.push(item);
+        } else if (item.recipient_type === 'vendor_payment') {
+            projectGroups[pId].vendors.push(item);
+        } else {
+            projectGroups[pId].others.push(item);
+        }
+    }
+
+    // Sort items within each project category alphabetically by recipient name
+    for (const pId in projectGroups) {
+        const group = projectGroups[pId];
+        group.wages.sort((a, b) => a.recipient_name.toLowerCase().localeCompare(b.recipient_name.toLowerCase()));
+        group.vendors.sort((a, b) => a.recipient_name.toLowerCase().localeCompare(b.recipient_name.toLowerCase()));
+        group.others.sort((a, b) => a.recipient_name.toLowerCase().localeCompare(b.recipient_name.toLowerCase()));
+    }
+
+    // Convert to sorted array of groups
+    const sortedProjectGroups = Object.entries(projectGroups).filter(([_, group]) => {
+        return group.wages.length > 0 || group.vendors.length > 0 || group.others.length > 0;
+    });
+
+    sortedProjectGroups.sort((a, b) => {
+        if (a[0] === 'unlinked') return 1;
+        if (b[0] === 'unlinked') return -1;
+        return a[1].projectName.localeCompare(b[1].projectName);
+    });
 
     // Compute stats for detailed view
     const stats = {
@@ -499,6 +665,223 @@ export default function PaydayPage() {
             default:
                 return <Badge className="bg-amber-500/25 text-amber-400 border-amber-500/20">Pending</Badge>
         }
+    }
+
+    const renderRow = (item: PayoutItem) => {
+        const isEditing = editingItemId === item.id
+
+        // Parse reference details if it contains aggregated contractor wages JSON
+        let isContractorWages = false
+        let contractorWagesData: {
+            type: 'contractor_wages'
+            descriptions: string[]
+            breakdown: Array<{
+                category: string
+                days: number
+                rate: number
+                amount: number
+            }>
+        } | null = null
+
+        if (item.reference_details && item.reference_details.startsWith('{')) {
+            try {
+                const parsed = JSON.parse(item.reference_details)
+                if (parsed && parsed.type === 'contractor_wages') {
+                    isContractorWages = true
+                    contractorWagesData = parsed
+                }
+            } catch (e) {
+                // Not JSON or parse failed
+            }
+        }
+
+        return (
+            <TableRow key={item.id} className="border-muted/15 hover:bg-muted/5 transition-colors">
+                <TableCell className="font-semibold text-foreground py-3">
+                    <div className="flex flex-col space-y-1.5">
+                        <div className="flex items-center gap-2">
+                            {item.recipient_type === 'vendor_payment' ? (
+                                <Store className="h-3.5 w-3.5 text-purple-400" />
+                            ) : isContractorWages ? (
+                                <Building2 className="h-3.5 w-3.5 text-amber-400" />
+                            ) : (
+                                <User className="h-3.5 w-3.5 text-sky-400" />
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => handleOpenBreakdown(item.id)}
+                                className="hover:underline hover:text-primary text-left font-semibold text-xs"
+                            >
+                                {item.recipient_name}
+                            </button>
+                            {isEditing ? (
+                                <Select onValueChange={(val: any) => setEditPayoutClass(val)} value={editPayoutClass}>
+                                    <SelectTrigger className="h-6 w-20 text-[9px] bg-background border-muted/40 px-1 py-0 font-bold uppercase">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="glass">
+                                        <SelectItem value="nmr" className="text-[10px]">NMR</SelectItem>
+                                        <SelectItem value="rate" className="text-[10px]">RATE</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            ) : (
+                                <Badge 
+                                    variant="outline" 
+                                    className={cn(
+                                        "text-[9px] uppercase px-1 py-0 font-bold",
+                                        (item.payout_class || 'nmr') === 'rate'
+                                            ? "bg-purple-500/10 text-purple-300 border-purple-500/20"
+                                            : "bg-teal-500/10 text-teal-300 border-teal-500/20"
+                                    )}
+                                >
+                                    {(item.payout_class || 'nmr').toUpperCase()}
+                                </Badge>
+                            )}
+                        </div>
+
+                        {isContractorWages && contractorWagesData && (
+                            <div className="pl-6 space-y-2 font-normal text-muted-foreground">
+                                {/* Combined Work Descriptions */}
+                                {contractorWagesData.descriptions && contractorWagesData.descriptions.length > 0 && (
+                                    <div className="text-[11px] leading-relaxed">
+                                        <span className="font-semibold text-foreground/75">Work: </span>
+                                        <span className="italic">{contractorWagesData.descriptions.filter(Boolean).join(', ') || 'N/A'}</span>
+                                    </div>
+                                )}
+                                {/* Worker Category & Payment Breakdown */}
+                                <div className="space-y-1">
+                                    <div className="text-[9px] uppercase font-bold tracking-wider text-muted-foreground/60">Worker Breakdown</div>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {contractorWagesData.breakdown.map((cat, idx) => (
+                                            <Badge
+                                                key={idx}
+                                                variant="outline"
+                                                className="text-[10px] bg-sky-500/5 text-sky-300 border-sky-500/10 font-normal px-2 py-0.5"
+                                            >
+                                                <span className="font-medium text-foreground">{cat.category}</span>: {cat.days} {cat.days === 1 ? 'day' : 'days'} @ ₹{cat.rate} = <span className="font-semibold text-emerald-400">₹{cat.amount.toLocaleString('en-IN')}</span>
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <button
+                            type="button"
+                            onClick={() => handleOpenBreakdown(item.id)}
+                            className="text-[10px] text-muted-foreground hover:text-primary text-left pl-6 w-max block font-normal cursor-pointer"
+                        >
+                            View detailed breakdown
+                        </button>
+                    </div>
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate font-normal">
+                    {isContractorWages && contractorWagesData
+                        ? `Contractor Payout (${contractorWagesData.breakdown.map(b => b.category).join(', ')})`
+                        : (item.reference_details || 'N/A')}
+                </TableCell>
+                <TableCell className="font-mono text-muted-foreground text-xs">
+                    ₹{item.amount_due.toLocaleString('en-IN')}
+                </TableCell>
+                
+                {/* Amount Paid field */}
+                <TableCell>
+                    {isEditing ? (
+                        <Input
+                            type="number"
+                            value={editAmountPaid}
+                            onChange={(e) => setEditAmountPaid(e.target.value)}
+                            className="h-8 bg-background border-muted/40 focus:ring-primary w-24 px-2 py-1 font-mono text-xs"
+                        />
+                    ) : (
+                        <span className="font-mono font-semibold text-foreground text-xs">
+                            ₹{item.amount_paid.toLocaleString('en-IN')}
+                        </span>
+                    )}
+                </TableCell>
+
+                {/* Status field */}
+                <TableCell>
+                    {isEditing ? (
+                        <Select onValueChange={(val: any) => setEditStatus(val)} value={editStatus}>
+                            <SelectTrigger className="h-8 bg-background border-muted/40 text-xs w-28">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="glass">
+                                <SelectItem value="pending">Pending</SelectItem>
+                                <SelectItem value="paid">Paid</SelectItem>
+                                <SelectItem value="held">Held</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    ) : (
+                        getItemStatusBadge(item.status)
+                    )}
+                </TableCell>
+
+                {/* Notes */}
+                <TableCell className="text-xs max-w-[200px] truncate">
+                    {isEditing ? (
+                        <Input
+                            value={editNotes}
+                            onChange={(e) => setEditNotes(e.target.value)}
+                            placeholder="Add comments..."
+                            className="h-8 bg-background border-muted/40 text-xs py-1"
+                        />
+                    ) : (
+                        <span className="text-muted-foreground italic text-xs font-normal">
+                            {item.notes || 'None'}
+                        </span>
+                    )}
+                </TableCell>
+
+                {/* Row Actions */}
+                {selectedRun?.status !== 'paid' && (
+                    <TableCell className="text-right">
+                        {isEditing ? (
+                            <div className="flex items-center gap-1">
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-emerald-500 hover:bg-emerald-500/10"
+                                    onClick={() => handleSaveItemEdit(item.id)}
+                                >
+                                    <Check className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-muted-foreground hover:bg-muted/10"
+                                    onClick={() => setEditingItemId(null)}
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-end gap-1.5">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 hover:bg-muted/10 text-muted-foreground hover:text-foreground text-xs"
+                                    onClick={() => handleStartEditItem(item)}
+                                >
+                                    Adjust
+                                </Button>
+                                {item.recipient_type === 'labor_wage' && item.amount_due > 1 && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 px-2 border-muted/30 hover:bg-purple-500/10 hover:text-purple-400 text-[10px] font-medium"
+                                        onClick={() => handleOpenSplitDialog(item)}
+                                    >
+                                        Split
+                                    </Button>
+                                )}
+                            </div>
+                        )}
+                    </TableCell>
+                )}
+            </TableRow>
+        )
     }
 
     return (
@@ -747,13 +1130,13 @@ export default function PaydayPage() {
                                     </div>
                                 </div>
                             </CardHeader>
-                            <CardContent className="p-0">
+                            <CardContent className="p-6 space-y-6">
                                 {isLoading ? (
                                     <div className="flex flex-col items-center justify-center py-20 gap-3">
                                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                         <p className="text-muted-foreground text-sm">Refreshing list items...</p>
                                     </div>
-                                ) : filteredItems.length === 0 ? (
+                                ) : sortedProjectGroups.length === 0 ? (
                                     <div className="text-center py-16 px-4">
                                         <Layers className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
                                         <h3 className="text-lg font-medium text-foreground">No Items Match Filters</h3>
@@ -762,170 +1145,93 @@ export default function PaydayPage() {
                                         </p>
                                     </div>
                                 ) : (
-                                    <div className="overflow-x-auto">
-                                        <Table>
-                                            <TableHeader className="bg-muted/10">
-                                                <TableRow className="border-muted/20">
-                                                    <TableHead>Recipient</TableHead>
-                                                    <TableHead>Type</TableHead>
-                                                    <TableHead>Reference Details</TableHead>
-                                                    <TableHead>Linked Project</TableHead>
-                                                    <TableHead>Amount Due</TableHead>
-                                                    <TableHead className="w-[140px]">Amount Paid (₹)</TableHead>
-                                                    <TableHead className="w-[130px]">Status</TableHead>
-                                                    <TableHead className="text-right">Notes</TableHead>
-                                                    {selectedRun.status !== 'paid' && <TableHead className="w-[80px]"></TableHead>}
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {filteredItems.map((item) => {
-                                                    const isEditing = editingItemId === item.id
-                                                    let badgeColor = 'bg-muted/20 text-muted-foreground border-muted/30'
-                                                    if (item.recipient_type === 'employee_salary') {
-                                                        badgeColor = 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                                                    } else if (item.recipient_type === 'labor_wage') {
-                                                        badgeColor = 'bg-orange-500/20 text-orange-400 border-orange-500/30'
-                                                    } else if (item.recipient_type === 'vendor_payment') {
-                                                        badgeColor = 'bg-purple-500/20 text-purple-400 border-purple-500/30'
-                                                    }
+                                    <div className="space-y-6">
+                                        {sortedProjectGroups.map(([projId, group]) => (
+                                            <div key={projId} className="space-y-4 border border-muted/20 rounded-xl p-4 bg-muted/5 backdrop-blur-sm shadow-inner">
+                                                <h3 className="text-sm font-bold text-foreground flex items-center gap-2 border-b border-muted/10 pb-2">
+                                                    <Building2 className="h-4 w-4 text-primary" />
+                                                    <span>{group.projectName}</span>
+                                                </h3>
 
-                                                    return (
-                                                        <TableRow key={item.id} className="border-muted/15 hover:bg-muted/5 transition-colors">
-                                                            <TableCell className="font-semibold text-foreground">
-                                                                <div className="flex flex-col">
-                                                                    <div className="flex items-center gap-2">
-                                                                        {item.recipient_type === 'vendor_payment' ? (
-                                                                            <Store className="h-3.5 w-3.5 text-purple-400" />
-                                                                        ) : (
-                                                                            <User className="h-3.5 w-3.5 text-sky-400" />
-                                                                        )}
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => handleOpenBreakdown(item.id)}
-                                                                            className="hover:underline hover:text-primary text-left font-semibold"
-                                                                        >
-                                                                            {item.recipient_name}
-                                                                        </button>
-                                                                    </div>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => handleOpenBreakdown(item.id)}
-                                                                        className="text-[10px] text-muted-foreground hover:text-primary text-left mt-0.5 w-max block font-normal cursor-pointer"
-                                                                    >
-                                                                        View detailed breakdown
-                                                                    </button>
-                                                                </div>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <Badge className={`${badgeColor} font-normal capitalize`}>
-                                                                    {item.recipient_type.replace('_', ' ')}
-                                                                </Badge>
-                                                            </TableCell>
-                                                            <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
-                                                                {item.reference_details || 'N/A'}
-                                                            </TableCell>
-                                                            <TableCell className="text-xs font-medium">
-                                                                {item.project?.name ? (
-                                                                    <Badge variant="outline" className="text-[10px] text-muted-foreground border-muted/30">
-                                                                        {item.project.name}
-                                                                    </Badge>
-                                                                ) : (
-                                                                    <span className="text-muted-foreground/60 italic text-xs">Unlinked</span>
-                                                                )}
-                                                            </TableCell>
-                                                            <TableCell className="font-mono text-muted-foreground text-sm">
-                                                                ₹{item.amount_due.toLocaleString('en-IN')}
-                                                            </TableCell>
-                                                            
-                                                            {/* Amount Paid field */}
-                                                            <TableCell>
-                                                                {isEditing ? (
-                                                                    <Input
-                                                                        type="number"
-                                                                        value={editAmountPaid}
-                                                                        onChange={(e) => setEditAmountPaid(e.target.value)}
-                                                                        className="h-8 bg-background border-muted/40 focus:ring-primary w-24 px-2 py-1 font-mono text-xs"
-                                                                    />
-                                                                ) : (
-                                                                    <span className="font-mono font-semibold text-foreground">
-                                                                        ₹{item.amount_paid.toLocaleString('en-IN')}
-                                                                    </span>
-                                                                )}
-                                                            </TableCell>
+                                                {group.wages.length > 0 && (
+                                                    <div className="space-y-2">
+                                                        <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 pl-1">
+                                                            <Users className="h-3.5 w-3.5 text-sky-400" /> Wages & Salaries
+                                                        </h4>
+                                                        <div className="overflow-x-auto border border-muted/15 rounded-lg bg-background/30">
+                                                            <Table>
+                                                                <TableHeader className="bg-muted/10">
+                                                                    <TableRow className="border-muted/20">
+                                                                        <TableHead>Recipient (Contractor / Worker)</TableHead>
+                                                                        <TableHead>Reference Details</TableHead>
+                                                                        <TableHead>Amount Due</TableHead>
+                                                                        <TableHead className="w-[140px]">Amount Paid (₹)</TableHead>
+                                                                        <TableHead className="w-[130px]">Status</TableHead>
+                                                                        <TableHead className="text-right">Notes</TableHead>
+                                                                        {selectedRun.status !== 'paid' && <TableHead className="w-[80px]"></TableHead>}
+                                                                    </TableRow>
+                                                                </TableHeader>
+                                                                <TableBody>
+                                                                    {group.wages.map((item) => renderRow(item))}
+                                                                </TableBody>
+                                                            </Table>
+                                                        </div>
+                                                    </div>
+                                                )}
 
-                                                            {/* Status field */}
-                                                            <TableCell>
-                                                                {isEditing ? (
-                                                                    <Select onValueChange={(val: any) => setEditStatus(val)} value={editStatus}>
-                                                                        <SelectTrigger className="h-8 bg-background border-muted/40 text-xs w-28">
-                                                                            <SelectValue />
-                                                                        </SelectTrigger>
-                                                                        <SelectContent>
-                                                                            <SelectItem value="pending">Pending</SelectItem>
-                                                                            <SelectItem value="paid">Paid</SelectItem>
-                                                                            <SelectItem value="held">Held</SelectItem>
-                                                                        </SelectContent>
-                                                                    </Select>
-                                                                ) : (
-                                                                    getItemStatusBadge(item.status)
-                                                                )}
-                                                            </TableCell>
+                                                {group.vendors.length > 0 && (
+                                                    <div className="space-y-2">
+                                                        <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 pl-1">
+                                                            <Store className="h-3.5 w-3.5 text-purple-400" /> Vendor Payments
+                                                        </h4>
+                                                        <div className="overflow-x-auto border border-muted/15 rounded-lg bg-background/30">
+                                                            <Table>
+                                                                <TableHeader className="bg-muted/10">
+                                                                    <TableRow className="border-muted/20">
+                                                                        <TableHead>Recipient (Supplier)</TableHead>
+                                                                        <TableHead>Reference Details</TableHead>
+                                                                        <TableHead>Amount Due</TableHead>
+                                                                        <TableHead className="w-[140px]">Amount Paid (₹)</TableHead>
+                                                                        <TableHead className="w-[130px]">Status</TableHead>
+                                                                        <TableHead className="text-right">Notes</TableHead>
+                                                                        {selectedRun.status !== 'paid' && <TableHead className="w-[80px]"></TableHead>}
+                                                                    </TableRow>
+                                                                </TableHeader>
+                                                                <TableBody>
+                                                                    {group.vendors.map((item) => renderRow(item))}
+                                                                </TableBody>
+                                                            </Table>
+                                                        </div>
+                                                    </div>
+                                                )}
 
-                                                            {/* Notes */}
-                                                            <TableCell className="text-xs max-w-[200px] truncate">
-                                                                {isEditing ? (
-                                                                    <Input
-                                                                        value={editNotes}
-                                                                        onChange={(e) => setEditNotes(e.target.value)}
-                                                                        placeholder="Add comments..."
-                                                                        className="h-8 bg-background border-muted/40 text-xs py-1"
-                                                                    />
-                                                                ) : (
-                                                                    <span className="text-muted-foreground italic text-xs">
-                                                                        {item.notes || 'None'}
-                                                                    </span>
-                                                                )}
-                                                            </TableCell>
-
-                                                            {/* Row Actions */}
-                                                            {selectedRun.status !== 'paid' && (
-                                                                <TableCell className="text-right">
-                                                                    {isEditing ? (
-                                                                        <div className="flex items-center gap-1">
-                                                                            <Button
-                                                                                size="icon"
-                                                                                variant="ghost"
-                                                                                className="h-7 w-7 text-emerald-500 hover:bg-emerald-500/10"
-                                                                                onClick={() => handleSaveItemEdit(item.id)}
-                                                                            >
-                                                                                <Check className="h-4 w-4" />
-                                                                            </Button>
-                                                                            <Button
-                                                                                size="icon"
-                                                                                variant="ghost"
-                                                                                className="h-7 w-7 text-muted-foreground hover:bg-muted/10"
-                                                                                onClick={() => setEditingItemId(null)}
-                                                                            >
-                                                                                <X className="h-4 w-4" />
-                                                                            </Button>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="sm"
-                                                                            className="h-7 px-2 hover:bg-muted/10 text-muted-foreground hover:text-foreground text-xs"
-                                                                            onClick={() => handleStartEditItem(item)}
-                                                                        >
-                                                                            Adjust
-                                                                        </Button>
-                                                                    )}
-                                                                </TableCell>
-                                                            )}
-                                                        </TableRow>
-                                                    )
-                                                })}
-                                            </TableBody>
-                                        </Table>
+                                                {group.others.length > 0 && (
+                                                    <div className="space-y-2">
+                                                        <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 pl-1">
+                                                            <Activity className="h-3.5 w-3.5 text-amber-400" /> Other Custom Payments
+                                                        </h4>
+                                                        <div className="overflow-x-auto border border-muted/15 rounded-lg bg-background/30">
+                                                            <Table>
+                                                                <TableHeader className="bg-muted/10">
+                                                                    <TableRow className="border-muted/20">
+                                                                        <TableHead>Recipient</TableHead>
+                                                                        <TableHead>Reference Details</TableHead>
+                                                                        <TableHead>Amount Due</TableHead>
+                                                                        <TableHead className="w-[140px]">Amount Paid (₹)</TableHead>
+                                                                        <TableHead className="w-[130px]">Status</TableHead>
+                                                                        <TableHead className="text-right">Notes</TableHead>
+                                                                        {selectedRun.status !== 'paid' && <TableHead className="w-[80px]"></TableHead>}
+                                                                    </TableRow>
+                                                                </TableHeader>
+                                                                <TableBody>
+                                                                    {group.others.map((item) => renderRow(item))}
+                                                                </TableBody>
+                                                            </Table>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
                             </CardContent>
@@ -1019,6 +1325,35 @@ export default function PaydayPage() {
 
                         <form onSubmit={handleAddCustomItem} className="space-y-4 py-1">
                             <div className="space-y-2">
+                                <Label htmlFor="customContractor">Link to Contractor Account (Optional)</Label>
+                                <Select 
+                                    onValueChange={(val) => {
+                                        setCustomContractorId(val);
+                                        if (val !== 'none') {
+                                            const contractor = contractorsList.find(c => c.id === val);
+                                            if (contractor) {
+                                                setCustomName(contractor.name);
+                                                setCustomType('labor_wage');
+                                            }
+                                        }
+                                    }} 
+                                    value={customContractorId}
+                                >
+                                    <SelectTrigger className="bg-background border-muted/30 text-xs">
+                                        <SelectValue placeholder="Do not link to contractor" />
+                                    </SelectTrigger>
+                                    <SelectContent className="glass text-xs">
+                                        <SelectItem value="none">Independent Payout (No Contractor Link)</SelectItem>
+                                        {contractorsList.map((c) => (
+                                            <SelectItem key={c.id} value={c.id}>
+                                                {c.name} ({c.category || 'Contractor'})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
                                 <Label htmlFor="customName">Recipient Name</Label>
                                 <Input
                                     id="customName"
@@ -1034,10 +1369,10 @@ export default function PaydayPage() {
                                 <div className="space-y-2">
                                     <Label htmlFor="customType">Type</Label>
                                     <Select onValueChange={(val: any) => setCustomType(val)} value={customType}>
-                                        <SelectTrigger className="bg-background border-muted/30">
+                                        <SelectTrigger className="bg-background border-muted/30 text-xs">
                                             <SelectValue placeholder="Select type" />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent className="glass text-xs">
                                             <SelectItem value="employee_salary">Employee Salary</SelectItem>
                                             <SelectItem value="labor_wage">Labor Wage</SelectItem>
                                             <SelectItem value="vendor_payment">Vendor / Material</SelectItem>
@@ -1046,17 +1381,30 @@ export default function PaydayPage() {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="customAmount">Amount (₹)</Label>
-                                    <Input
-                                        id="customAmount"
-                                        type="number"
-                                        placeholder="Amount in Rupees"
-                                        value={customAmount}
-                                        onChange={(e) => setCustomAmount(e.target.value)}
-                                        className="bg-background border-muted/30 font-mono"
-                                        required
-                                    />
+                                    <Label htmlFor="customClassification">Classification</Label>
+                                    <Select onValueChange={(val: any) => setCustomPayoutClass(val)} value={customPayoutClass}>
+                                        <SelectTrigger className="bg-background border-muted/30 text-xs font-semibold text-foreground">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="glass text-xs">
+                                            <SelectItem value="nmr">NMR (Daily Wage / Day Work)</SelectItem>
+                                            <SelectItem value="rate">RATE (Contract Sq.Ft / Work Rate)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="customAmount">Amount (₹)</Label>
+                                <Input
+                                    id="customAmount"
+                                    type="number"
+                                    placeholder="Amount in Rupees"
+                                    value={customAmount}
+                                    onChange={(e) => setCustomAmount(e.target.value)}
+                                    className="bg-background border-muted/30 font-mono"
+                                    required
+                                />
                             </div>
 
                             <div className="space-y-2">
@@ -1206,6 +1554,75 @@ export default function PaydayPage() {
                                 Close Breakdown
                             </Button>
                         </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Dialog: Split Payout Item */}
+                <Dialog open={isSplitOpen} onOpenChange={setIsSplitOpen}>
+                    <DialogContent className="sm:max-w-[420px] border-muted/30 text-foreground bg-background/95 backdrop-blur-xl">
+                        <DialogHeader>
+                            <DialogTitle className="text-xl font-bold font-headline flex items-center gap-2">
+                                <Layers className="h-5 w-5 text-purple-400" /> Split Payout (Rate vs NMR)
+                            </DialogTitle>
+                            <DialogDescription>
+                                Divide calculated wages for <span className="font-semibold text-foreground">{splitItem?.recipient_name}</span>. The total amount due is <span className="font-bold text-foreground">₹{splitItem?.amount_due.toLocaleString('en-IN')}</span>.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        {splitItem && (
+                            <form onSubmit={handleSaveSplit} className="space-y-4 py-2">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="rateSplitAmount">RATE Contract Amount (₹)</Label>
+                                        <Input
+                                            id="rateSplitAmount"
+                                            type="number"
+                                            value={rateSplitAmount}
+                                            onChange={(e) => {
+                                                setRateSplitAmount(e.target.value)
+                                                const remain = Number(splitItem.amount_due) - Number(e.target.value)
+                                                setNmrSplitAmount(remain >= 0 ? remain.toString() : '0')
+                                            }}
+                                            className="bg-background border-muted/30 font-mono text-purple-300 animate-pulse-once"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nmrSplitAmount">NMR Labor Amount (₹)</Label>
+                                        <Input
+                                            id="nmrSplitAmount"
+                                            type="number"
+                                            value={nmrSplitAmount}
+                                            onChange={(e) => {
+                                                setNmrSplitAmount(e.target.value)
+                                                const remain = Number(splitItem.amount_due) - Number(e.target.value)
+                                                setRateSplitAmount(remain >= 0 ? remain.toString() : '0')
+                                            }}
+                                            className="bg-background border-muted/30 font-mono text-teal-300 animate-pulse-once"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="text-xs text-muted-foreground p-2 rounded-lg bg-muted/10 border border-muted/15 flex justify-between">
+                                    <span>Allocated Total: <span className="font-semibold text-foreground">₹{(Number(rateSplitAmount) + Number(nmrSplitAmount)).toLocaleString('en-IN')}</span></span>
+                                    <span>Target: <span className="font-semibold text-foreground">₹{splitItem.amount_due.toLocaleString('en-IN')}</span></span>
+                                </div>
+
+                                <DialogFooter className="pt-4 border-t border-muted/10">
+                                    <Button type="button" variant="outline" onClick={() => setIsSplitOpen(false)} className="border-muted/30">
+                                        Cancel
+                                    </Button>
+                                    <Button 
+                                        type="submit" 
+                                        disabled={isActionLoading || Math.abs((Number(rateSplitAmount) + Number(nmrSplitAmount)) - Number(splitItem.amount_due)) > 0.01} 
+                                        className="bg-primary hover:opacity-90"
+                                    >
+                                        Confirm Split
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        )}
                     </DialogContent>
                 </Dialog>
 

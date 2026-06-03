@@ -255,6 +255,7 @@ export async function createWeeklyPayoutRun(weekStartDate: string, weekEndDate: 
                 .from('worklog_labor_entries')
                 .select('*')
                 .in('worklog_id', worklogIds)
+                .neq('payment_status', 'paid') // ONLY compile unpaid or partial ones
             laborEntries = lEntries || []
 
             const laborEntryIds = laborEntries.map(le => le.id)
@@ -270,106 +271,211 @@ export async function createWeeklyPayoutRun(weekStartDate: string, weekEndDate: 
         // 4. Auto-generate payout items for Salary / Wage profiles
         if (profiles) {
             for (const profile of profiles) {
-                let recipientName = 'Worker'
-                let recipientId: string | null = null
-                let amountDue = 0
-                let details = ''
-
                 if (profile.contractor_id) {
-                    // Contractor worker profile
-                    recipientName = `${profile.contractors?.name || 'Contractor'} (${profile.worker_type || 'Worker'})`
-                    recipientId = profile.contractor_id
+                    // Contractor worker profile: combine all category rates
+                    const rates = (profile.rates as Record<string, number>) || {}
+                    const breakdown: any[] = []
+                    const descriptionsSet = new Set<string>()
                     
-                    if (profile.payment_type === 'monthly') {
-                        amountDue = Number(profile.rate)
-                        details = `Monthly Rate: ${profile.worker_type}`
-                    } else if (profile.payment_type === 'daily_wage') {
-                        // Calculate total man-days for this contractor and worker type
-                        const contractorName = (profile.contractors?.name || '').toLowerCase().trim()
-                        const targetWorkerType = (profile.worker_type || '').toLowerCase().trim()
+                    const contractorName = (profile.contractors?.name || '').toLowerCase().trim()
+                    
+                    // Filter matching labor entries for this contractor once
+                    const matchingLaborEntries = laborEntries.filter(entry => {
+                        const name = (entry.contractor_name || '').toLowerCase().trim()
+                        return name.includes(contractorName) || contractorName.includes(name)
+                    })
+                    const matchingLaborEntryIds = matchingLaborEntries.map(le => le.id)
 
-                        const matchingLaborEntries = laborEntries.filter(entry => {
-                            const name = (entry.contractor_name || '').toLowerCase().trim()
-                            return name.includes(contractorName) || contractorName.includes(name)
-                        })
-                        const matchingLaborEntryIds = matchingLaborEntries.map(le => le.id)
+                    // Collect work descriptions
+                    matchingLaborEntries.forEach(entry => {
+                        if (entry.work_description) {
+                            descriptionsSet.add(entry.work_description.trim())
+                        }
+                    })
+
+                    // Calculate and update amount_due for each matching labor entry
+                    for (const entry of matchingLaborEntries) {
+                        let entryDue = 0
+                        const entryCounts = workerCounts.filter(wc => wc.labor_entry_id === entry.id)
+                        for (const wc of entryCounts) {
+                            const wcTypeLower = (wc.worker_type || '').toLowerCase().trim()
+                            // Find matching rate in profile keys
+                            const matchingKey = Object.keys(rates).find(k => k.toLowerCase().trim() === wcTypeLower)
+                            const rate = matchingKey ? Number(rates[matchingKey]) : 0
+                            entryDue += Number(wc.count || 0) * rate
+                        }
+                        
+                        // Save amount_due to database
+                        await supabase
+                            .from('worklog_labor_entries')
+                            .update({ amount_due: entryDue })
+                            .eq('id', entry.id)
+                        
+                        entry.amount_due = entryDue
+                    }
+
+                    // Calculate outstanding sum across matching entries
+                    let contractorOutstandingSum = 0
+                    const laborEntryIdsLinked: string[] = []
+                    
+                    matchingLaborEntries.forEach(entry => {
+                        const outstanding = Number(entry.amount_due || 0) - Number(entry.amount_paid || 0)
+                        if (outstanding > 0) {
+                            contractorOutstandingSum += outstanding
+                            laborEntryIdsLinked.push(entry.id)
+                        }
+                    })
+
+                    // Build standard category count breakdown for UI summary
+                    for (const [targetWorkerType, workerRateVal] of Object.entries(rates)) {
+                        const workerRate = Number(workerRateVal)
+                        const targetWorkerTypeLower = targetWorkerType.toLowerCase().trim()
 
                         const totalManDays = workerCounts
-                            .filter(wc => matchingLaborEntryIds.includes(wc.labor_entry_id) && (wc.worker_type || '').toLowerCase().trim() === targetWorkerType)
+                            .filter(wc => matchingLaborEntryIds.includes(wc.labor_entry_id) && (wc.worker_type || '').toLowerCase().trim() === targetWorkerTypeLower)
                             .reduce((sum, wc) => sum + Number(wc.count || 0), 0)
 
-                        amountDue = totalManDays * Number(profile.rate)
-                        details = `Daily Wage (Contractor): ${totalManDays} man-days of ${profile.worker_type} @ ₹${profile.rate}/day`
-                    } else {
-                        amountDue = Number(profile.rate)
-                        details = `Hourly Wage: ${profile.worker_type}`
+                        const categoryAmount = totalManDays * workerRate
+
+                        if (totalManDays > 0) {
+                            breakdown.push({
+                                category: targetWorkerType,
+                                days: totalManDays,
+                                rate: workerRate,
+                                amount: categoryAmount
+                            })
+                        }
+                    }
+
+                    if (contractorOutstandingSum > 0) {
+                        const recipientName = profile.contractors?.name || 'Contractor'
+                        const recipientId = profile.contractor_id
+                        const descriptions = Array.from(descriptionsSet)
+
+                        const detailsJson = JSON.stringify({
+                            type: 'contractor_wages',
+                            descriptions: descriptions,
+                            breakdown: breakdown,
+                            labor_entry_ids: laborEntryIdsLinked
+                        })
+
+                        // Find a project ID from worklogs to link this labor expense to (optional)
+                        const linkedWorklog = worklogs?.find(w => 
+                            laborEntries.some(le => le.worklog_id === w.id && le.contractor_name?.toLowerCase().includes((profile.contractors?.name || '').toLowerCase()))
+                        )
+
+                        payoutItems.push({
+                            payout_id: payoutId,
+                            recipient_type: 'labor_wage',
+                            recipient_id: recipientId,
+                            recipient_name: recipientName,
+                            amount_due: contractorOutstandingSum,
+                            amount_paid: contractorOutstandingSum,
+                            status: 'pending',
+                            project_id: linkedWorklog?.project_id || null,
+                            reference_details: detailsJson,
+                            payout_class: 'nmr',
+                            notes: `Bank: ${profile.bank_name || 'N/A'}, Acc: ${profile.account_number || 'N/A'}`
+                        })
                     }
                 } else {
                     // Employee / External worker profile
-                    recipientName = profile.worker_name || profile.users?.display_name || 'Worker'
-                    recipientId = profile.user_id
+                    const recipientName = profile.worker_name || profile.users?.display_name || 'Worker'
+                    const recipientId = profile.user_id
+                    let amountDue = 0
+                    let details = ''
+                    let laborEntryIdsLinked: string[] = []
 
                     if (profile.payment_type === 'monthly') {
                         amountDue = Number(profile.rate)
                         details = 'Monthly Salary Rate'
                     } else if (profile.payment_type === 'daily_wage') {
                         const nameToMatch = recipientName.toLowerCase().trim()
-                        const daysWorked = laborEntries.filter(entry => {
+                        const matchingEntries = laborEntries.filter(entry => {
                             const contractor = (entry.contractor_name || '').toLowerCase().trim()
                             return contractor.includes(nameToMatch) || nameToMatch.includes(contractor)
-                        }).length
+                        })
 
-                        amountDue = daysWorked * Number(profile.rate)
-                        details = `Daily Wage: ${daysWorked} days worked @ ₹${profile.rate}/day`
+                        // Calculate and update entries
+                        let outstandingSum = 0
+                        for (const entry of matchingEntries) {
+                            const entryDue = Number(profile.rate)
+                            await supabase
+                                .from('worklog_labor_entries')
+                                .update({ amount_due: entryDue })
+                                .eq('id', entry.id)
+                            
+                            entry.amount_due = entryDue
+                            const outstanding = entryDue - Number(entry.amount_paid || 0)
+                            if (outstanding > 0) {
+                                outstandingSum += outstanding
+                                laborEntryIdsLinked.push(entry.id)
+                            }
+                        }
+
+                        amountDue = outstandingSum
+                        details = JSON.stringify({
+                            type: 'worker_wages',
+                            text: `Daily Wage: ${laborEntryIdsLinked.length} days outstanding @ ₹${profile.rate}/day`,
+                            labor_entry_ids: laborEntryIdsLinked
+                        })
                     } else {
                         amountDue = Number(profile.rate)
                         details = 'Hourly Wage'
                     }
+
+                    if (amountDue > 0) {
+                        // Find a project ID from worklogs to link this labor expense to (optional)
+                        const linkedWorklog = worklogs?.find(w => 
+                            laborEntries.some(le => le.worklog_id === w.id && le.contractor_name?.toLowerCase().includes((profile.contractors?.name || recipientName).toLowerCase()))
+                        )
+
+                        payoutItems.push({
+                            payout_id: payoutId,
+                            recipient_type: (profile.payment_type === 'monthly' && !profile.contractor_id) ? 'employee_salary' : 'labor_wage',
+                            recipient_id: recipientId,
+                            recipient_name: recipientName,
+                            amount_due: amountDue,
+                            amount_paid: amountDue,
+                            status: 'pending',
+                            project_id: linkedWorklog?.project_id || null,
+                            reference_details: details,
+                            payout_class: 'nmr',
+                            notes: `Bank: ${profile.bank_name || 'N/A'}, Acc: ${profile.account_number || 'N/A'}`
+                        })
+                    }
                 }
-
-                // Find a project ID from worklogs to link this labor expense to (optional)
-                const linkedWorklog = worklogs?.find(w => 
-                    laborEntries.some(le => le.worklog_id === w.id && le.contractor_name?.toLowerCase().includes((profile.contractors?.name || recipientName).toLowerCase()))
-                )
-
-                payoutItems.push({
-                    payout_id: payoutId,
-                    recipient_type: (profile.payment_type === 'monthly' && !profile.contractor_id) ? 'employee_salary' : 'labor_wage',
-                    recipient_id: recipientId,
-                    recipient_name: recipientName,
-                    amount_due: amountDue,
-                    amount_paid: amountDue,
-                    status: 'pending',
-                    project_id: linkedWorklog?.project_id || null,
-                    reference_details: details,
-                    notes: `Bank: ${profile.bank_name || 'N/A'}, Acc: ${profile.account_number || 'N/A'}`
-                })
             }
         }
 
-        // 5. Fetch approved/delivered Purchase Orders in the date range
+        // 5. Fetch approved/delivered Purchase Orders in the date range that are not paid
         const { data: pos } = await supabase
             .from('purchase_orders')
             .select('*')
             .eq('company_id', companyId)
             .in('status', ['approved', 'delivered'])
+            .neq('payment_status', 'paid')
             .gte('created_at', weekStartDate)
             .lte('created_at', weekEndDate)
 
         if (pos) {
             for (const po of pos) {
-                payoutItems.push({
-                    payout_id: payoutId,
-                    recipient_type: 'vendor_payment',
-                    recipient_id: po.id,
-                    recipient_name: po.supplier_name,
-                    amount_due: Number(po.total_amount),
-                    amount_paid: Number(po.total_amount),
-                    status: 'pending',
-                    project_id: po.project_id,
-                    reference_details: `PO Number: ${po.po_number || 'N/A'}`,
-                    notes: `Contact: ${po.supplier_contact || 'N/A'}`
-                })
+                const outstandingPO = Number(po.total_amount || 0) - Number(po.amount_paid || 0)
+                if (outstandingPO > 0) {
+                    payoutItems.push({
+                        payout_id: payoutId,
+                        recipient_type: 'vendor_payment',
+                        recipient_id: po.id,
+                        recipient_name: po.supplier_name,
+                        amount_due: outstandingPO,
+                        amount_paid: outstandingPO,
+                        status: 'pending',
+                        project_id: po.project_id,
+                        reference_details: `PO Number: ${po.po_number || 'N/A'} (Outstanding: ₹${outstandingPO})`,
+                        payout_class: 'nmr',
+                        notes: `Contact: ${po.supplier_contact || 'N/A'}`
+                    })
+                }
             }
         }
 
@@ -401,6 +507,7 @@ export async function updatePayoutItem(id: string, data: {
     amount_paid?: number
     status?: 'pending' | 'paid' | 'held'
     notes?: string
+    payout_class?: 'rate' | 'nmr'
 }) {
     const supabase = await createClient()
 
@@ -420,11 +527,11 @@ export async function updatePayoutItem(id: string, data: {
 
         const { data: item, error: fetchError } = await supabase
             .from('payout_items')
-            .select('payout_id')
+            .select('*')
             .eq('id', id)
             .single()
 
-        if (fetchError) throw fetchError
+        if (fetchError || !item) throw new Error('Payout item not found')
 
         // Update item details
         const { error: updateError } = await supabase
@@ -433,6 +540,26 @@ export async function updatePayoutItem(id: string, data: {
             .eq('id', id)
 
         if (updateError) throw updateError
+
+        // Trigger payment reconciliation for linked labor logs or PO
+        const statusToApply = data.status || item.status
+        const amountPaidToApply = data.amount_paid !== undefined ? data.amount_paid : item.amount_paid
+
+        if (item.recipient_type === 'labor_wage' || item.recipient_type === 'employee_salary') {
+            if (item.reference_details?.startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(item.reference_details)
+                    const laborEntryIds = parsed.labor_entry_ids || []
+                    if (laborEntryIds.length > 0) {
+                        await reconcileLaborPayments(supabase, laborEntryIds)
+                    }
+                } catch (e) {
+                    // ignore
+                }
+            }
+        } else if (item.recipient_type === 'vendor_payment' && item.recipient_id) {
+            await reconcilePOPayment(supabase, item.recipient_id)
+        }
 
         // Recompute the Weekly Payout total amount
         const { data: allItems } = await supabase
@@ -458,10 +585,12 @@ export async function updatePayoutItem(id: string, data: {
 export async function createCustomPayoutItem(payoutId: string, data: {
     recipient_type: 'employee_salary' | 'labor_wage' | 'vendor_payment' | 'other'
     recipient_name: string
+    recipient_id?: string | null
     amount_due: number
     project_id?: string | null
     reference_details?: string
     notes?: string
+    payout_class?: 'rate' | 'nmr'
 }) {
     const supabase = await createClient()
 
@@ -485,12 +614,14 @@ export async function createCustomPayoutItem(payoutId: string, data: {
                 payout_id: payoutId,
                 recipient_type: data.recipient_type,
                 recipient_name: data.recipient_name,
+                recipient_id: data.recipient_id || null,
                 amount_due: data.amount_due,
                 amount_paid: data.amount_due, // Defaults to full amount due
                 status: 'pending',
                 project_id: data.project_id || null,
                 reference_details: data.reference_details || null,
                 notes: data.notes || null,
+                payout_class: data.payout_class || 'nmr',
                 created_at: new Date().toISOString()
             })
 
@@ -542,7 +673,7 @@ export async function processWeeklyPayout(payoutId: string, status: 'approved' |
 
         if (payoutError) throw payoutError
 
-        // 2. If status is set to 'paid', update all pending items to 'paid'
+        // 2. If status is set to 'paid', update all pending items to 'paid' and run reconciliation
         if (status === 'paid') {
             const { data: items } = await supabase
                 .from('payout_items')
@@ -551,12 +682,30 @@ export async function processWeeklyPayout(payoutId: string, status: 'approved' |
                 .eq('status', 'pending')
 
             if (items && items.length > 0) {
-                // Update all items to paid
-                await supabase
-                    .from('payout_items')
-                    .update({ status: 'paid' })
-                    .eq('payout_id', payoutId)
-                    .eq('status', 'pending')
+                // Update and reconcile each item individually
+                for (const item of items) {
+                    await supabase
+                        .from('payout_items')
+                        .update({ status: 'paid' })
+                        .eq('id', item.id)
+
+                    // Run payment reconciliation for this item
+                    if (item.recipient_type === 'labor_wage' || item.recipient_type === 'employee_salary') {
+                        if (item.reference_details?.startsWith('{')) {
+                            try {
+                                const parsed = JSON.parse(item.reference_details)
+                                const laborEntryIds = parsed.labor_entry_ids || []
+                                if (laborEntryIds.length > 0) {
+                                    await reconcileLaborPayments(supabase, laborEntryIds)
+                                }
+                            } catch (e) {
+                                // ignore
+                            }
+                        }
+                    } else if (item.recipient_type === 'vendor_payment' && item.recipient_id) {
+                        await reconcilePOPayment(supabase, item.recipient_id)
+                    }
+                }
 
                 // 3. For each paid item that has a project_id, automatically record it in the expenses table!
                 const expensesToLog: any[] = []
@@ -570,11 +719,24 @@ export async function processWeeklyPayout(payoutId: string, status: 'approved' |
                             category = 'Other'
                         }
 
+                        let displayDetails = item.reference_details || 'Weekly Payout'
+                        if (item.reference_details?.startsWith('{')) {
+                            try {
+                                const parsed = JSON.parse(item.reference_details)
+                                if (parsed && parsed.type === 'contractor_wages') {
+                                    const categories = (parsed.breakdown || []).map((b: any) => b.category).join(', ')
+                                    displayDetails = `Contractor Wages: ${categories}`
+                                }
+                            } catch (e) {
+                                // fallback
+                            }
+                        }
+
                         expensesToLog.push({
                             project_id: item.project_id,
                             category: category,
                             amount: Number(item.amount_paid),
-                            description: `Payout: ${item.recipient_name} (${item.reference_details || 'Weekly Payout'})`,
+                            description: `Payout: ${item.recipient_name} (${displayDetails})`,
                             expense_date: new Date().toISOString().split('T')[0],
                             created_by: user.id,
                             payment_status: 'paid',
@@ -832,5 +994,254 @@ export async function getPayoutItemBreakdown(payoutItemId: string) {
         return { type: 'error', details: [] }
     }
 }
+
+// ==========================================
+// Payment Reconciliation & Payout Splitting Helpers
+// ==========================================
+
+export async function splitPayoutItem(itemId: string, rateAmount: number, nmrAmount: number) {
+    const supabase = await createClient()
+
+    try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('Unauthorized')
+
+        const { data: userProfile } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+        if (userProfile?.role !== 'admin') {
+            throw new Error('Only admins can split payout items')
+        }
+
+        // 1. Fetch the original item
+        const { data: item, error: fetchError } = await supabase
+            .from('payout_items')
+            .select('*')
+            .eq('id', itemId)
+            .single()
+
+        if (fetchError || !item) throw new Error('Payout item not found')
+
+        // 2. Parse original reference details to copy them
+        let baseRef = {}
+        try {
+            if (item.reference_details) {
+                baseRef = JSON.parse(item.reference_details)
+            }
+        } catch (e) {
+            // fallback
+        }
+
+        // Create reference details for both parts
+        const rateDetails = JSON.stringify({
+            ...baseRef,
+            split_original_id: item.id,
+            split_type: 'rate'
+        })
+        const nmrDetails = JSON.stringify({
+            ...baseRef,
+            split_original_id: item.id,
+            split_type: 'nmr'
+        })
+
+        // 3. Update the original item to be the RATE part
+        const { error: updateError } = await supabase
+            .from('payout_items')
+            .update({
+                amount_due: rateAmount,
+                amount_paid: rateAmount,
+                payout_class: 'rate',
+                reference_details: rateDetails
+            })
+            .eq('id', itemId)
+
+        if (updateError) throw updateError
+
+        // 4. Create a new sibling item for the NMR part
+        const { error: insertError } = await supabase
+            .from('payout_items')
+            .insert({
+                payout_id: item.payout_id,
+                recipient_type: item.recipient_type,
+                recipient_id: item.recipient_id,
+                recipient_name: item.recipient_name,
+                amount_due: nmrAmount,
+                amount_paid: nmrAmount,
+                status: item.status,
+                project_id: item.project_id,
+                reference_details: nmrDetails,
+                payout_class: 'nmr',
+                notes: `Split from original payout. ${item.notes || ''}`
+            })
+
+        if (insertError) throw insertError
+
+        // Trigger reconciliation for both parts
+        if (item.recipient_type === 'labor_wage' || item.recipient_type === 'employee_salary') {
+            const laborEntryIds = (baseRef as any).labor_entry_ids || []
+            if (laborEntryIds.length > 0) {
+                await reconcileLaborPayments(supabase, laborEntryIds)
+            }
+        }
+
+        // 5. Recompute weekly payout total
+        const { data: allItems } = await supabase
+            .from('payout_items')
+            .select('amount_paid')
+            .eq('payout_id', item.payout_id)
+
+        const totalPaid = (allItems || []).reduce((sum, i) => sum + Number(i.amount_paid), 0)
+
+        await supabase
+            .from('weekly_payouts')
+            .update({ total_amount: totalPaid })
+            .eq('id', item.payout_id)
+
+        revalidatePath('/financials/payday')
+        return { success: true }
+    } catch (error: any) {
+        console.error('Error splitting payout item:', error)
+        return { success: false, error: error.message }
+    }
+}
+
+export async function reconcileLaborPayments(supabase: any, affectedEntryIds: string[]) {
+    if (!affectedEntryIds || affectedEntryIds.length === 0) return
+
+    try {
+        // Reset all affected entries to unpaid/0
+        await supabase
+            .from('worklog_labor_entries')
+            .update({ amount_paid: 0, payment_status: 'unpaid' })
+            .in('id', affectedEntryIds)
+
+        // Fetch the full details of these entries to have their amount_due in memory
+        const { data: entries } = await supabase
+            .from('worklog_labor_entries')
+            .select('id, amount_due, amount_paid, payment_status')
+            .in('id', affectedEntryIds)
+
+        if (!entries || entries.length === 0) return
+        
+        const entryMap = new Map<string, any>()
+        entries.forEach((e: any) => entryMap.set(e.id, { ...e, amount_paid: 0, payment_status: 'unpaid' }))
+
+        // Fetch all paid payout items that reference any of these entry IDs
+        const { data: paidItems } = await supabase
+            .from('payout_items')
+            .select('id, amount_paid, status, reference_details')
+            .eq('status', 'paid')
+
+        if (!paidItems) return
+
+        // Filter paid items that reference our affected entries
+        const referencingItems = paidItems.filter((item: any) => {
+            if (!item.reference_details) return false
+            try {
+                const parsed = JSON.parse(item.reference_details)
+                const ids = parsed.labor_entry_ids || []
+                return ids.some((id: string) => affectedEntryIds.includes(id))
+            } catch (err) {
+                return false
+            }
+        })
+
+        // Sort items by id to ensure deterministic FIFO distribution
+        referencingItems.sort((a: any, b: any) => a.id.localeCompare(b.id))
+
+        // For each paid item, distribute its amount_paid
+        for (const item of referencingItems) {
+            const parsed = JSON.parse(item.reference_details)
+            const itemEntryIds = parsed.labor_entry_ids || []
+            
+            let remainingPayment = Number(item.amount_paid)
+
+            // Distribute FIFO among the entries linked to this item
+            for (const entryId of itemEntryIds) {
+                const entry = entryMap.get(entryId)
+                if (!entry) continue
+
+                const outstanding = Number(entry.amount_due) - Number(entry.amount_paid)
+                if (outstanding <= 0) continue
+
+                if (remainingPayment >= outstanding) {
+                    entry.amount_paid = Number(entry.amount_paid) + outstanding
+                    entry.payment_status = 'paid'
+                    remainingPayment -= outstanding
+                } else {
+                    entry.amount_paid = Number(entry.amount_paid) + remainingPayment
+                    entry.payment_status = 'partial'
+                    remainingPayment = 0
+                    break
+                }
+            }
+        }
+
+        // Save the reconciled states back to the database
+        for (const [id, entry] of entryMap.entries()) {
+            await supabase
+                .from('worklog_labor_entries')
+                .update({
+                    amount_paid: entry.amount_paid,
+                    payment_status: entry.payment_status
+                })
+                .eq('id', id)
+        }
+    } catch (err) {
+        console.error('Error in reconcileLaborPayments:', err)
+    }
+}
+
+export async function reconcilePOPayment(supabase: any, poId: string) {
+    if (!poId) return
+
+    try {
+        // Reset PO payment status/amount
+        await supabase
+            .from('purchase_orders')
+            .update({ amount_paid: 0, payment_status: 'unpaid' })
+            .eq('id', poId)
+
+        // Fetch the PO total_amount
+        const { data: po } = await supabase
+            .from('purchase_orders')
+            .select('total_amount')
+            .eq('id', poId)
+            .single()
+
+        if (!po) return
+
+        // Fetch all paid payout items linked to this PO
+        const { data: paidItems } = await supabase
+            .from('payout_items')
+            .select('amount_paid')
+            .eq('recipient_id', poId)
+            .eq('status', 'paid')
+
+        const totalPaid = (paidItems || []).reduce((sum: number, item: any) => sum + Number(item.amount_paid), 0)
+        const poTotal = Number(po.total_amount || 0)
+
+        let status = 'unpaid'
+        if (totalPaid >= poTotal && poTotal > 0) {
+            status = 'paid'
+        } else if (totalPaid > 0) {
+            status = 'partial'
+        }
+
+        await supabase
+            .from('purchase_orders')
+            .update({
+                amount_paid: totalPaid,
+                payment_status: status
+            })
+            .eq('id', poId)
+    } catch (err) {
+        console.error('Error in reconcilePOPayment:', err)
+    }
+}
+
 
 

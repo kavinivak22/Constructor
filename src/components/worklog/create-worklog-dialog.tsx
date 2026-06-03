@@ -55,6 +55,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { createWorklog, updateWorklog } from '@/app/actions/worklogs';
 import { getProjectMaterials } from '@/app/actions/materials';
 import { getContractors } from '@/app/actions/contractors';
+import { getSalaryProfiles } from '@/app/actions/financials';
 import { useSupabase } from '@/supabase/provider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useProjects } from '@/hooks/queries';
@@ -131,6 +132,7 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
     const { data: projects = [] } = useProjects();
     const [projectMaterials, setProjectMaterials] = useState<any[]>([]);
     const [contractors, setContractors] = useState<any[]>([]);
+    const [salaryProfiles, setSalaryProfiles] = useState<any[]>([]);
     const [isCreateContractorOpen, setIsCreateContractorOpen] = useState(false);
     const [activeLaborIndex, setActiveLaborIndex] = useState<number | null>(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -215,9 +217,10 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
     }, [open, selectedProjectId]);
 
     const fetchData = async (pId: string) => {
-        const [materialsResult, contractorsResult] = await Promise.all([
+        const [materialsResult, contractorsResult, salaryProfilesResult] = await Promise.all([
             getProjectMaterials(pId),
-            getContractors()
+            getContractors(),
+            getSalaryProfiles()
         ]);
 
         if (materialsResult.success && materialsResult.data) {
@@ -225,6 +228,9 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
         }
         if (contractorsResult.success && contractorsResult.data) {
             setContractors(contractorsResult.data);
+        }
+        if (salaryProfilesResult) {
+            setSalaryProfiles(salaryProfilesResult);
         }
     };
 
@@ -499,7 +505,7 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
                                                      <Button variant="outline" className="mt-4 glass border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5" onClick={() => appendLabor({ contractorName: "", category: "", paymentStatus: "Pending", workDoneQuantity: null, workDoneUnit: "", workers: [{ workerType: "Mason", count: 1 }] })}>Add First Team</Button>
                                                  </div>
                                              ) : (
-                                                 <div className="grid gap-6">{laborFields.map((field, index) => <LaborEntryForm key={field.id} index={index} form={form} remove={() => removeLabor(index)} contractors={contractors} onAddNew={() => { setActiveLaborIndex(index); setIsCreateContractorOpen(true); }} />)}</div>
+                                                 <div className="grid gap-6">{laborFields.map((field, index) => <LaborEntryForm key={field.id} index={index} form={form} remove={() => removeLabor(index)} contractors={contractors} salaryProfiles={salaryProfiles} onAddNew={() => { setActiveLaborIndex(index); setIsCreateContractorOpen(true); }} />)}</div>
                                              )}
                                              <div className="flex justify-end pt-6"><Button type="button" size="lg" onClick={() => nextTab("labor")} className="px-8 glass border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5 text-foreground">Continue to Materials</Button></div>
                                         </TabsContent>
@@ -552,13 +558,24 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
     );
 }
 
-function LaborEntryForm({ index, form, remove, contractors, onAddNew }: any) {
+function LaborEntryForm({ index, form, remove, contractors, salaryProfiles = [], onAddNew }: any) {
     const { fields: workerFields, append: appendWorker, remove: removeWorker } = useFieldArray({
         control: form.control,
         name: `labor.${index}.workers`
     });
 
+    const contractorNameVal = form.watch(`labor.${index}.contractorName`);
+    const contractorObj = contractors.find((c: any) => c.name === contractorNameVal);
+    const matchingProfile = salaryProfiles.find((p: any) => p.contractor_id === contractorObj?.id);
+    const contractorCategories = matchingProfile?.rates ? Object.keys(matchingProfile.rates) : [];
+
     const presetCategories = ["Mason", "MC", "FC", "Helper", "Supervisor", "Electrician", "Plumber", "Carpenter"];
+    const activeCategories = contractorCategories.length > 0 ? contractorCategories : presetCategories;
+
+    const hasUnmatchedCategories = workerFields.some((f, wIdx) => {
+        const wType = form.watch(`labor.${index}.workers.${wIdx}.workerType`);
+        return wType && contractorCategories.length > 0 && !contractorCategories.includes(wType);
+    });
 
     return (
         <div className="overflow-hidden border-l-4 border-l-primary/50 glass-card bg-transparent rounded-2xl border-t border-r border-b border-white/10 dark:border-white/5">
@@ -573,6 +590,22 @@ function LaborEntryForm({ index, form, remove, contractors, onAddNew }: any) {
                                     field.onChange(val);
                                     const c = contractors.find((c: any) => c.name === val);
                                     if (c?.category) form.setValue(`labor.${index}.category`, c.category);
+                                    
+                                    // Auto-populate worker categories if contractor has a profile
+                                    const matchingProf = salaryProfiles.find((p: any) => p.contractor_id === c?.id);
+                                    if (matchingProf?.rates) {
+                                        const cats = Object.keys(matchingProf.rates);
+                                        if (cats.length > 0) {
+                                            const currentWorkers = form.getValues(`labor.${index}.workers`);
+                                            // Check if it's empty or just has a default empty single worker
+                                            const isEmptyOrDefault = currentWorkers.length === 0 || 
+                                                (currentWorkers.length === 1 && currentWorkers[0].count === 1 && currentWorkers[0].workerType === "Mason");
+                                            
+                                            if (isEmptyOrDefault) {
+                                                form.setValue(`labor.${index}.workers`, cats.map(cat => ({ workerType: cat, count: 0 })));
+                                            }
+                                        }
+                                    }
                                 }
                             }} value={field.value}>
                                 <FormControl><SelectTrigger className="glass border-white/10 dark:border-white/5 bg-transparent text-foreground"><SelectValue placeholder="Select contractor" /></SelectTrigger></FormControl>
@@ -626,7 +659,7 @@ function LaborEntryForm({ index, form, remove, contractors, onAddNew }: any) {
                             type="button" 
                             variant="outline" 
                             size="sm" 
-                            onClick={() => appendWorker({ workerType: "Mason", count: 1 })}
+                            onClick={() => appendWorker({ workerType: activeCategories[0] || "Mason", count: 1 })}
                             className="h-8 glass border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5"
                         >
                             <Plus className="mr-1.5 h-3.5 w-3.5" />
@@ -634,13 +667,19 @@ function LaborEntryForm({ index, form, remove, contractors, onAddNew }: any) {
                         </Button>
                     </div>
 
+                    {hasUnmatchedCategories && (
+                        <p className="text-xs text-orange-500 font-medium px-3 py-2 bg-orange-500/10 rounded-xl border border-orange-500/20">
+                            Warning: One or more worker types are not in this contractor's salary profile rates. Their wages will show as 0 on payday.
+                        </p>
+                    )}
+
                     {workerFields.length === 0 ? (
                         <p className="text-xs text-orange-500 font-medium">Please add at least one worker type and count.</p>
                     ) : (
                         <div className="space-y-3">
                             {workerFields.map((workerField, wIndex) => {
                                 const currentWorkerType = form.watch(`labor.${index}.workers.${wIndex}.workerType`);
-                                const isPreset = presetCategories.includes(currentWorkerType);
+                                const isPreset = activeCategories.includes(currentWorkerType);
                                 
                                 return (
                                     <div key={workerField.id} className="flex flex-col sm:flex-row gap-3 items-start sm:items-end glass-card p-3 border-white/5 bg-white/5 rounded-xl">
@@ -666,7 +705,7 @@ function LaborEntryForm({ index, form, remove, contractors, onAddNew }: any) {
                                                             </SelectTrigger>
                                                         </FormControl>
                                                         <SelectContent className="glass border-white/10 dark:border-white/5 text-foreground">
-                                                            {presetCategories.map(cat => (
+                                                            {activeCategories.map(cat => (
                                                                 <SelectItem key={cat} value={cat} className="focus:bg-white/10 dark:focus:bg-white/5">{cat}</SelectItem>
                                                             ))}
                                                             <SelectItem value="Custom" className="focus:bg-white/10 dark:focus:bg-white/5 font-medium text-primary">Custom...</SelectItem>
