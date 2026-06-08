@@ -5,7 +5,8 @@ import { useSupabase } from '@/supabase/provider';
 import { ProjectCard } from '@/components/dashboard/project-card';
 import { Project } from '@/lib/data';
 import { Button } from '@/components/ui/button';
-import { Calendar, ClipboardCheck, FileText, Package, Plus, Receipt, UserPlus, AlertTriangle, Hammer, Image as ImageIcon, Loader2, Pencil, Trash2, Check, X } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Calendar, ClipboardCheck, FileText, Package, Plus, Receipt, UserPlus, AlertTriangle, Hammer, Image as ImageIcon, Loader2, Pencil, Trash2, Check, X, PhoneCall } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -141,6 +142,8 @@ export default function DashboardPage() {
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [isCreatingTask, setIsCreatingTask] = useState(false);
     const [isLoadingTasks, setIsLoadingTasks] = useState(true);
+    const [tomorrowTasksCount, setTomorrowTasksCount] = useState<number | null>(null);
+    const [tomorrowDateLabel, setTomorrowDateLabel] = useState('');
 
     useEffect(() => {
         if (!user) return;
@@ -152,6 +155,61 @@ export default function DashboardPage() {
         };
         fetchPersonalTasks();
     }, [user]);
+
+    useEffect(() => {
+        if (!user) return;
+        const fetchTomorrowCount = async () => {
+            try {
+                const todayDate = new Date();
+                const tomorrowDate = new Date(todayDate);
+                tomorrowDate.setDate(todayDate.getDate() + 1);
+                
+                // Format matching YYYY-MM-DD
+                const yyyy = tomorrowDate.getFullYear();
+                const mm = String(tomorrowDate.getMonth() + 1).padStart(2, '0');
+                const dd = String(tomorrowDate.getDate()).padStart(2, '0');
+                const tomorrowStr = `${yyyy}-${mm}-${dd}`;
+                
+                setTomorrowDateLabel(tomorrowDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }));
+                
+                const { data: profile } = await supabase
+                    .from('users')
+                    .select('company_id')
+                    .eq('id', user.id)
+                    .single();
+                    
+                if (profile?.company_id) {
+                    const { data: projectsData } = await supabase
+                        .from('projects')
+                        .select('id')
+                        .eq('company_id', profile.company_id);
+                        
+                    const projectIds = (projectsData || []).map(p => p.id);
+                    if (projectIds.length > 0) {
+                        const { count, error } = await supabase
+                            .from('tasks')
+                            .select('*', { count: 'exact', head: true })
+                            .in('project_id', projectIds)
+                            .eq('due_date', tomorrowStr);
+                            
+                        if (!error && count !== null) {
+                            setTomorrowTasksCount(count);
+                        } else {
+                            setTomorrowTasksCount(0);
+                        }
+                    } else {
+                        setTomorrowTasksCount(0);
+                    }
+                } else {
+                    setTomorrowTasksCount(0);
+                }
+            } catch (e) {
+                console.error('Error fetching tomorrow tasks count:', e);
+                setTomorrowTasksCount(0);
+            }
+        };
+        fetchTomorrowCount();
+    }, [user, supabase]);
 
     const handleToggleTask = async (taskId: string, currentStatus: string) => {
         setPersonalTasks(prev =>
@@ -264,6 +322,41 @@ export default function DashboardPage() {
 
                 {/* Quick Actions */}
                 <QuickActions />
+
+                {/* Tomorrow's Work Prep Card */}
+                <Card className="glass-card overflow-hidden relative border-primary/20 bg-gradient-to-r from-primary/5 via-transparent to-transparent">
+                    <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
+                        <PhoneCall className="h-24 w-24 text-primary" />
+                    </div>
+                    <CardContent className="p-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                    <Badge className="bg-primary/20 text-primary border-transparent">
+                                        Daily Prep Board
+                                    </Badge>
+                                    <span className="text-xs text-muted-foreground font-medium">For {tomorrowDateLabel || "Tomorrow"}</span>
+                                </div>
+                                <h3 className="text-lg font-bold text-foreground">Tomorrow's Work Preparation</h3>
+                                <p className="text-sm text-muted-foreground max-w-xl">
+                                    {tomorrowTasksCount === null ? (
+                                        "Loading tomorrow's schedule..."
+                                    ) : tomorrowTasksCount > 0 ? (
+                                        `You have ${tomorrowTasksCount} task${tomorrowTasksCount > 1 ? 's' : ''} scheduled for tomorrow. Call assignees and contractors to prepare.`
+                                    ) : (
+                                        "No tasks are scheduled for tomorrow yet, but you can review your contractors and team members to plan ahead."
+                                    )}
+                                </p>
+                            </div>
+                            <Button asChild className="shrink-0 group">
+                                <Link href="/work-prep">
+                                    <PhoneCall className="mr-2 h-4 w-4 transition-transform group-hover:scale-110" />
+                                    Start Prep Plan
+                                </Link>
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* Active Projects Section */}
                 <div>

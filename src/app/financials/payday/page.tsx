@@ -938,7 +938,6 @@ export default function PaydayPage() {
                 "border-muted/15 hover:bg-muted/5 transition-colors",
                 selectedItemIds.includes(item.id) && "bg-primary/5"
             )}>
-                {selectedRun?.status !== 'paid' && (
                     <TableCell className="w-[40px] py-3 pl-4">
                         <input 
                             type="checkbox"
@@ -947,7 +946,6 @@ export default function PaydayPage() {
                             className="rounded border-muted/30 h-4 w-4 bg-background/50 text-primary focus:ring-primary focus:ring-offset-0 focus:ring-0 cursor-pointer"
                         />
                     </TableCell>
-                )}
                 <TableCell className="font-semibold text-foreground py-3">
                     <div className="flex flex-col space-y-1.5">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -1145,59 +1143,57 @@ export default function PaydayPage() {
                 </TableCell>
 
                 {/* Row Actions */}
-                {selectedRun?.status !== 'paid' && (
-                    <TableCell className="text-right">
-                        {isEditing ? (
-                            <div className="flex items-center justify-end gap-1">
+                <TableCell className="text-right">
+                    {isEditing ? (
+                        <div className="flex items-center justify-end gap-1">
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 text-emerald-500 hover:bg-emerald-500/10"
+                                onClick={() => handleSaveItemEdit(item.id)}
+                            >
+                                <Check className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 text-muted-foreground hover:bg-muted/10"
+                                onClick={() => setEditingItemId(null)}
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 hover:bg-muted/10 text-muted-foreground hover:text-foreground text-xs"
+                                onClick={() => handleStartEditItem(item)}
+                            >
+                                Adjust
+                            </Button>
+                            {item.recipient_type === 'labor_wage' && item.amount_due > 1 && (
                                 <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7 text-emerald-500 hover:bg-emerald-500/10"
-                                    onClick={() => handleSaveItemEdit(item.id)}
-                                >
-                                    <Check className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7 text-muted-foreground hover:bg-muted/10"
-                                    onClick={() => setEditingItemId(null)}
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        ) : (
-                            <div className="flex items-center justify-end gap-1.5">
-                                <Button
-                                    variant="ghost"
+                                    variant="outline"
                                     size="sm"
-                                    className="h-7 px-2 hover:bg-muted/10 text-muted-foreground hover:text-foreground text-xs"
-                                    onClick={() => handleStartEditItem(item)}
+                                    className="h-7 px-2 border-muted/30 hover:bg-purple-500/10 hover:text-purple-400 text-[10px] font-medium"
+                                    onClick={() => handleOpenSplitDialog(item)}
                                 >
-                                    Adjust
+                                    Split
                                 </Button>
-                                {item.recipient_type === 'labor_wage' && item.amount_due > 1 && (
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 px-2 border-muted/30 hover:bg-purple-500/10 hover:text-purple-400 text-[10px] font-medium"
-                                        onClick={() => handleOpenSplitDialog(item)}
-                                    >
-                                        Split
-                                    </Button>
-                                )}
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10"
-                                    onClick={() => handleDeleteItem(item.id)}
-                                >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                            </div>
-                        )}
-                    </TableCell>
-                )}
+                            )}
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10"
+                                onClick={() => handleDeleteItem(item.id)}
+                            >
+                                <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                        </div>
+                    )}
+                </TableCell>
             </TableRow>
         )
     }
@@ -1353,7 +1349,7 @@ export default function PaydayPage() {
                                         <Download className="mr-2 h-4 w-4" /> Export CSV
                                     </Button>
 
-                                    {selectedRun.status !== 'paid' && (
+                                    {selectedRun.status !== 'paid' ? (
                                         <>
                                             <Button
                                                 onClick={() => setIsCustomOpen(true)}
@@ -1386,6 +1382,14 @@ export default function PaydayPage() {
                                                 Process & Pay Run
                                             </Button>
                                         </>
+                                    ) : (
+                                        <Button
+                                            onClick={() => setIsCustomOpen(true)}
+                                            variant="outline"
+                                            className="border-muted/30 bg-background/50 hover:bg-muted/10"
+                                        >
+                                            <Plus className="mr-2 h-4 w-4" /> Custom Payout
+                                        </Button>
                                     )}
                                 </div>
                             </div>
@@ -1491,19 +1495,17 @@ export default function PaydayPage() {
                                                         <Building2 className="h-4 w-4 text-primary" />
                                                         <span>{group.projectName}</span>
                                                     </div>
-                                                    {selectedRun?.status !== 'paid' && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-7 px-2 hover:bg-muted/15 text-[10px] text-muted-foreground hover:text-foreground font-semibold border border-muted/10 bg-muted/5 flex items-center gap-1"
-                                                            onClick={() => {
-                                                                setCustomProjectId(projId);
-                                                                setIsCustomOpen(true);
-                                                            }}
-                                                        >
-                                                            <Plus className="h-3 w-3" /> Quick Payout
-                                                        </Button>
-                                                    )}
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-7 px-2 hover:bg-muted/15 text-[10px] text-muted-foreground hover:text-foreground font-semibold border border-muted/10 bg-muted/5 flex items-center gap-1"
+                                                        onClick={() => {
+                                                            setCustomProjectId(projId);
+                                                            setIsCustomOpen(true);
+                                                        }}
+                                                    >
+                                                        <Plus className="h-3 w-3" /> Quick Payout
+                                                    </Button>
                                                 </h3>
 
                                                 {group.wages.length > 0 && (
@@ -1515,23 +1517,21 @@ export default function PaydayPage() {
                                                             <Table>
                                                                 <TableHeader className="bg-muted/10">
                                                                     <TableRow className="border-muted/20">
-                                                                        {selectedRun.status !== 'paid' && (
-                                                                            <TableHead className="w-[40px] pl-4">
-                                                                                <input 
-                                                                                    type="checkbox"
-                                                                                    checked={group.wages.length > 0 && group.wages.every(item => selectedItemIds.includes(item.id))}
-                                                                                    onChange={(e) => handleSelectAllFiltered(group.wages, e.target.checked)}
-                                                                                    className="rounded border-muted/30 h-4 w-4 bg-background/50 text-primary focus:ring-primary focus:ring-offset-0 focus:ring-0 cursor-pointer"
-                                                                                />
-                                                                            </TableHead>
-                                                                        )}
+                                                                        <TableHead className="w-[40px] pl-4">
+                                                                            <input 
+                                                                                type="checkbox"
+                                                                                checked={group.wages.length > 0 && group.wages.every(item => selectedItemIds.includes(item.id))}
+                                                                                onChange={(e) => handleSelectAllFiltered(group.wages, e.target.checked)}
+                                                                                className="rounded border-muted/30 h-4 w-4 bg-background/50 text-primary focus:ring-primary focus:ring-offset-0 focus:ring-0 cursor-pointer"
+                                                                            />
+                                                                        </TableHead>
                                                                         <TableHead>Recipient (Contractor / Worker)</TableHead>
                                                                         <TableHead>Reference Details</TableHead>
                                                                         <TableHead>Amount Due</TableHead>
                                                                         <TableHead className="w-[140px]">Amount Paid (₹)</TableHead>
                                                                         <TableHead className="w-[130px]">Status</TableHead>
                                                                         <TableHead className="text-right">Notes</TableHead>
-                                                                        {selectedRun.status !== 'paid' && <TableHead className="w-[80px]"></TableHead>}
+                                                                        <TableHead className="w-[80px]"></TableHead>
                                                                     </TableRow>
                                                                 </TableHeader>
                                                                 <TableBody>
@@ -1551,23 +1551,21 @@ export default function PaydayPage() {
                                                             <Table>
                                                                 <TableHeader className="bg-muted/10">
                                                                     <TableRow className="border-muted/20">
-                                                                        {selectedRun.status !== 'paid' && (
-                                                                            <TableHead className="w-[40px] pl-4">
-                                                                                <input 
-                                                                                    type="checkbox"
-                                                                                    checked={group.vendors.length > 0 && group.vendors.every(item => selectedItemIds.includes(item.id))}
-                                                                                    onChange={(e) => handleSelectAllFiltered(group.vendors, e.target.checked)}
-                                                                                    className="rounded border-muted/30 h-4 w-4 bg-background/50 text-primary focus:ring-primary focus:ring-offset-0 focus:ring-0 cursor-pointer"
-                                                                                />
-                                                                            </TableHead>
-                                                                        )}
+                                                                        <TableHead className="w-[40px] pl-4">
+                                                                            <input 
+                                                                                type="checkbox"
+                                                                                checked={group.vendors.length > 0 && group.vendors.every(item => selectedItemIds.includes(item.id))}
+                                                                                onChange={(e) => handleSelectAllFiltered(group.vendors, e.target.checked)}
+                                                                                className="rounded border-muted/30 h-4 w-4 bg-background/50 text-primary focus:ring-primary focus:ring-offset-0 focus:ring-0 cursor-pointer"
+                                                                            />
+                                                                        </TableHead>
                                                                         <TableHead>Recipient (Supplier)</TableHead>
                                                                         <TableHead>Reference Details</TableHead>
                                                                         <TableHead>Amount Due</TableHead>
                                                                         <TableHead className="w-[140px]">Amount Paid (₹)</TableHead>
                                                                         <TableHead className="w-[130px]">Status</TableHead>
                                                                         <TableHead className="text-right">Notes</TableHead>
-                                                                        {selectedRun.status !== 'paid' && <TableHead className="w-[80px]"></TableHead>}
+                                                                        <TableHead className="w-[80px]"></TableHead>
                                                                     </TableRow>
                                                                 </TableHeader>
                                                                 <TableBody>
@@ -1587,23 +1585,21 @@ export default function PaydayPage() {
                                                             <Table>
                                                                 <TableHeader className="bg-muted/10">
                                                                     <TableRow className="border-muted/20">
-                                                                        {selectedRun.status !== 'paid' && (
-                                                                            <TableHead className="w-[40px] pl-4">
-                                                                                <input 
-                                                                                    type="checkbox"
-                                                                                    checked={group.others.length > 0 && group.others.every(item => selectedItemIds.includes(item.id))}
-                                                                                    onChange={(e) => handleSelectAllFiltered(group.others, e.target.checked)}
-                                                                                    className="rounded border-muted/30 h-4 w-4 bg-background/50 text-primary focus:ring-primary focus:ring-offset-0 focus:ring-0 cursor-pointer"
-                                                                                />
-                                                                            </TableHead>
-                                                                        )}
+                                                                        <TableHead className="w-[40px] pl-4">
+                                                                            <input 
+                                                                                type="checkbox"
+                                                                                checked={group.others.length > 0 && group.others.every(item => selectedItemIds.includes(item.id))}
+                                                                                onChange={(e) => handleSelectAllFiltered(group.others, e.target.checked)}
+                                                                                className="rounded border-muted/30 h-4 w-4 bg-background/50 text-primary focus:ring-primary focus:ring-offset-0 focus:ring-0 cursor-pointer"
+                                                                            />
+                                                                        </TableHead>
                                                                         <TableHead>Recipient</TableHead>
                                                                         <TableHead>Reference Details</TableHead>
                                                                         <TableHead>Amount Due</TableHead>
                                                                         <TableHead className="w-[140px]">Amount Paid (₹)</TableHead>
                                                                         <TableHead className="w-[130px]">Status</TableHead>
                                                                         <TableHead className="text-right">Notes</TableHead>
-                                                                        {selectedRun.status !== 'paid' && <TableHead className="w-[80px]"></TableHead>}
+                                                                        <TableHead className="w-[80px]"></TableHead>
                                                                     </TableRow>
                                                                 </TableHeader>
                                                                 <TableBody>
@@ -1621,7 +1617,7 @@ export default function PaydayPage() {
                         </Card>
 
                         {/* Floating Bulk Actions Bar */}
-                        {selectedItemIds.length > 0 && selectedRun.status !== 'paid' && (
+                        {selectedItemIds.length > 0 && (
                             <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-2xl px-4 animate-in fade-in slide-in-from-bottom-5 duration-300">
                                 <div className="glass shadow-2xl border border-primary/20 rounded-2xl px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background/85 backdrop-blur-xl">
                                     <div className="flex items-center gap-2">

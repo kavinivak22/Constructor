@@ -536,6 +536,10 @@ export async function updatePayoutItem(id: string, data: {
 
         if (fetchError || !item) throw new Error('Payout item not found')
 
+        const originalStatus = item.status
+        const originalAmountPaid = Number(item.amount_paid)
+        const originalProjectId = item.project_id
+
         // Update item details
         const { error: updateError } = await supabase
             .from('payout_items')
@@ -543,6 +547,23 @@ export async function updatePayoutItem(id: string, data: {
             .eq('id', id)
 
         if (updateError) throw updateError
+
+        // Fetch the updated item to pass to the helper
+        const { data: updatedItem } = await supabase
+            .from('payout_items')
+            .select('*')
+            .eq('id', id)
+            .single()
+
+        if (updatedItem) {
+            await syncExpenseForPayoutItem(
+                supabase,
+                updatedItem,
+                originalStatus,
+                originalAmountPaid,
+                originalProjectId
+            )
+        }
 
         // Trigger payment reconciliation for linked labor logs or PO
         const statusToApply = data.status || item.status
@@ -609,6 +630,15 @@ export async function deletePayoutItem(id: string) {
             .single()
 
         if (fetchError || !item) throw new Error('Payout item not found')
+
+        // Delete associated expense if it exists
+        await syncExpenseForPayoutItem(
+            supabase,
+            { ...item, status: 'pending' },
+            item.status,
+            Number(item.amount_paid),
+            item.project_id
+        )
 
         // 2. Delete the item
         const { error: deleteError } = await supabase
@@ -698,6 +728,27 @@ export async function bulkUpdatePayoutItems(ids: string[], updates: {
 
         if (updateError) throw updateError
 
+        // Fetch fresh updated items and sync expenses
+        const { data: updatedItems } = await supabase
+            .from('payout_items')
+            .select('*')
+            .in('id', ids)
+
+        if (updatedItems) {
+            for (const updatedItem of updatedItems) {
+                const original = items.find(i => i.id === updatedItem.id)
+                if (original) {
+                    await syncExpenseForPayoutItem(
+                        supabase,
+                        updatedItem,
+                        original.status,
+                        Number(original.amount_paid),
+                        original.project_id
+                    )
+                }
+            }
+        }
+
         // Trigger reconciliation for each affected item
         const affectedLaborEntryIds = new Set<string>()
         const affectedPOIds = new Set<string>()
@@ -774,6 +825,17 @@ export async function bulkDeletePayoutItems(ids: string[]) {
             .in('id', ids)
 
         if (fetchError || !items) throw new Error('Payout items not found')
+
+        // Delete associated expenses first
+        for (const item of items) {
+            await syncExpenseForPayoutItem(
+                supabase,
+                { ...item, status: 'pending' },
+                item.status,
+                Number(item.amount_paid),
+                item.project_id
+            )
+        }
 
         // Delete items from database
         const { error: deleteError } = await supabase
@@ -991,7 +1053,7 @@ export async function processWeeklyPayout(payoutId: string, status: 'approved' |
                             expense_date: new Date().toISOString().split('T')[0],
                             created_by: user.id,
                             payment_status: 'paid',
-                            notes: `Auto-generated from Pay-Day run. ${item.notes || ''}`,
+                            notes: `Auto-generated from Pay-Day run. Item ID: ${item.id}. ${item.notes || ''}`,
                             created_at: new Date().toISOString()
                         })
                     }
@@ -1491,6 +1553,115 @@ export async function reconcilePOPayment(supabase: any, poId: string) {
             .eq('id', poId)
     } catch (err) {
         console.error('Error in reconcilePOPayment:', err)
+    }
+}
+
+export async function syncExpenseForPayoutItem(
+    supabase: any,
+    item: any,
+    originalStatus: string,
+    originalAmountPaid: number,
+    originalProjectId: string | null
+) {
+    try {
+        // Find existing expense if any
+        // Search by Item ID in notes first
+        const { data: expensesByNote } = await supabase
+            .from('expenses')
+            .select('*')
+            .like('notes', `%Item ID: ${item.id}%`)
+        
+        let existingExpense = expensesByNote?.[0] || null
+
+        // Fallback search by description, project, and amount for legacy runs
+        if (!existingExpense && originalProjectId) {
+            let displayDetails = item.reference_details || 'Weekly Payout'
+            if (item.reference_details?.startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(item.reference_details)
+                    if (parsed && parsed.type === 'contractor_wages') {
+                        const categories = (parsed.breakdown || []).map((b: any) => b.category).join(', ')
+                        displayDetails = `Contractor Wages: ${categories}`
+                    }
+                } catch (e) {}
+            }
+            const expectedDesc = `Payout: ${item.recipient_name} (${displayDetails})`
+            
+            const { data: legacyExpenses } = await supabase
+                .from('expenses')
+                .select('*')
+                .eq('project_id', originalProjectId)
+                .eq('amount', originalAmountPaid)
+                .eq('description', expectedDesc)
+            
+            existingExpense = legacyExpenses?.[0] || null
+        }
+
+        const shouldHaveExpense = item.status === 'paid' && item.project_id
+
+        if (shouldHaveExpense) {
+            let category = 'Labor'
+            if (item.recipient_type === 'vendor_payment') {
+                category = 'Materials'
+            } else if (item.recipient_type === 'other') {
+                category = 'Other'
+            }
+
+            let displayDetails = item.reference_details || 'Weekly Payout'
+            if (item.reference_details?.startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(item.reference_details)
+                    if (parsed && parsed.type === 'contractor_wages') {
+                        const categories = (parsed.breakdown || []).map((b: any) => b.category).join(', ')
+                        displayDetails = `Contractor Wages: ${categories}`
+                    }
+                } catch (e) {}
+            }
+
+            const expensePayload = {
+                project_id: item.project_id,
+                category: category,
+                amount: Number(item.amount_paid),
+                description: `Payout: ${item.recipient_name} (${displayDetails})`,
+                notes: `Auto-generated from Pay-Day run. Item ID: ${item.id}. ${item.notes || ''}`,
+                payment_status: 'paid'
+            }
+
+            if (existingExpense) {
+                // Update existing expense
+                await supabase
+                    .from('expenses')
+                    .update(expensePayload)
+                    .eq('id', existingExpense.id)
+            } else {
+                // Fetch the creator user from the payout run to assign it
+                const { data: payout } = await supabase
+                    .from('weekly_payouts')
+                    .select('created_by')
+                    .eq('id', item.payout_id)
+                    .single()
+
+                // Insert new expense
+                await supabase
+                    .from('expenses')
+                    .insert({
+                        ...expensePayload,
+                        expense_date: new Date().toISOString().split('T')[0],
+                        created_by: payout?.created_by || null,
+                        created_at: new Date().toISOString()
+                    })
+            }
+        } else {
+            // Delete existing expense if it shouldn't exist anymore
+            if (existingExpense) {
+                await supabase
+                    .from('expenses')
+                    .delete()
+                    .eq('id', existingExpense.id)
+            }
+        }
+    } catch (err) {
+        console.error('Error in syncExpenseForPayoutItem:', err)
     }
 }
 

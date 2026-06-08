@@ -20,6 +20,7 @@ import {
   Bell,
   User as UserIcon,
   Coins,
+  PhoneCall,
 
 } from 'lucide-react';
 import {
@@ -49,6 +50,7 @@ const links = [
   { href: '/inventory', label: 'Inventory', icon: Package },
   { href: '/purchase-orders', label: 'Purchase Orders', icon: ShoppingCart },
   { href: '/worklog', label: 'Daily Worklog', icon: ClipboardPen },
+  { href: '/work-prep', label: 'Work Prep', icon: PhoneCall },
   { href: '/team-hub', label: 'Team Hub', icon: MessageSquare },
   { href: '/analytics', label: 'Analytics', icon: AreaChart },
 ];

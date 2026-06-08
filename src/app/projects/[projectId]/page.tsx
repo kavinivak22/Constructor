@@ -275,6 +275,9 @@ export default function ProjectDetailsPage() {
                     <Button variant="outline" asChild>
                         <Link href={`/projects/${projectId}/expenses`}>View Expenses</Link>
                     </Button>
+                    <Button variant="outline" asChild>
+                        <Link href={`/work-prep?projectId=${projectIdString}`}>Tomorrow's Prep</Link>
+                    </Button>
                     <CreateWorklogDialog
                         projectId={projectIdString}
                         trigger={<Button variant="outline">Add Update</Button>}
