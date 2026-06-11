@@ -114,7 +114,7 @@ export async function getContractorAccounts() {
         const contractorIds = contractors.map(c => c.id);
         const { data: payoutItems, error: pError } = await supabase
             .from('payout_items')
-            .select('*, payout:payout_id(week_start_date, week_end_date)')
+            .select('*, project:project_id(name), payout:payout_id(week_start_date, week_end_date)')
             .in('recipient_id', contractorIds);
 
         if (pError) throw pError;

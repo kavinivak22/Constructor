@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import {
     getWeeklyPayouts,
     getPayoutItems,
@@ -92,6 +93,8 @@ interface Project {
 
 export default function PaydayPage() {
     const { toast } = useToast()
+    const searchParams = useSearchParams()
+    const payoutIdParam = searchParams?.get('payoutId')
     const [runs, setRuns] = useState<PayoutRun[]>([])
     const [selectedRun, setSelectedRun] = useState<PayoutRun | null>(null)
     const [items, setItems] = useState<PayoutItem[]>([])
@@ -151,6 +154,13 @@ export default function PaydayPage() {
         try {
             const data = await getWeeklyPayouts()
             setRuns(data as PayoutRun[])
+            
+            if (payoutIdParam) {
+                const matched = (data as PayoutRun[]).find(r => r.id === payoutIdParam)
+                if (matched) {
+                    handleSelectRun(matched)
+                }
+            }
         } catch (error) {
             console.error('Error loading payout runs:', error)
             toast({
