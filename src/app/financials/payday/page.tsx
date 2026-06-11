@@ -1026,6 +1026,25 @@ export default function PaydayPage() {
                             </div>
                         )}
 
+                        {isEditing && (
+                            <div className="mt-1.5 space-y-1 w-full max-w-[200px]">
+                                <Label className="text-[9px] uppercase font-bold tracking-wider text-muted-foreground/60">Reference Details</Label>
+                                <Input
+                                    value={editReferenceDetails}
+                                    onChange={(e) => setEditReferenceDetails(e.target.value)}
+                                    className="h-7 bg-background border-muted/40 text-[10px] px-2 py-0.5 font-normal"
+                                    placeholder="Invoice, rent, utilities code..."
+                                />
+                            </div>
+                        )}
+
+                        {!isEditing && !isContractorWages && item.reference_details && (
+                            <div className="pl-6 text-[11px] font-normal text-muted-foreground/80 flex items-center gap-1.5 flex-wrap">
+                                <span className="font-semibold text-foreground/75">Ref:</span>
+                                <span className="italic text-foreground/90">{item.reference_details}</span>
+                            </div>
+                        )}
+
                         {isContractorWages && contractorWagesData && (
                             <div className="pl-6 space-y-2 font-normal text-muted-foreground">
                                 {/* Combined Work Descriptions */}
@@ -1065,21 +1084,7 @@ export default function PaydayPage() {
                     </div>
                 </TableCell>
                 
-                {/* Reference details cell */}
-                <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate font-normal">
-                    {isEditing ? (
-                        <Input
-                            value={editReferenceDetails}
-                            onChange={(e) => setEditReferenceDetails(e.target.value)}
-                            className="h-8 bg-background border-muted/40 focus:ring-primary text-xs w-full px-2 py-1"
-                            placeholder="Reference / Particulars"
-                        />
-                    ) : (
-                        isContractorWages && contractorWagesData
-                            ? `Contractor Payout (${contractorWagesData.breakdown.map(b => b.category).join(', ')})`
-                            : (item.reference_details || 'N/A')
-                    )}
-                </TableCell>
+
 
                 <TableCell className="font-mono text-muted-foreground text-xs">
                     ₹{item.amount_due.toLocaleString('en-IN')}
@@ -1610,7 +1615,6 @@ export default function PaydayPage() {
                                                                                             />
                                                                                         </TableHead>
                                                                                         <TableHead className="min-w-[320px]">Type / Particulars</TableHead>
-                                                                                        <TableHead>Reference Details</TableHead>
                                                                                         <TableHead>Amount Due</TableHead>
                                                                                         <TableHead className="w-[140px]">Amount Paid (₹)</TableHead>
                                                                                         <TableHead className="w-[130px]">Status</TableHead>
@@ -1649,7 +1653,6 @@ export default function PaydayPage() {
                                                                             />
                                                                         </TableHead>
                                                                         <TableHead className="min-w-[320px]">Supplier Name</TableHead>
-                                                                        <TableHead>Reference Details</TableHead>
                                                                         <TableHead>Amount Due</TableHead>
                                                                         <TableHead className="w-[140px]">Amount Paid (₹)</TableHead>
                                                                         <TableHead className="w-[130px]">Status</TableHead>
@@ -1684,7 +1687,6 @@ export default function PaydayPage() {
                                                                             />
                                                                         </TableHead>
                                                                         <TableHead className="min-w-[320px]">Recipient Name</TableHead>
-                                                                        <TableHead>Reference Details</TableHead>
                                                                         <TableHead>Amount Due</TableHead>
                                                                         <TableHead className="w-[140px]">Amount Paid (₹)</TableHead>
                                                                         <TableHead className="w-[130px]">Status</TableHead>
@@ -1719,7 +1721,6 @@ export default function PaydayPage() {
                                                                             />
                                                                         </TableHead>
                                                                         <TableHead className="min-w-[320px]">Recipient</TableHead>
-                                                                        <TableHead>Reference Details</TableHead>
                                                                         <TableHead>Amount Due</TableHead>
                                                                         <TableHead className="w-[140px]">Amount Paid (₹)</TableHead>
                                                                         <TableHead className="w-[130px]">Status</TableHead>
