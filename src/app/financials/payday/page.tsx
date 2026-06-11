@@ -947,7 +947,7 @@ export default function PaydayPage() {
                             className="rounded border-muted/30 h-4 w-4 bg-background/50 text-primary focus:ring-primary focus:ring-offset-0 focus:ring-0 cursor-pointer"
                         />
                     </TableCell>
-                <TableCell className="font-semibold text-foreground py-3">
+                <TableCell className="font-semibold text-foreground py-3 min-w-[320px]">
                     <div className="flex flex-col space-y-1.5">
                         <div className="flex items-center gap-2 flex-wrap">
                             {item.recipient_type === 'vendor_payment' ? (
@@ -1043,7 +1043,7 @@ export default function PaydayPage() {
                                             <Badge
                                                 key={idx}
                                                 variant="outline"
-                                                className="text-[10px] bg-sky-500/5 text-sky-300 border-sky-500/10 font-normal px-2 py-0.5"
+                                                className="text-[10px] bg-sky-500/5 text-sky-300 border-sky-500/10 font-normal px-2 py-0.5 whitespace-nowrap"
                                             >
                                                 <span className="font-medium text-foreground">{cat.category}</span>: {cat.days} {cat.days === 1 ? 'day' : 'days'} @ ₹{cat.rate} = <span className="font-semibold text-emerald-400">₹{cat.amount.toLocaleString('en-IN')}</span>
                                             </Badge>
@@ -1609,7 +1609,7 @@ export default function PaydayPage() {
                                                                                                 className="rounded border-muted/30 h-4 w-4 bg-background/50 text-primary focus:ring-primary focus:ring-offset-0 focus:ring-0 cursor-pointer"
                                                                                             />
                                                                                         </TableHead>
-                                                                                        <TableHead>Type / Particulars</TableHead>
+                                                                                        <TableHead className="min-w-[320px]">Type / Particulars</TableHead>
                                                                                         <TableHead>Reference Details</TableHead>
                                                                                         <TableHead>Amount Due</TableHead>
                                                                                         <TableHead className="w-[140px]">Amount Paid (₹)</TableHead>
@@ -1648,7 +1648,7 @@ export default function PaydayPage() {
                                                                                 className="rounded border-muted/30 h-4 w-4 bg-background/50 text-primary focus:ring-primary focus:ring-offset-0 focus:ring-0 cursor-pointer"
                                                                             />
                                                                         </TableHead>
-                                                                        <TableHead>Supplier Name</TableHead>
+                                                                        <TableHead className="min-w-[320px]">Supplier Name</TableHead>
                                                                         <TableHead>Reference Details</TableHead>
                                                                         <TableHead>Amount Due</TableHead>
                                                                         <TableHead className="w-[140px]">Amount Paid (₹)</TableHead>
@@ -1683,7 +1683,7 @@ export default function PaydayPage() {
                                                                                 className="rounded border-muted/30 h-4 w-4 bg-background/50 text-primary focus:ring-primary focus:ring-offset-0 focus:ring-0 cursor-pointer"
                                                                             />
                                                                         </TableHead>
-                                                                        <TableHead>Recipient Name</TableHead>
+                                                                        <TableHead className="min-w-[320px]">Recipient Name</TableHead>
                                                                         <TableHead>Reference Details</TableHead>
                                                                         <TableHead>Amount Due</TableHead>
                                                                         <TableHead className="w-[140px]">Amount Paid (₹)</TableHead>
@@ -1718,7 +1718,7 @@ export default function PaydayPage() {
                                                                                 className="rounded border-muted/30 h-4 w-4 bg-background/50 text-primary focus:ring-primary focus:ring-offset-0 focus:ring-0 cursor-pointer"
                                                                             />
                                                                         </TableHead>
-                                                                        <TableHead>Recipient</TableHead>
+                                                                        <TableHead className="min-w-[320px]">Recipient</TableHead>
                                                                         <TableHead>Reference Details</TableHead>
                                                                         <TableHead>Amount Due</TableHead>
                                                                         <TableHead className="w-[140px]">Amount Paid (₹)</TableHead>
