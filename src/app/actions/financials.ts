@@ -541,9 +541,16 @@ export async function updatePayoutItem(id: string, data: {
         const originalProjectId = item.project_id
 
         // Update item details
+        const updatePayload: any = { ...data }
+        if (data.status === 'paid' && originalStatus !== 'paid') {
+            updatePayload.paid_at = new Date().toISOString()
+        } else if (data.status && data.status !== 'paid') {
+            updatePayload.paid_at = null
+        }
+
         const { error: updateError } = await supabase
             .from('payout_items')
-            .update(data)
+            .update(updatePayload)
             .eq('id', id)
 
         if (updateError) throw updateError
@@ -718,7 +725,14 @@ export async function bulkUpdatePayoutItems(ids: string[], updates: {
 
         // Update items in database
         const payload: any = {}
-        if (updates.status !== undefined) payload.status = updates.status
+        if (updates.status !== undefined) {
+            payload.status = updates.status
+            if (updates.status === 'paid') {
+                payload.paid_at = new Date().toISOString()
+            } else {
+                payload.paid_at = null
+            }
+        }
         if (updates.project_id !== undefined) payload.project_id = updates.project_id
 
         const { error: updateError } = await supabase
@@ -999,7 +1013,7 @@ export async function processWeeklyPayout(payoutId: string, status: 'approved' |
                 for (const item of items) {
                     await supabase
                         .from('payout_items')
-                        .update({ status: 'paid' })
+                        .update({ status: 'paid', paid_at: new Date().toISOString() })
                         .eq('id', item.id)
 
                     // Run payment reconciliation for this item
@@ -1367,7 +1381,8 @@ export async function splitPayoutItem(itemId: string, rateAmount: number, nmrAmo
                 amount_due: rateAmount,
                 amount_paid: rateAmount,
                 payout_class: 'rate',
-                reference_details: rateDetails
+                reference_details: rateDetails,
+                paid_at: item.status === 'paid' ? (item.paid_at || new Date().toISOString()) : null
             })
             .eq('id', itemId)
 
@@ -1387,7 +1402,8 @@ export async function splitPayoutItem(itemId: string, rateAmount: number, nmrAmo
                 project_id: item.project_id,
                 reference_details: nmrDetails,
                 payout_class: 'nmr',
-                notes: `Split from original payout. ${item.notes || ''}`
+                notes: `Split from original payout. ${item.notes || ''}`,
+                paid_at: item.status === 'paid' ? (item.paid_at || new Date().toISOString()) : null
             })
 
         if (insertError) throw insertError

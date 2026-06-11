@@ -365,7 +365,7 @@ export default function ContractorAccountsPage() {
                                             <Table>
                                                 <TableHeader className="bg-muted/10">
                                                     <TableRow className="border-muted/20">
-                                                        <TableHead className="text-xs">Date / Week</TableHead>
+                                                        <TableHead className="text-xs">Date</TableHead>
                                                         <TableHead className="text-xs">Classification</TableHead>
                                                         <TableHead className="text-xs">Details</TableHead>
                                                         <TableHead className="text-xs text-right">Amount</TableHead>
@@ -383,10 +383,15 @@ export default function ContractorAccountsPage() {
                                                         selectedAccount.allTransactions.map((tx) => (
                                                             <TableRow key={tx.id} className="border-muted/15 hover:bg-muted/5 text-xs">
                                                                 <TableCell className="font-medium">
-                                                                    {tx.payout?.week_start_date ? (
-                                                                        <span>{tx.payout.week_start_date} to {tx.payout.week_end_date}</span>
+                                                                    {tx.status === 'paid' ? (
+                                                                        <span>
+                                                                            {(() => {
+                                                                                const d = new Date(tx.paid_at || tx.created_at);
+                                                                                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                                                                            })()}
+                                                                        </span>
                                                                     ) : (
-                                                                        <span>{new Date(tx.created_at).toLocaleDateString('en-IN')}</span>
+                                                                        <span className="text-muted-foreground italic font-normal">Pending Settlement</span>
                                                                     )}
                                                                 </TableCell>
                                                                 <TableCell>
@@ -432,7 +437,7 @@ export default function ContractorAccountsPage() {
                                             <Table>
                                                 <TableHeader className="bg-muted/10">
                                                     <TableRow className="border-muted/20">
-                                                        <TableHead className="text-xs">Date / Period</TableHead>
+                                                        <TableHead className="text-xs">Date</TableHead>
                                                         <TableHead className="text-xs">Reference</TableHead>
                                                         <TableHead className="text-xs text-right">Settled Amount</TableHead>
                                                         <TableHead className="text-xs text-right">Status</TableHead>
@@ -449,10 +454,15 @@ export default function ContractorAccountsPage() {
                                                         selectedAccount.rateAccount.items.map((tx) => (
                                                             <TableRow key={tx.id} className="border-muted/15 hover:bg-muted/5 text-xs">
                                                                 <TableCell className="font-medium">
-                                                                    {tx.payout?.week_start_date ? (
-                                                                        <span>{tx.payout.week_start_date} to {tx.payout.week_end_date}</span>
+                                                                    {tx.status === 'paid' ? (
+                                                                        <span>
+                                                                            {(() => {
+                                                                                const d = new Date(tx.paid_at || tx.created_at);
+                                                                                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                                                                            })()}
+                                                                        </span>
                                                                     ) : (
-                                                                        <span>{new Date(tx.created_at).toLocaleDateString('en-IN')}</span>
+                                                                        <span className="text-muted-foreground italic font-normal">Pending Settlement</span>
                                                                     )}
                                                                 </TableCell>
                                                                 <TableCell className="text-muted-foreground truncate">
@@ -493,7 +503,7 @@ export default function ContractorAccountsPage() {
                                             <Table>
                                                 <TableHeader className="bg-muted/10">
                                                     <TableRow className="border-muted/20">
-                                                        <TableHead className="text-xs">Date / Period</TableHead>
+                                                        <TableHead className="text-xs">Date</TableHead>
                                                         <TableHead className="text-xs">Reference</TableHead>
                                                         <TableHead className="text-xs text-right">Paid Amount</TableHead>
                                                         <TableHead className="text-xs text-right">Status</TableHead>
@@ -510,10 +520,15 @@ export default function ContractorAccountsPage() {
                                                         selectedAccount.nmrAccount.items.map((tx) => (
                                                             <TableRow key={tx.id} className="border-muted/15 hover:bg-muted/5 text-xs">
                                                                 <TableCell className="font-medium">
-                                                                    {tx.payout?.week_start_date ? (
-                                                                        <span>{tx.payout.week_start_date} to {tx.payout.week_end_date}</span>
+                                                                    {tx.status === 'paid' ? (
+                                                                        <span>
+                                                                            {(() => {
+                                                                                const d = new Date(tx.paid_at || tx.created_at);
+                                                                                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                                                                            })()}
+                                                                        </span>
                                                                     ) : (
-                                                                        <span>{new Date(tx.created_at).toLocaleDateString('en-IN')}</span>
+                                                                        <span className="text-muted-foreground italic font-normal">Pending Settlement</span>
                                                                     )}
                                                                 </TableCell>
                                                                 <TableCell className="text-muted-foreground truncate">
