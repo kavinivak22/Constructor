@@ -67,8 +67,25 @@ const dictionary: Dictionary = {
 
 // Full Phrase Translation Mapping for Universal App Text Replacement
 const phraseMap: Record<string, string> = {
+  // Phrases & Headlines
   'Contractor Accounts & Ledgers': 'ஒப்பந்ததாரர் கணக்குகள் & பேரேடு',
   'Track and reconcile contractor square-footage Rate contracts and NMR labor wage accounts separately for settlements.': 'சதுர அடி ஒப்பந்தம் மற்றும் NMR தினசரி கூலி கணக்குகளை தனித்தனியாக பராமரிக்கவும்.',
+  "Tomorrow's Work Preparation": 'நாளை பணி தயாரிப்பு',
+  'Daily Prep Board': 'தினசரி தயாரிப்பு பலகை',
+  'Start Prep Plan': 'தயாரிப்பு திட்டத்தை தொடங்கவும்',
+  'Active Projects': 'செயலில் உள்ள திட்டங்கள்',
+  'View All': 'அனைத்தையும் பார்க்க',
+  'No Projects Yet': 'திட்டங்கள் எதுவும் இல்லை',
+  'Get started by creating your first project.': 'உங்கள் முதல் திட்டத்தை உருவாக்கி தொடங்கவும்.',
+  'Create Project': 'திட்டத்தை உருவாக்க',
+  'My Tasks': 'எனது பணிகள்',
+  'Recent Activity': 'சமீபத்திய செயல்பாடுகள்',
+  'Low Stock Warning': 'குறைந்த கையிருப்பு எச்சரிக்கை',
+  'Approval Overdue': 'அனுமதி நிலுவையில் உள்ளது',
+  'Task Nearing Deadline': 'பணியின் கடைசி நாள் அருகில் உள்ளது',
+  'Add Worklog': 'பணிப்பதிவு சேர்க்க',
+  'Add Expense': 'செலவு சேர்க்க',
+  'View Materials': 'பொருட்களை பார்க்க',
   'View by Contractor': 'ஒப்பந்ததாரர் வாரியாக பார்க்க',
   'View by Building / Site': 'கட்டிடம் / தளம் வாரியாக பார்க்க',
   'Rate Contract Outstanding': 'சதுர அடி ஒப்பந்த நிலுவை',
@@ -77,13 +94,8 @@ const phraseMap: Record<string, string> = {
   'NMR Labor Settled': 'NMR கூலி வழங்கப்பட்டது',
   'Active Contractor Accounts': 'செயலில் உள்ள ஒப்பந்ததாரர் கணக்குகள்',
   'Consolidated ledger view showing contract vs daily wage outstanding balances.': 'ஒப்பந்தம் மற்றும் தினசரி கூலி நிலுவை தொகையின் ஒருங்கிணைந்த பார்வை.',
-  'Contractor': 'ஒப்பந்ததாரர்',
-  'Category': 'பிரிவு',
   'Rate Contract Account (Sq.Ft)': 'சதுர அடி ஒப்பந்த கணக்கு',
   'NMR Account (Daily Wages)': 'NMR தினசரி கூலி கணக்கு',
-  'Actions': 'செயல்கள்',
-  'Cleared': 'தீர்க்கப்பட்டது',
-  'Outstanding': 'நிலுவையில் உள்ள தொகை',
   'View Ledger': 'கணக்கை பார்க்க',
   'View Site Ledger': 'தள கணக்கை பார்க்க',
   'Back to Accounts': 'கணக்கு பட்டியலுக்கு திரும்புக',
@@ -92,11 +104,6 @@ const phraseMap: Record<string, string> = {
   'NMR Account (Labor)': 'NMR கூலி கணக்கு',
   'Total Paid': 'மொத்தம் செலுத்தப்பட்டது',
   'Total Outstanding': 'மொத்த நிலுவை தொகை',
-  'Date': 'தேதி',
-  'Classification': 'வகைப்பாடு',
-  'Details': 'விவரங்கள்',
-  'Amount': 'தொகை',
-  'Status': 'நிலை',
   'Go to Pay-Run Details': 'சம்பள விவரங்களுக்கு செல்லவும்',
   'Weekly Pay-Day': 'வாராந்திர சம்பள நாள்',
   'Salary Profiles': 'சம்பள சுயவிவரங்கள்',
@@ -140,7 +147,35 @@ const phraseMap: Record<string, string> = {
   'Close Statement': 'கணக்கு அறிக்கையை மூடுக',
   'Select a Building': 'ஒரு கட்டிடத்தை தேர்ந்தெடுக்கவும்',
   'No Contractors Found on Site': 'தளத்தில் ஒப்பந்ததாரர்கள் யாரும் இல்லை',
+  'Add a new personal task...': 'புதிய தனிப்பட்ட பணியை சேர்க்க...',
+  'No tasks yet. Add one above to get started!': 'பணிகள் எதுவும் இல்லை. தொடங்க மேலே ஒன்றை சேர்க்கவும்!',
+  'No recent activity.': 'சமீபத்திய செயல்பாடுகள் எதுவும் இல்லை.',
+
+  // Common Vocabulary Words
+  'Contractor': 'ஒப்பந்ததாரர்',
+  'Category': 'பிரிவு',
+  'Actions': 'செயல்கள்',
+  'Cleared': 'தீர்க்கப்பட்டது',
+  'Outstanding': 'நிலுவையில் உள்ள தொகை',
+  'Date': 'தேதி',
+  'Classification': 'வகைப்பாடு',
+  'Details': 'விவரங்கள்',
+  'Amount': 'தொகை',
+  'Status': 'நிலை',
+  'Progress': 'முன்னேற்றம்',
+  'hours ago': 'மணிநேரத்திற்கு முன்பு',
+  'hour ago': 'மணிநேரத்திற்கு முன்பு',
+  'days ago': 'நாட்களுக்கு முன்பு',
+  'day ago': 'நாளுக்கு முன்பு',
+  'worked on site': 'தளத்தில் வேலை செய்தார்',
+  'used': 'பயன்படுத்தப்பட்டது',
+  'added': 'சேர்க்கப்பட்டது',
+  'photo': 'புகைப்படம்',
+  'photos': 'புகைப்படங்கள்',
 };
+
+// Pre-sort phrases by length descending to match longest sentences first
+const sortedPhrases = Object.keys(phraseMap).sort((a, b) => b.length - a.length);
 
 interface I18nContextType {
   language: Language;
@@ -164,18 +199,27 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // DOM Auto-Translation Engine Effect when language === 'ta'
+  // Universal Substring DOM Auto-Translation Engine when language === 'ta'
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const translateDOMNode = (node: Node) => {
-      if (node.nodeType === Node.TEXT_NODE && node.nodeValue) {
-        const trimmed = node.nodeValue.trim();
-        if (phraseMap[trimmed] && language === 'ta') {
-          node.nodeValue = node.nodeValue.replace(trimmed, phraseMap[trimmed]);
+      if (node.nodeType === Node.TEXT_NODE && node.nodeValue && language === 'ta') {
+        let val = node.nodeValue;
+        let modified = false;
+
+        for (let i = 0; i < sortedPhrases.length; i++) {
+          const phrase = sortedPhrases[i];
+          if (val.includes(phrase)) {
+            val = val.replaceAll(phrase, phraseMap[phrase]);
+            modified = true;
+          }
+        }
+
+        if (modified) {
+          node.nodeValue = val;
         }
       } else if (node.nodeType === Node.ELEMENT_NODE) {
-        // Skip script and style tags
         const elem = node as HTMLElement;
         if (elem.tagName === 'SCRIPT' || elem.tagName === 'STYLE' || elem.tagName === 'INPUT' || elem.tagName === 'TEXTAREA') {
           return;
@@ -200,7 +244,7 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 
     return () => {
       observer.disconnect();
