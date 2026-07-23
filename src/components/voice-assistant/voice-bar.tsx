@@ -211,10 +211,10 @@ export function VoiceBar() {
   return (
     <>
       {/* Floating Mic Orb / Assistant Controller */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+      <div className="fixed bottom-24 right-4 sm:bottom-6 sm:right-6 z-[100] flex flex-col items-end gap-3">
         {/* Expanded Voice Control Card */}
         {isOpen && (
-          <Card className="w-80 sm:w-96 glass border-primary/30 shadow-2xl overflow-hidden backdrop-blur-2xl animate-in slide-in-from-bottom-5">
+          <Card className="w-[calc(100vw-2rem)] max-w-sm sm:w-96 glass border-primary/30 shadow-2xl overflow-hidden backdrop-blur-2xl animate-in slide-in-from-bottom-5">
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center justify-between border-b border-border/40 pb-2">
                 <div className="flex items-center gap-2">
