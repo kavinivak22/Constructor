@@ -14,6 +14,12 @@ const dictionary: Dictionary = {
   purchaseOrders: { en: 'Purchase Orders', ta: 'கொள்முதல் ஆணைகள்' },
   dailyWorklog: { en: 'Daily Worklog', ta: 'தினசரி பணிப்பதிவு' },
   workPrep: { en: 'Work Prep', ta: 'பணி தயாரிப்பு' },
+  teamHub: { en: 'Team Hub', ta: 'குழு மையம்' },
+  analytics: { en: 'Analytics', ta: 'பகுப்பாய்வு' },
+  aiEstimation: { en: 'AI Estimation', ta: 'AI மதிப்பீடு' },
+  notifications: { en: 'Notifications', ta: 'அறிவிப்புகள்' },
+  personalPouch: { en: 'Personal Pouch', ta: 'தனிப்பட்ட பை' },
+  projectPouch: { en: 'Project Pouch', ta: 'திட்டப் பை' },
   financials: { en: 'Financials', ta: 'நிதி கணக்குகள்' },
   salaryProfiles: { en: 'Salary Profiles', ta: 'சம்பள சுயவிவரங்கள்' },
   weeklyPayday: { en: 'Weekly Pay-Day', ta: 'வாராந்திர சம்பள நாள்' },
@@ -21,6 +27,13 @@ const dictionary: Dictionary = {
   projectExpenses: { en: 'Project Expenses', ta: 'திட்ட செலவுகள்' },
   materialReconciliation: { en: 'Material Reconciliation', ta: 'பொருள் கணக்கு சமரசம்' },
   clientMilestones: { en: 'Client Payment Milestones', ta: 'வாடிக்கையாளர் தவணை பணம்' },
+  employees: { en: 'Employees', ta: 'ஊழியர்கள்' },
+
+  // Section Headers
+  aiTools: { en: 'AI Tools', ta: 'AI கருவிகள்' },
+  pouchSection: { en: 'Pouch', ta: 'பணப்பை' },
+  financialsSection: { en: 'Financials', ta: 'நிதி கணக்குகள்' },
+  adminSection: { en: 'Admin', ta: 'நிர்வாகம்' },
 
   // Common Actions
   viewLedger: { en: 'View Ledger', ta: 'கணக்கை பார்க்க' },

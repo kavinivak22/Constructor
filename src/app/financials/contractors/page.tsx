@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n-context'
 import {
     Loader2,
     Search,
@@ -64,6 +65,7 @@ interface ContractorAccount {
 }
 
 export default function ContractorAccountsPage() {
+    const { t } = useI18n()
     const { toast } = useToast()
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -270,7 +272,7 @@ export default function ContractorAccountsPage() {
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                             <div>
                                 <h1 className="text-3xl font-bold tracking-tight font-headline text-foreground bg-gradient-to-r from-foreground via-foreground/80 to-muted-foreground bg-clip-text text-transparent">
-                                    Contractor Accounts & Ledgers
+                                    {t('contractorAccounts', 'Contractor Accounts & Ledgers')}
                                 </h1>
                                 <p className="text-muted-foreground mt-1">
                                     Track and reconcile contractor square-footage Rate contracts and NMR labor wage accounts separately for settlements.
@@ -596,7 +598,7 @@ export default function ContractorAccountsPage() {
                                     className="border-muted/30 hover:bg-muted/10 h-9 px-3 gap-1.5"
                                 >
                                     <ArrowLeft className="h-4 w-4" />
-                                    <span>Back to Accounts</span>
+                                    <span>{t('backToAccounts', 'Back to Accounts')}</span>
                                 </Button>
                                 <div>
                                     <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">

@@ -46,35 +46,37 @@ import type { User as AppUser } from '@/lib/data';
 
 
 const links = [
-  { href: '/', label: 'Dashboard', icon: LayoutGrid },
-  { href: '/projects', label: 'Projects', icon: FolderKanban },
-  { href: '/inventory', label: 'Inventory', icon: Package },
-  { href: '/purchase-orders', label: 'Purchase Orders', icon: ShoppingCart },
-  { href: '/worklog', label: 'Daily Worklog', icon: ClipboardPen },
-  { href: '/work-prep', label: 'Work Prep', icon: PhoneCall },
-  { href: '/team-hub', label: 'Team Hub', icon: MessageSquare },
-  { href: '/analytics', label: 'Analytics', icon: AreaChart },
+  { href: '/', key: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
+  { href: '/projects', key: 'projects', label: 'Projects', icon: FolderKanban },
+  { href: '/inventory', key: 'inventory', label: 'Inventory', icon: Package },
+  { href: '/purchase-orders', key: 'purchaseOrders', label: 'Purchase Orders', icon: ShoppingCart },
+  { href: '/worklog', key: 'dailyWorklog', label: 'Daily Worklog', icon: ClipboardPen },
+  { href: '/work-prep', key: 'workPrep', label: 'Work Prep', icon: PhoneCall },
+  { href: '/team-hub', key: 'teamHub', label: 'Team Hub', icon: MessageSquare },
+  { href: '/analytics', key: 'analytics', label: 'Analytics', icon: AreaChart },
 ];
 
 const aiLinks = [
-  { href: '/material-estimation', label: 'AI Estimation', icon: Wand2 },
+  { href: '/material-estimation', key: 'aiEstimation', label: 'AI Estimation', icon: Wand2 },
 ];
 
 const personalLinks = [
-  { href: '/notifications', label: 'Notifications', icon: Bell },
-  { href: '/personal-pouch', label: 'Personal Pouch', icon: Wallet },
-  { href: '/project-pouch', label: 'Project Pouch', icon: Briefcase },
+  { href: '/notifications', key: 'notifications', label: 'Notifications', icon: Bell },
+  { href: '/personal-pouch', key: 'personalPouch', label: 'Personal Pouch', icon: Wallet },
+  { href: '/project-pouch', key: 'projectPouch', label: 'Project Pouch', icon: Briefcase },
 ]
 
 const financialLinks = [
-  { href: '/financials/salary-profiles', label: 'Salary Profiles', icon: Wallet },
-  { href: '/financials/payday', label: 'Weekly Pay-Day', icon: Coins },
-  { href: '/financials/contractors', label: 'Contractor Accounts', icon: Building2 },
-  { href: '/expenses', label: 'Project Expenses', icon: Briefcase },
+  { href: '/financials/salary-profiles', key: 'salaryProfiles', label: 'Salary Profiles', icon: Wallet },
+  { href: '/financials/payday', key: 'weeklyPayday', label: 'Weekly Pay-Day', icon: Coins },
+  { href: '/financials/contractors', key: 'contractorAccounts', label: 'Contractor Accounts', icon: Building2 },
+  { href: '/expenses', key: 'projectExpenses', label: 'Project Expenses', icon: Briefcase },
+  { href: '/materials/reconciliation', key: 'materialReconciliation', label: 'Material Reconciliation', icon: Package },
+  { href: '/projects/milestones', key: 'clientMilestones', label: 'Client Milestones', icon: Coins },
 ]
 
 const adminLinks = [
-  { href: '/employees', label: 'Employees', icon: Users },
+  { href: '/employees', key: 'employees', label: 'Employees', icon: Users },
 ];
 
 
@@ -151,47 +153,47 @@ export function AppSidebar() {
               <Link href={link.href} legacyBehavior={false} onClick={handleLinkClick}>
                 <SidebarMenuButton
                   isActive={isActive(link.href)}
-                  tooltip={link.label}
+                  tooltip={t(link.key, link.label)}
                   className="justify-start font-medium"
                 >
                   <link.icon className="h-5 w-5" />
-                  <span className="group-data-[state=collapsed]:hidden">{link.label}</span>
+                  <span className="group-data-[state=collapsed]:hidden">{t(link.key, link.label)}</span>
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
         <SidebarSeparator className="my-4" />
-        <p className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider group-data-[state=collapsed]:hidden">AI Tools</p>
+        <p className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider group-data-[state=collapsed]:hidden">{t('aiTools', 'AI Tools')}</p>
         <SidebarMenu>
           {aiLinks.map((link) => (
             <SidebarMenuItem key={link.href}>
               <Link href={link.href} legacyBehavior={false} onClick={handleLinkClick}>
                 <SidebarMenuButton
                   isActive={isActive(link.href)}
-                  tooltip={link.label}
+                  tooltip={t(link.key, link.label)}
                   className="justify-start font-medium"
                 >
                   <link.icon className="h-5 w-5" />
-                  <span className="group-data-[state=collapsed]:hidden">{link.label}</span>
+                  <span className="group-data-[state=collapsed]:hidden">{t(link.key, link.label)}</span>
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
         <SidebarSeparator className="my-4" />
-        <p className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider group-data-[state=collapsed]:hidden">Pouch</p>
+        <p className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider group-data-[state=collapsed]:hidden">{t('pouchSection', 'Pouch')}</p>
         <SidebarMenu>
           {personalLinks.map((link) => (
             <SidebarMenuItem key={link.href}>
               <Link href={link.href} legacyBehavior={false} onClick={handleLinkClick}>
                 <SidebarMenuButton
                   isActive={isActive(link.href)}
-                  tooltip={link.label}
+                  tooltip={t(link.key, link.label)}
                   className="justify-start font-medium"
                 >
                   <link.icon className="h-5 w-5" />
-                  <span className="group-data-[state=collapsed]:hidden">{link.label}</span>
+                  <span className="group-data-[state=collapsed]:hidden">{t(link.key, link.label)}</span>
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
@@ -200,18 +202,18 @@ export function AppSidebar() {
         {(userProfile?.role === 'admin' || userProfile?.role === 'manager') && (
           <>
             <SidebarSeparator className="my-4" />
-            <p className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider group-data-[state=collapsed]:hidden">Financials</p>
+            <p className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider group-data-[state=collapsed]:hidden">{t('financialsSection', 'Financials')}</p>
             <SidebarMenu>
               {financialLinks.map((link) => (
                 <SidebarMenuItem key={link.href}>
                   <Link href={link.href} legacyBehavior={false} onClick={handleLinkClick}>
                     <SidebarMenuButton
                       isActive={isActive(link.href)}
-                      tooltip={link.label}
+                      tooltip={t(link.key, link.label)}
                       className="justify-start font-medium"
                     >
                       <link.icon className="h-5 w-5" />
-                      <span className="group-data-[state=collapsed]:hidden">{link.label}</span>
+                      <span className="group-data-[state=collapsed]:hidden">{t(link.key, link.label)}</span>
                     </SidebarMenuButton>
                   </Link>
                 </SidebarMenuItem>
@@ -222,18 +224,18 @@ export function AppSidebar() {
         {userProfile?.role === 'admin' && (
           <>
             <SidebarSeparator className="my-4" />
-            <p className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider group-data-[state=collapsed]:hidden">Admin</p>
+            <p className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider group-data-[state=collapsed]:hidden">{t('adminSection', 'Admin')}</p>
             <SidebarMenu>
               {adminLinks.map((link) => (
                 <SidebarMenuItem key={link.href}>
                   <Link href={link.href} legacyBehavior={false} onClick={handleLinkClick}>
                     <SidebarMenuButton
                       isActive={isActive(link.href)}
-                      tooltip={link.label}
+                      tooltip={t(link.key, link.label)}
                       className="justify-start font-medium"
                     >
                       <link.icon className="h-5 w-5" />
-                      <span className="group-data-[state=collapsed]:hidden">{link.label}</span>
+                      <span className="group-data-[state=collapsed]:hidden">{t(link.key, link.label)}</span>
                     </SidebarMenuButton>
                   </Link>
                 </SidebarMenuItem>
