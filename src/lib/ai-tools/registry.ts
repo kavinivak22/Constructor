@@ -57,7 +57,20 @@ export const CONSTRUCTOR_AI_TOOLS: AIToolDefinition[] = [
     },
   },
 
-  // 4. Stage Daily Worklog Entry
+  // 4. Query Daily Worklogs & Attendance
+  {
+    name: 'query_daily_worklogs',
+    description: 'Fetch daily worklog entries, labor attendance, and site activities logged for today, yesterday, or this week.',
+    parameters: {
+      type: 'object',
+      properties: {
+        projectName: { type: 'string', description: 'Optional project name filter' },
+        dateFilter: { type: 'string', description: 'Date to query (e.g. today, yesterday, this_week)', enum: ['today', 'yesterday', 'this_week'] },
+      },
+    },
+  },
+
+  // 5. Stage Daily Worklog Entry
   {
     name: 'stage_worklog_entry',
     description: 'Stage a daily site worklog entry containing labor attendance breakdown and materials consumed.',
@@ -76,7 +89,7 @@ export const CONSTRUCTOR_AI_TOOLS: AIToolDefinition[] = [
     },
   },
 
-  // 5. Stage Material Delivery Receipt
+  // 6. Stage Material Delivery Receipt
   {
     name: 'stage_material_receipt',
     description: 'Stage a material delivery receipt to update inventory stock and supplier PO.',
@@ -94,7 +107,7 @@ export const CONSTRUCTOR_AI_TOOLS: AIToolDefinition[] = [
     },
   },
 
-  // 6. Stage Contractor Payment
+  // 7. Stage Contractor Payment
   {
     name: 'stage_contractor_payment',
     description: 'Stage a cash, UPI (GPay/PhonePe), or bank transfer payment to a contractor.',
@@ -111,7 +124,7 @@ export const CONSTRUCTOR_AI_TOOLS: AIToolDefinition[] = [
     },
   },
 
-  // 7. Stage Project Expense Voucher
+  // 8. Stage Project Expense Voucher
   {
     name: 'stage_project_expense',
     description: 'Stage a petty cash or project expense voucher (e.g., fuel, site food, tea, small tools).',
@@ -127,7 +140,7 @@ export const CONSTRUCTOR_AI_TOOLS: AIToolDefinition[] = [
     },
   },
 
-  // 8. Navigation Tool
+  // 9. Navigation Tool
   {
     name: 'navigate_app_page',
     description: 'Navigate to any page in Constructor (e.g. Contractor Accounts, Weekly Pay-Day, Daily Worklog, Material Reconciliation).',

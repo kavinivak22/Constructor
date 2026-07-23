@@ -36,8 +36,19 @@ function fallbackIntentParser(transcript: string, language: string) {
     };
   }
 
+  // Query Daily Worklogs
+  if (text.includes('works logged') || text.includes('work logged') || text.includes('logged today') || text.includes('any works') || text.includes('worklog') || text.includes('worklogs') || text.includes('இன்று பணிப்பதிவு')) {
+    return {
+      type: 'query',
+      toolName: 'query_daily_worklogs',
+      params: { dateFilter: 'today' },
+      summaryEn: `Checking worklogs logged today...`,
+      summaryTa: `இன்று பதிவு செய்யப்பட்ட பணிகளை சரிபார்க்கிறது...`
+    };
+  }
+
   // Stage Worklog Entry
-  if (text.includes('mason') || text.includes('helper') || text.includes('labor') || text.includes('கொத்தனார்') || text.includes('ஆளு') || text.includes('வேலை')) {
+  if (text.includes('mason') || text.includes('helper') || text.includes('labor') || text.includes('கொத்தனார்') || text.includes('ஆளு')) {
     return {
       type: 'stage_action',
       toolName: 'stage_worklog_entry',

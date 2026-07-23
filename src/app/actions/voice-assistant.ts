@@ -109,6 +109,33 @@ export async function executeVoiceQueryAction(toolName: string, params: Record<s
       };
     }
 
+    if (toolName === 'query_daily_worklogs') {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const { data: worklogs } = await supabase
+        .from('daily_worklogs')
+        .select('*, projects(name)')
+        .eq('date', todayStr);
+
+      const count = worklogs?.length || 0;
+      if (count === 0) {
+        return {
+          success: true,
+          message: `No worklogs have been recorded for today yet.`,
+          messageTa: `இன்று இதுவரை எந்த பணிப்பதிவுகளும் பதிவு செய்யப்படவில்லை.`,
+          data: { count: 0, worklogs: [] }
+        };
+      }
+
+      const titles = (worklogs || []).map((w: any) => `${w.projects?.name || 'Site'}: ${w.title || 'Work'}`).join(', ');
+
+      return {
+        success: true,
+        message: `Found ${count} worklog${count > 1 ? 's' : ''} logged today: ${titles}.`,
+        messageTa: `இன்று ${count} பணிப்பதிவுகள் செய்யப்பட்டுள்ளன: ${titles}.`,
+        data: { count, worklogs }
+      };
+    }
+
     return {
       success: true,
       message: 'Query executed successfully.',
