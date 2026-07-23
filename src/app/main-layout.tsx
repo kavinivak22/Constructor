@@ -8,6 +8,7 @@ import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 import { AppHeader } from '@/components/layout/app-header';
 import { InviteCheckWrapper } from '@/components/auth/invite-check-wrapper';
 import { I18nProvider } from '@/lib/i18n-context';
+import { VoiceBar } from '@/components/voice-assistant/voice-bar';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -139,6 +140,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
               <Toaster />
+              <VoiceBar />
             </div>
           )}
         </SidebarProvider>
