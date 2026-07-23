@@ -7,6 +7,7 @@ import { useSupabase } from '@/supabase/provider';
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 import { AppHeader } from '@/components/layout/app-header';
 import { InviteCheckWrapper } from '@/components/auth/invite-check-wrapper';
+import { I18nProvider } from '@/lib/i18n-context';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -105,41 +106,43 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
 
   if (showFullLayout) {
     return (
-      <SidebarProvider>
-        {isMobile ? (
-          <div className="relative flex min-h-screen flex-col bg-secondary overflow-hidden">
-            {/* Dynamic Background Fluid Blobs */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-              <div className="absolute top-[-10%] left-[-10%] w-[70vw] h-[70vw] rounded-full bg-gradient-to-tr from-indigo-500/20 to-purple-500/25 dark:from-indigo-500/15 dark:to-purple-500/20 blur-[80px] animate-blob-1" />
-              <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-gradient-to-br from-amber-500/15 to-orange-500/20 dark:from-amber-600/10 dark:to-orange-500/15 blur-[80px] animate-blob-2" />
-              <div className="absolute top-[40%] right-[15%] w-[50vw] h-[50vw] rounded-full bg-gradient-to-tl from-cyan-500/15 to-emerald-500/15 dark:from-cyan-500/10 dark:to-emerald-500/10 blur-[80px] animate-blob-3" />
-            </div>
-            <div className="relative z-10 flex flex-col flex-1">
-              <AppHeader />
-              <main className="flex-1 pb-20">{children}</main>
-              <MobileBottomNav />
-            </div>
-            <Toaster />
-          </div>
-        ) : (
-          <div className="relative flex min-h-screen bg-secondary overflow-hidden w-full">
-            {/* Dynamic Background Fluid Blobs */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-              <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-gradient-to-tr from-indigo-500/20 to-purple-500/25 dark:from-indigo-500/15 dark:to-purple-500/20 blur-[120px] animate-blob-1" />
-              <div className="absolute bottom-[-10%] right-[-10%] w-[45vw] h-[45vw] rounded-full bg-gradient-to-br from-amber-500/15 to-orange-500/20 dark:from-amber-600/10 dark:to-orange-500/15 blur-[120px] animate-blob-2" />
-              <div className="absolute top-[40%] right-[15%] w-[35vw] h-[35vw] rounded-full bg-gradient-to-tl from-cyan-500/15 to-emerald-500/15 dark:from-cyan-500/10 dark:to-emerald-500/10 blur-[120px] animate-blob-3" />
-            </div>
-            <div className="relative z-10 flex w-full flex-1">
-              <AppSidebar />
-              <div className="flex-1 flex flex-col min-w-0">
-                <AppHeader />
-                <main className="flex-1">{children}</main>
+      <I18nProvider>
+        <SidebarProvider>
+          {isMobile ? (
+            <div className="relative flex min-h-screen flex-col bg-secondary overflow-hidden">
+              {/* Dynamic Background Fluid Blobs */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+                <div className="absolute top-[-10%] left-[-10%] w-[70vw] h-[70vw] rounded-full bg-gradient-to-tr from-indigo-500/20 to-purple-500/25 dark:from-indigo-500/15 dark:to-purple-500/20 blur-[80px] animate-blob-1" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-gradient-to-br from-amber-500/15 to-orange-500/20 dark:from-amber-600/10 dark:to-orange-500/15 blur-[80px] animate-blob-2" />
+                <div className="absolute top-[40%] right-[15%] w-[50vw] h-[50vw] rounded-full bg-gradient-to-tl from-cyan-500/15 to-emerald-500/15 dark:from-cyan-500/10 dark:to-emerald-500/10 blur-[80px] animate-blob-3" />
               </div>
+              <div className="relative z-10 flex flex-col flex-1">
+                <AppHeader />
+                <main className="flex-1 pb-20">{children}</main>
+                <MobileBottomNav />
+              </div>
+              <Toaster />
             </div>
-            <Toaster />
-          </div>
-        )}
-      </SidebarProvider>
+          ) : (
+            <div className="relative flex min-h-screen bg-secondary overflow-hidden w-full">
+              {/* Dynamic Background Fluid Blobs */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+                <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-gradient-to-tr from-indigo-500/20 to-purple-500/25 dark:from-indigo-500/15 dark:to-purple-500/20 blur-[120px] animate-blob-1" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[45vw] h-[45vw] rounded-full bg-gradient-to-br from-amber-500/15 to-orange-500/20 dark:from-amber-600/10 dark:to-orange-500/15 blur-[120px] animate-blob-2" />
+                <div className="absolute top-[40%] right-[15%] w-[35vw] h-[35vw] rounded-full bg-gradient-to-tl from-cyan-500/15 to-emerald-500/15 dark:from-cyan-500/10 dark:to-emerald-500/10 blur-[120px] animate-blob-3" />
+              </div>
+              <div className="relative z-10 flex w-full flex-1">
+                <AppSidebar />
+                <div className="flex-1 flex flex-col min-w-0">
+                  <AppHeader />
+                  <main className="flex-1">{children}</main>
+                </div>
+              </div>
+              <Toaster />
+            </div>
+          )}
+        </SidebarProvider>
+      </I18nProvider>
     );
   }
 
@@ -147,10 +150,12 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   const shouldShowInviteCheck = user && !userProfile?.companyId && !isAuthRoute && !isRegisterCompanyRoute;
 
   return (
-    <div className="bg-background">
-      {shouldShowInviteCheck && <InviteCheckWrapper />}
-      {children}
-      <Toaster />
-    </div>
+    <I18nProvider>
+      <div className="bg-background">
+        {shouldShowInviteCheck && <InviteCheckWrapper />}
+        {children}
+        <Toaster />
+      </div>
+    </I18nProvider>
   );
 }

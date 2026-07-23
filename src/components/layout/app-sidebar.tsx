@@ -21,8 +21,9 @@ import {
   User as UserIcon,
   Coins,
   PhoneCall,
-
+  Globe,
 } from 'lucide-react';
+import { useI18n } from '@/lib/i18n-context';
 import {
   Sidebar,
   SidebarHeader,
@@ -83,6 +84,7 @@ export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { supabase, user } = useSupabase();
+  const { language, setLanguage, t } = useI18n();
   const [isClient, setIsClient] = useState(false);
   const { setOpenMobile } = useSidebar();
 
@@ -241,8 +243,36 @@ export function AppSidebar() {
         )}
 
       </SidebarContent>
-      <SidebarFooter className="p-2">
-        <SidebarSeparator className="mb-2" />
+      <SidebarFooter className="p-2 space-y-2">
+        {/* Language Switcher Pill */}
+        <div className="px-1 group-data-[state=collapsed]:px-0">
+          <div className="flex items-center justify-between p-1 bg-muted/30 border border-muted/20 rounded-xl group-data-[state=collapsed]:flex-col group-data-[state=collapsed]:gap-1">
+            <button
+              onClick={() => setLanguage('en')}
+              className={cn(
+                "flex-1 text-[11px] font-semibold py-1 px-2 rounded-lg transition-all text-center",
+                language === 'en'
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              EN
+            </button>
+            <button
+              onClick={() => setLanguage('ta')}
+              className={cn(
+                "flex-1 text-[11px] font-semibold py-1 px-2 rounded-lg transition-all text-center",
+                language === 'ta'
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              தமிழ்
+            </button>
+          </div>
+        </div>
+
+        <SidebarSeparator className="my-1" />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/20 dark:hover:bg-white/5 transition-all duration-300 cursor-pointer group-data-[state=collapsed]:p-0 group-data-[state=collapsed]:justify-center">
