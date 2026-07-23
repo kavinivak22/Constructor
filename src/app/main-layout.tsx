@@ -123,6 +123,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                 <MobileBottomNav />
               </div>
               <Toaster />
+              <VoiceBar />
             </div>
           ) : (
             <div className="relative flex min-h-screen bg-secondary overflow-hidden w-full">
