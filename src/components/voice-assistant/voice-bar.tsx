@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Mic, MicOff, Volume2, Sparkles, X, CheckCircle2, ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Mic, MicOff, Volume2, Sparkles, X, CheckCircle2, Loader2, Send } from 'lucide-react';
 import { useI18n } from '@/lib/i18n-context';
 import { BatchConfirmModal } from './batch-confirm-modal';
 import type { StagedVoiceAction } from '@/lib/ai-tools/registry';
@@ -22,12 +23,13 @@ export function VoiceBar() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [lastResponse, setLastResponse] = useState<{ summaryEn: string; summaryTa: string; type: string } | null>(null);
-  
+
   const [stagedActions, setStagedActions] = useState<StagedVoiceAction[]>([]);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [isExecutingBatch, setIsExecutingBatch] = useState(false);
 
   const recognitionRef = useRef<any>(null);
+  const latestTranscriptRef = useRef<string>('');
 
   // Initialize SpeechRecognition
   useEffect(() => {
@@ -47,10 +49,16 @@ export function VoiceBar() {
         current += event.results[i][0].transcript;
       }
       setTranscript(current);
+      latestTranscriptRef.current = current;
     };
 
     recog.onend = () => {
       setIsListening(false);
+      // Auto process transcript when user stops speaking
+      const capturedText = latestTranscriptRef.current.trim();
+      if (capturedText) {
+        processVoiceCommand(capturedText);
+      }
     };
 
     recog.onerror = (event: any) => {
@@ -92,11 +100,9 @@ export function VoiceBar() {
     if (isListening) {
       recognitionRef.current.stop();
       setIsListening(false);
-      if (transcript.trim()) {
-        processVoiceCommand(transcript.trim());
-      }
     } else {
       setTranscript('');
+      latestTranscriptRef.current = '';
       setLastResponse(null);
       setIsOpen(true);
       setIsListening(true);
@@ -109,6 +115,7 @@ export function VoiceBar() {
   };
 
   const processVoiceCommand = async (text: string) => {
+    if (!text || !text.trim()) return;
     setIsProcessing(true);
     try {
       const res = await fetch('/api/voice-assistant', {
@@ -157,6 +164,13 @@ export function VoiceBar() {
     } catch (err: any) {
       setIsProcessing(false);
       console.error('Failed to process voice command:', err);
+    }
+  };
+
+  const handleManualSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (transcript.trim()) {
+      processVoiceCommand(transcript.trim());
     }
   };
 
@@ -254,21 +268,29 @@ export function VoiceBar() {
                 )}
               </div>
 
-              {/* Transcript Display */}
-              {transcript && (
-                <div className="bg-background/80 p-2.5 rounded-lg border border-border/50 text-xs italic text-foreground">
-                  "{transcript}"
-                </div>
-              )}
+              {/* Transcript & Manual Input Form */}
+              <form onSubmit={handleManualSubmit} className="flex gap-1.5">
+                <Input
+                  value={transcript}
+                  onChange={(e) => setTranscript(e.target.value)}
+                  placeholder={language === 'ta' ? 'கேள்வி அல்லது கட்டளையை தட்டச்சு செய்யவும்...' : 'Type or edit voice prompt...'}
+                  className="h-8 text-xs flex-1"
+                />
+                <Button type="submit" size="sm" disabled={isProcessing || !transcript.trim()} className="h-8 px-2.5">
+                  <Send className="h-3.5 w-3.5" />
+                </Button>
+              </form>
 
               {/* Verbal AI Response Display */}
               {lastResponse && (
-                <div className="bg-primary/10 border border-primary/20 p-2.5 rounded-lg text-xs text-foreground space-y-1">
+                <div className="bg-primary/10 border border-primary/20 p-2.5 rounded-lg text-xs text-foreground space-y-1 animate-in fade-in-50">
                   <div className="flex items-center gap-1.5 font-bold text-primary text-[11px] uppercase">
-                    <Volume2 className="h-3.5 w-3.5" />
+                    <Volume2 className="h-3.5 w-3.5 animate-pulse" />
                     <span>{language === 'ta' ? 'பதில்:' : 'AI Response:'}</span>
                   </div>
-                  <p>{language === 'ta' ? lastResponse.summaryTa || lastResponse.summaryEn : lastResponse.summaryEn || lastResponse.summaryTa}</p>
+                  <p className="leading-relaxed">
+                    {language === 'ta' ? lastResponse.summaryTa || lastResponse.summaryEn : lastResponse.summaryEn || lastResponse.summaryTa}
+                  </p>
                 </div>
               )}
             </CardContent>
