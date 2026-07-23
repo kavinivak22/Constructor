@@ -18,6 +18,7 @@ import { QuickActions } from '@/components/dashboard/quick-actions';
 import { formatDistanceToNow } from 'date-fns';
 import { getPersonalTasks, createPersonalTask, toggleTaskStatus, deleteTaskAction, editTaskAction, type TaskItem } from '@/app/actions/tasks';
 import { useToast } from '@/hooks/use-toast';
+import { useI18n } from '@/lib/i18n-context';
 
 
 
@@ -117,6 +118,7 @@ function getWorklogIcon(worklog: any) {
 }
 
 export default function DashboardPage() {
+    const { t } = useI18n();
     const { data: projects = [], isLoading } = useProjects();
     const { data: recentWorklogs = [], isLoading: isLoadingWorklogs } = useRecentWorklogs();
     const { supabase, user } = useSupabase();
@@ -333,25 +335,25 @@ export default function DashboardPage() {
                             <div className="space-y-1">
                                 <div className="flex items-center gap-2">
                                     <Badge className="bg-primary/20 text-primary border-transparent">
-                                        Daily Prep Board
+                                        {t('dailyPrepBoard', 'Daily Prep Board')}
                                     </Badge>
-                                    <span className="text-xs text-muted-foreground font-medium">For {tomorrowDateLabel || "Tomorrow"}</span>
+                                    <span className="text-xs text-muted-foreground font-medium">{t('forTomorrow', 'For')} {tomorrowDateLabel || t('tomorrow', 'Tomorrow')}</span>
                                 </div>
-                                <h3 className="text-lg font-bold text-foreground">Tomorrow's Work Preparation</h3>
+                                <h3 className="text-lg font-bold text-foreground">{t('tomorrowPrepTitle', "Tomorrow's Work Preparation")}</h3>
                                 <p className="text-sm text-muted-foreground max-w-xl">
                                     {tomorrowTasksCount === null ? (
-                                        "Loading tomorrow's schedule..."
+                                        t('loadingSchedule', "Loading tomorrow's schedule...")
                                     ) : tomorrowTasksCount > 0 ? (
-                                        `You have ${tomorrowTasksCount} task${tomorrowTasksCount > 1 ? 's' : ''} scheduled for tomorrow. Call assignees and contractors to prepare.`
+                                        `${t('youHave', 'You have')} ${tomorrowTasksCount} ${t('tasksScheduled', 'tasks scheduled for tomorrow. Call assignees and contractors to prepare.')}`
                                     ) : (
-                                        "No tasks are scheduled for tomorrow yet, but you can review your contractors and team members to plan ahead."
+                                        t('noTomorrowTasks', "No tasks are scheduled for tomorrow yet, but you can review your contractors and team members to plan ahead.")
                                     )}
                                 </p>
                             </div>
                             <Button asChild className="shrink-0 group">
                                 <Link href="/work-prep">
                                     <PhoneCall className="mr-2 h-4 w-4 transition-transform group-hover:scale-110" />
-                                    Start Prep Plan
+                                    {t('startPrepPlan', 'Start Prep Plan')}
                                 </Link>
                             </Button>
                         </div>
@@ -361,8 +363,8 @@ export default function DashboardPage() {
                 {/* Active Projects Section */}
                 <div>
                     <div className="section-header">
-                        <h2 className="section-title">Active Projects</h2>
-                        <Link href="/projects" className="view-all-link">View All</Link>
+                        <h2 className="section-title">{t('activeProjects', 'Active Projects')}</h2>
+                        <Link href="/projects" className="view-all-link">{t('viewAll', 'View All')}</Link>
                     </div>
                     {isLoading && (
                         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -379,15 +381,15 @@ export default function DashboardPage() {
                     {!isLoading && projects.length === 0 && (
                         <Card className="glass-card flex flex-col items-center justify-center h-64 text-center p-6">
                             <CardHeader>
-                                <CardTitle>No Projects Yet</CardTitle>
+                                <CardTitle>{t('noProjectsYet', 'No Projects Yet')}</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="max-w-sm mt-2 text-muted-foreground">Get started by creating your first project.</p>
+                                <p className="max-w-sm mt-2 text-muted-foreground">{t('getStartedProject', 'Get started by creating your first project.')}</p>
                                 {isAdminOrManager && (
                                     <Link href="/projects/create" className='mt-4'>
                                         <Button>
                                             <Plus className="mr-2 h-4 w-4" />
-                                            Create Project
+                                            {t('createProject', 'Create Project')}
                                         </Button>
                                     </Link>
                                 )}
@@ -400,13 +402,13 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <Card className="glass-card">
                         <CardHeader>
-                            <CardTitle>My Tasks</CardTitle>
+                            <CardTitle>{t('myTasks', 'My Tasks')}</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <form onSubmit={handleAddTask} className="flex gap-2 mb-4">
                                 <Input
                                     type="text"
-                                    placeholder="Add a new personal task..."
+                                    placeholder={t('addTaskPlaceholder', 'Add a new personal task...')}
                                     value={newTaskTitle}
                                     onChange={(e) => setNewTaskTitle(e.target.value)}
                                     disabled={isCreatingTask}
@@ -441,7 +443,7 @@ export default function DashboardPage() {
                                                     />
                                                     <Button type="submit" size="sm" variant="ghost" className="h-8 w-8 p-0">
                                                         <Check className="h-4 w-4 text-green-500" />
-                                                    </Button>
+                                                     </Button>
                                                     <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setEditingTaskId(null)}>
                                                         <X className="h-4 w-4 text-red-500" />
                                                     </Button>
@@ -487,13 +489,13 @@ export default function DashboardPage() {
                                     ))}
                                 </div>
                             ) : (
-                                <p className="text-sm text-muted-foreground text-center py-4">No tasks yet. Add one above to get started!</p>
+                                <p className="text-sm text-muted-foreground text-center py-4">{t('noTasksYet', 'No tasks yet. Add one above to get started!')}</p>
                             )}
                         </CardContent>
                     </Card>
                     <Card className="glass-card">
                         <CardHeader>
-                            <CardTitle>Recent Activity</CardTitle>
+                            <CardTitle>{t('recentActivity', 'Recent Activity')}</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
@@ -540,7 +542,7 @@ export default function DashboardPage() {
                                         );
                                     })
                                 ) : (
-                                    <p className="text-sm text-muted-foreground">No recent activity.</p>
+                                    <p className="text-sm text-muted-foreground">{t('noRecentActivity', 'No recent activity.')}</p>
                                 )}
                             </div>
                         </CardContent>
