@@ -115,28 +115,59 @@ export function VoiceBar() {
     }
   }, [messages]);
 
-  // Handle Natural Speech Synthesis (TTS)
-  const speakVerbalResponse = (text: string, onEndCallback?: () => void) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
+  // Handle Real Neural Human Audio Playback (Google Cloud / HD MP3 Audio Stream)
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = language === 'ta' ? 'ta-IN' : 'en-IN';
-    utterance.pitch = 1.02; // Warm, natural human pitch
-    utterance.rate = 0.96; // Comfortable conversational rate
+  const speakVerbalResponse = async (text: string, onEndCallback?: () => void) => {
+    if (typeof window === 'undefined') return;
 
-    // Select natural sounding voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const targetLang = language === 'ta' ? 'ta' : 'en';
-    const naturalVoice = voices.find(v => v.lang.startsWith(targetLang) && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Neural')));
-    if (naturalVoice) {
-      utterance.voice = naturalVoice;
+    // Stop any currently playing audio
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+      audioPlayerRef.current = null;
+    }
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
     }
 
+    try {
+      const res = await fetch('/api/voice-assistant/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, language })
+      });
+
+      const data = await res.json();
+      if (data.audioBase64) {
+        const audioSrc = `data:${data.format || 'audio/mp3'};base64,${data.audioBase64}`;
+        const audio = new Audio(audioSrc);
+        audioPlayerRef.current = audio;
+
+        audio.onended = () => {
+          if (onEndCallback) onEndCallback();
+        };
+        audio.onerror = () => {
+          fallbackBrowserSpeech(text, onEndCallback);
+        };
+
+        await audio.play();
+        return;
+      }
+    } catch (err) {
+      console.warn('Neural audio fetch failed, falling back to browser voice:', err);
+    }
+
+    fallbackBrowserSpeech(text, onEndCallback);
+  };
+
+  const fallbackBrowserSpeech = (text: string, onEndCallback?: () => void) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = language === 'ta' ? 'ta-IN' : 'en-IN';
+    utterance.rate = 0.98;
     utterance.onend = () => {
       if (onEndCallback) onEndCallback();
     };
-
     window.speechSynthesis.speak(utterance);
   };
 
