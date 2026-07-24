@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { CONSTRUCTOR_AI_TOOLS } from '@/lib/ai-tools/registry';
 import { executeVoiceQueryAction } from '@/app/actions/voice-assistant';
 
-// Fallback rule engine covering all domain tools if Gemini API Key is missing or temporarily unavailable
+// Warm, conversational fallback rule engine covering all domain tools if Gemini API Key is missing or temporarily unavailable
 function fallbackIntentParser(transcript: string, language: string) {
   const text = transcript.toLowerCase();
 
@@ -16,8 +16,8 @@ function fallbackIntentParser(transcript: string, language: string) {
       type: 'query',
       toolName: 'query_contractor_payments',
       params: { contractorName, period: 'this_week' },
-      summaryEn: `Checking payment details for ${contractorName}...`,
-      summaryTa: `${contractorName} அவர்களின் சம்பள விவரங்களை சரிபார்க்கிறது...`
+      summaryEn: `Hey there! Let me pull up ${contractorName}'s payment account for you right away.`,
+      summaryTa: `வணக்கம்! ${contractorName} அவர்களின் சம்பளக் கணக்கை உடனடியாக எடுத்துத் தருகிறேன்.`
     };
   }
 
@@ -31,17 +31,19 @@ function fallbackIntentParser(transcript: string, language: string) {
       type: 'query',
       toolName: 'query_material_stock',
       params: { materialName },
-      summaryEn: `Checking stock level for ${materialName}...`,
-      summaryTa: `${materialName} இருப்பு நிலையை சரிபார்க்கிறது...`
+      summaryEn: `Sure thing! Checking current stock level for ${materialName} now.`,
+      summaryTa: `கண்டிப்பாக! ${materialName} பொருட்களின் தற்போதைய இருப்பை சரிபார்க்கிறேன்.`
     };
   }
 
-  // Query Daily Worklogs / Recent Activity
+  // Query Daily Worklogs / Recent Activity / Historical Logs
   if (
     text.includes('activity') ||
     text.includes('activities') ||
     text.includes('recent') ||
     text.includes('logged') ||
+    text.includes('last') ||
+    text.includes('previous') ||
     text.includes('works') ||
     text.includes('work') ||
     text.includes('worklog') ||
@@ -54,8 +56,8 @@ function fallbackIntentParser(transcript: string, language: string) {
       type: 'query',
       toolName: 'query_daily_worklogs',
       params: { dateFilter: 'today' },
-      summaryEn: `Checking worklogs and recent activity logged today...`,
-      summaryTa: `இன்று பதிவு செய்யப்பட்ட பணிகள் மற்றும் சமீபத்திய செயல்பாடுகளை சரிபார்க்கிறது...`
+      summaryEn: `Gladly! Fetching recent site worklogs and site activities for you.`,
+      summaryTa: `மகிழ்ச்சியுடன்! சமீபத்திய பணிப்பதிவுகள் மற்றும் தள செயல்பாடுகளை எடுத்து வருகிறேன்.`
     };
   }
 
@@ -65,8 +67,8 @@ function fallbackIntentParser(transcript: string, language: string) {
       type: 'query',
       toolName: 'query_employees',
       params: {},
-      summaryEn: `Checking company staff roster and employees...`,
-      summaryTa: `நிறுவனத்தின் பணியாளர் பட்டியலை சரிபார்க்கிறது...`
+      summaryEn: `Here is the staff roster and employee list for your company!`,
+      summaryTa: `இதோ உங்கள் நிறுவனத்தின் பணியாளர் பட்டியல்!`
     };
   }
 
@@ -76,8 +78,8 @@ function fallbackIntentParser(transcript: string, language: string) {
       type: 'query',
       toolName: 'query_client_milestones',
       params: {},
-      summaryEn: `Checking client payment milestones...`,
-      summaryTa: `வாடிக்கையாளர் தவணை பணத்தை சரிபார்க்கிறது...`
+      summaryEn: `Checking client payment milestones for your projects!`,
+      summaryTa: `உங்கள் திட்டங்களின் வாடிக்கையாளர் தவணை பணத்தை சரிபார்க்கிறேன்!`
     };
   }
 
@@ -87,8 +89,8 @@ function fallbackIntentParser(transcript: string, language: string) {
       type: 'query',
       toolName: 'query_purchase_orders',
       params: {},
-      summaryEn: `Checking purchase orders...`,
-      summaryTa: `கொள்முதல் ஆணைகளை சரிபார்க்கிறது...`
+      summaryEn: `Let me fetch your active purchase orders right away.`,
+      summaryTa: `உங்கள் கொள்முதல் ஆணைகளை உடனடியாக எடுத்து வருகிறேன்.`
     };
   }
 
@@ -98,8 +100,8 @@ function fallbackIntentParser(transcript: string, language: string) {
       type: 'query',
       toolName: 'query_pouch_balance',
       params: {},
-      summaryEn: `Checking personal and project pouch balances...`,
-      summaryTa: `பணப்பை இருப்புத் தொகையை சரிபார்க்கிறது...`
+      summaryEn: `Here is your current personal and project pouch cash balance.`,
+      summaryTa: `இதோ உங்கள் தற்போதைய பணப்பை இருப்புத் தொகை.`
     };
   }
 
@@ -109,8 +111,8 @@ function fallbackIntentParser(transcript: string, language: string) {
       type: 'query',
       toolName: 'query_work_prep_tasks',
       params: {},
-      summaryEn: `Checking tomorrow work prep checklist...`,
-      summaryTa: `நாளை பணி தயாரிப்பு பட்டியலை சரிபார்க்கிறது...`
+      summaryEn: `Let's review tomorrow's site work prep checklist!`,
+      summaryTa: `நாளைக்கான பணி தயாரிப்பு பட்டியலை பார்ப்போம்!`
     };
   }
 
@@ -120,8 +122,8 @@ function fallbackIntentParser(transcript: string, language: string) {
       type: 'query',
       toolName: 'query_analytics_summary',
       params: {},
-      summaryEn: `Generating site analytics summary...`,
-      summaryTa: `தள பகுப்பாய்வு சுருக்கத்தை உருவாக்குகிறது...`
+      summaryEn: `Here is your overall site performance and cost analytics summary.`,
+      summaryTa: `இதோ உங்கள் தளத்தின் ஒட்டுமொத்த செயல்பாட்டு பகுப்பாய்வு சுருக்கம்.`
     };
   }
 
@@ -136,8 +138,8 @@ function fallbackIntentParser(transcript: string, language: string) {
         location: 'Downtown',
         budget: 5000000
       },
-      summaryEn: `Staged creation of project "New Commercial Complex".`,
-      summaryTa: `"New Commercial Complex" திட்டம் உருவாக்கம் தயார் செய்யப்பட்டது.`
+      summaryEn: `Got it! I've staged the new project "New Commercial Complex" for your confirmation.`,
+      summaryTa: `சரிங்க! "New Commercial Complex" புதிய திட்டத்தை தயார் செய்து வைத்துள்ளேன்.`
     };
   }
 
@@ -151,8 +153,8 @@ function fallbackIntentParser(transcript: string, language: string) {
         role: 'Supervisor',
         email: 'suresh@constructor.com'
       },
-      summaryEn: `Staged adding employee "Supervisor Suresh".`,
-      summaryTa: `"Supervisor Suresh" பணியாளர் சேர்க்கை தயார் செய்யப்பட்டது.`
+      summaryEn: `Awesome! Staged Supervisor Suresh to your team roster.`,
+      summaryTa: `சிறப்பு! மேலாளர் சுரேஷ் அவர்களை குழுவில் சேர்க்க தயார் செய்துள்ளேன்.`
     };
   }
 
@@ -167,8 +169,8 @@ function fallbackIntentParser(transcript: string, language: string) {
         dailyWage: 800,
         workDescription: transcript
       },
-      summaryEn: `Staged worklog: 4 Workers logged for today.`,
-      summaryTa: `4 தொழிலாளர்களின் பணிப்பதிவு தயார் செய்யப்பட்டது.`
+      summaryEn: `Done! Staged 4 Workers present today for your review.`,
+      summaryTa: `சரிங்க! இன்று 4 தொழிலாளர்களின் பணிப்பதிவை தயார் செய்துள்ளேன்.`
     };
   }
 
@@ -182,8 +184,8 @@ function fallbackIntentParser(transcript: string, language: string) {
         amount: 5000,
         paymentMode: 'UPI'
       },
-      summaryEn: `Staged ₹5,000 payment entry for Mani Mason via UPI.`,
-      summaryTa: `மணி கொத்தனாருக்கு ₹5,000 UPI பணம் செலுத்துதல் தயார் செய்யப்பட்டது.`
+      summaryEn: `Perfect! Staged ₹5,000 UPI payment voucher for Mani Mason.`,
+      summaryTa: `அருமை! மணி கொத்தனாருக்கு ₹5,000 UPI பணம் செலுத்துதலை தயார் செய்துள்ளேன்.`
     };
   }
 
@@ -200,18 +202,18 @@ function fallbackIntentParser(transcript: string, language: string) {
       type: 'navigation',
       toolName: 'navigate_app_page',
       params: { targetPage },
-      summaryEn: `Navigating to ${targetPage}...`,
-      summaryTa: `${targetPage} பக்கத்திற்கு செல்லவும்...`
+      summaryEn: `Taking you to ${targetPage} right now!`,
+      summaryTa: `உங்களை ${targetPage} பக்கத்திற்கு அழைத்துச் செல்கிறேன்!`
     };
   }
 
-  // General query fallback to worklogs
+  // General warm query fallback
   return {
     type: 'query',
     toolName: 'query_daily_worklogs',
     params: { dateFilter: 'today' },
-    summaryEn: `Checking latest site worklogs and recent activity...`,
-    summaryTa: `சமீபத்திய தள பணிகள் மற்றும் செயல்பாடுகளை சரிபார்க்கிறது...`
+    summaryEn: `Hey friend! Let me pull up recent site worklogs and site activities for you.`,
+    summaryTa: `வணக்கம் நண்பா! சமீபத்திய தள பணிகள் மற்றும் செயல்பாடுகளை எடுத்து வருகிறேன்.`
   };
 }
 
@@ -227,31 +229,29 @@ export async function POST(req: Request) {
     let parsedResult: any = null;
 
     if (apiKey) {
-      // Try official Gemini models (gemini-1.5-flash -> gemini-2.0-flash-exp)
       const models = ['gemini-1.5-flash', 'gemini-2.0-flash-exp', 'gemini-1.5-pro'];
 
       for (const model of models) {
         try {
-          const systemPrompt = `You are Constructor Voice AI, an intelligent Construction Management Voice Assistant for builders in India.
-Your job is to understand natural language voice prompts spoken in English or Tamil (including Tanglish) and select the most appropriate AI Tool.
+          const systemPrompt = `You are Constructor Voice AI, a warm, friendly, highly empathetic AI co-pilot and companion for construction engineers and builders in India.
+Speak in a warm, conversational, friendly tone—like a trusted work friend! Avoid robotic explanations.
 
 Available Tools:
 ${JSON.stringify(CONSTRUCTOR_AI_TOOLS, null, 2)}
 
 Instructions:
-1. If the user is asking a data query (e.g. "How much did Mani get paid?", "What is cement stock?", "Show project financials", "Show employees", "Show client milestones", "What's the recent activity logged"), return toolName starting with "query_".
-2. If the user wants to log attendance, work, materials, payments, expenses, create project, add employee, return toolName starting with "stage_".
-3. If the user wants to go to a page (e.g., "Take me to contractor accounts"), return "navigate_app_page".
-4. Extract parameters accurately (names, roles like Mason/Helper, quantities, wage rates, payment amounts in INR).
-5. Always provide summaryEn and summaryTa for audio speech feedback.
+1. If the user asks a data query (e.g. "How much did Mani get paid?", "What is cement stock?", "What's the recent activity logged", "Show employees"), set toolName starting with "query_".
+2. If the user wants to log attendance, work, materials, payments, expenses, create project, add employee, set toolName starting with "stage_".
+3. If the user wants to navigate (e.g., "Take me to contractor accounts"), return "navigate_app_page".
+4. Provide warm, friendly conversational speech responses in summaryEn (English) and summaryTa (Tamil).
 
 Return JSON in this exact structure:
 {
   "type": "query" | "stage_action" | "navigation" | "general_chat",
   "toolName": "name_of_tool",
   "params": { ...extracted parameters },
-  "summaryEn": "English speech response",
-  "summaryTa": "Tamil speech response"
+  "summaryEn": "Warm conversational English response",
+  "summaryTa": "Warm conversational Tamil response"
 }`;
 
           const userPrompt = `User Spoken Language: ${language === 'ta' ? 'Tamil' : 'English'}\nUser Transcript: "${transcript}"`;
@@ -266,7 +266,7 @@ Return JSON in this exact structure:
               ],
               generationConfig: {
                 responseMimeType: 'application/json',
-                temperature: 0.2
+                temperature: 0.3
               }
             })
           });
@@ -276,7 +276,7 @@ Return JSON in this exact structure:
             const rawContent = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
             if (rawContent) {
               parsedResult = JSON.parse(rawContent);
-              break; // Success! Break out of model loop
+              break;
             }
           }
         } catch (err) {
@@ -285,17 +285,18 @@ Return JSON in this exact structure:
       }
     }
 
-    // Use fallback parser if Gemini wasn't available or returned empty result
     if (!parsedResult) {
       parsedResult = fallbackIntentParser(transcript, language);
     }
 
-    // If it's a query tool, execute query action immediately to fetch data for speech answer
     if (parsedResult.type === 'query' && parsedResult.toolName) {
       const queryRes = await executeVoiceQueryAction(parsedResult.toolName, parsedResult.params || {});
       if (queryRes.success) {
-        parsedResult.summaryEn = queryRes.message || parsedResult.summaryEn;
-        parsedResult.summaryTa = queryRes.messageTa || parsedResult.summaryTa;
+        // Prepend friendly conversational intro if not present
+        const prefixEn = language === 'ta' ? '' : 'Hey there! ';
+        const prefixTa = language === 'ta' ? 'வணக்கம்! ' : '';
+        parsedResult.summaryEn = prefixEn + (queryRes.message || parsedResult.summaryEn);
+        parsedResult.summaryTa = prefixTa + (queryRes.messageTa || parsedResult.summaryTa);
         parsedResult.queryData = queryRes.data;
       }
     }

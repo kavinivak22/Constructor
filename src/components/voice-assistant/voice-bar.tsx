@@ -4,14 +4,45 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Mic, MicOff, Volume2, Sparkles, X, CheckCircle2, Loader2, Send } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Progress } from '@/components/ui/progress';
+import {
+  Mic,
+  MicOff,
+  Volume2,
+  Sparkles,
+  X,
+  CheckCircle2,
+  Loader2,
+  Send,
+  User,
+  Bot,
+  Building2,
+  Boxes,
+  Wallet,
+  ClipboardList,
+  ArrowRight,
+  RefreshCw
+} from 'lucide-react';
 import { useI18n } from '@/lib/i18n-context';
 import { BatchConfirmModal } from './batch-confirm-modal';
 import type { StagedVoiceAction } from '@/lib/ai-tools/registry';
 import { executeBatchVoiceActions } from '@/app/actions/voice-assistant';
 import { useToast } from '@/hooks/use-toast';
+
+export interface ChatMessage {
+  id: string;
+  sender: 'user' | 'ai';
+  text: string;
+  textTa?: string;
+  timestamp: string;
+  type?: string;
+  toolName?: string;
+  queryData?: any;
+  params?: any;
+}
 
 export function VoiceBar() {
   const { language, t } = useI18n();
@@ -22,7 +53,8 @@ export function VoiceBar() {
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
-  const [lastResponse, setLastResponse] = useState<{ summaryEn: string; summaryTa: string; type: string } | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [autoListenFollowup, setAutoListenFollowup] = useState(true);
 
   const [stagedActions, setStagedActions] = useState<StagedVoiceAction[]>([]);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
@@ -30,6 +62,7 @@ export function VoiceBar() {
 
   const recognitionRef = useRef<any>(null);
   const latestTranscriptRef = useRef<string>('');
+  const chatScrollRef = useRef<HTMLDivElement>(null);
 
   // Initialize SpeechRecognition
   useEffect(() => {
@@ -54,7 +87,6 @@ export function VoiceBar() {
 
     recog.onend = () => {
       setIsListening(false);
-      // Auto process transcript when user stops speaking
       const capturedText = latestTranscriptRef.current.trim();
       if (capturedText) {
         processVoiceCommand(capturedText);
@@ -69,25 +101,46 @@ export function VoiceBar() {
     recognitionRef.current = recog;
   }, [language]);
 
-  // Update speech recognition language when i18n language changes
+  // Update speech recognition language when language changes
   useEffect(() => {
     if (recognitionRef.current) {
       recognitionRef.current.lang = language === 'ta' ? 'ta-IN' : 'en-IN';
     }
   }, [language]);
 
-  // Handle Speech-to-Speech (TTS) verbal answer
-  const speakVerbalResponse = (text: string) => {
+  // Scroll to bottom when messages update
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  // Handle Natural Speech Synthesis (TTS)
+  const speakVerbalResponse = (text: string, onEndCallback?: () => void) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = language === 'ta' ? 'ta-IN' : 'en-IN';
-    utterance.rate = 0.95;
+    utterance.pitch = 1.02; // Warm, natural human pitch
+    utterance.rate = 0.96; // Comfortable conversational rate
+
+    // Select natural sounding voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const targetLang = language === 'ta' ? 'ta' : 'en';
+    const naturalVoice = voices.find(v => v.lang.startsWith(targetLang) && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Neural')));
+    if (naturalVoice) {
+      utterance.voice = naturalVoice;
+    }
+
+    utterance.onend = () => {
+      if (onEndCallback) onEndCallback();
+    };
+
     window.speechSynthesis.speak(utterance);
   };
 
-  const toggleListening = () => {
+  const startListening = () => {
     if (!recognitionRef.current) {
       toast({
         title: 'Voice Search Unsupported',
@@ -96,27 +149,40 @@ export function VoiceBar() {
       });
       return;
     }
+    setTranscript('');
+    latestTranscriptRef.current = '';
+    setIsOpen(true);
+    setIsListening(true);
+    try {
+      recognitionRef.current.start();
+    } catch (err) {
+      console.error('Recognition start error:', err);
+    }
+  };
 
+  const toggleListening = () => {
     if (isListening) {
-      recognitionRef.current.stop();
+      if (recognitionRef.current) recognitionRef.current.stop();
       setIsListening(false);
     } else {
-      setTranscript('');
-      latestTranscriptRef.current = '';
-      setLastResponse(null);
-      setIsOpen(true);
-      setIsListening(true);
-      try {
-        recognitionRef.current.start();
-      } catch (err) {
-        console.error('Recognition start error:', err);
-      }
+      startListening();
     }
   };
 
   const processVoiceCommand = async (text: string) => {
     if (!text || !text.trim()) return;
+
+    const userMsgId = String(Date.now());
+    const userMsg: ChatMessage = {
+      id: userMsgId,
+      sender: 'user',
+      text,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setMessages(prev => [...prev, userMsg]);
     setIsProcessing(true);
+
     try {
       const res = await fetch('/api/voice-assistant', {
         method: 'POST',
@@ -132,24 +198,37 @@ export function VoiceBar() {
         return;
       }
 
-      setLastResponse({
-        summaryEn: data.summaryEn || '',
-        summaryTa: data.summaryTa || '',
-        type: data.type || 'general_chat'
+      const verbalText = language === 'ta' ? data.summaryTa || data.summaryEn : data.summaryEn || data.summaryTa;
+
+      const aiMsg: ChatMessage = {
+        id: String(Date.now() + 1),
+        sender: 'ai',
+        text: data.summaryEn || text,
+        textTa: data.summaryTa || text,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: data.type,
+        toolName: data.toolName,
+        queryData: data.queryData,
+        params: data.params
+      };
+
+      setMessages(prev => [...prev, aiMsg]);
+
+      // Speak response verbally with live follow-up auto-listen
+      speakVerbalResponse(verbalText, () => {
+        if (autoListenFollowup) {
+          setTimeout(() => {
+            startListening();
+          }, 400);
+        }
       });
 
-      // Speak response verbally in current language
-      const verbalText = language === 'ta' ? data.summaryTa || data.summaryEn : data.summaryEn || data.summaryTa;
-      if (verbalText) {
-        speakVerbalResponse(verbalText);
-      }
-
-      // If navigation command, trigger router push
+      // Navigation handler
       if (data.type === 'navigation' && data.params?.targetPage) {
         router.push(data.params.targetPage);
       }
 
-      // If mutation tool, stage action for final batch confirmation upon closing Assistant mode
+      // Stage Action handler
       if (data.type === 'stage_action' && data.toolName) {
         const newAction: StagedVoiceAction = {
           id: String(Date.now()),
@@ -171,6 +250,7 @@ export function VoiceBar() {
     e.preventDefault();
     if (transcript.trim()) {
       processVoiceCommand(transcript.trim());
+      setTranscript('');
     }
   };
 
@@ -208,96 +288,267 @@ export function VoiceBar() {
     }
   };
 
+  // Render Visual Card Guidance Widgets inside AI messages
+  const renderVisualGuidanceCard = (msg: ChatMessage) => {
+    if (!msg.toolName && !msg.queryData) return null;
+
+    // 1. Contractor Payment Visual Card
+    if (msg.toolName === 'query_contractor_payments' && msg.queryData) {
+      const d = msg.queryData;
+      const progress = d.totalEarned > 0 ? Math.min(100, Math.round((d.totalPaid / d.totalEarned) * 100)) : 100;
+
+      return (
+        <Card className="mt-2 bg-background/80 border-primary/20 p-3 rounded-xl space-y-2 shadow-sm">
+          <div className="flex items-center justify-between text-xs font-semibold text-foreground">
+            <span className="flex items-center gap-1.5 text-primary">
+              <Wallet className="h-4 w-4" /> {d.contractorName || 'Contractor'}
+            </span>
+            <Badge variant={d.outstanding > 0 ? "destructive" : "outline"} className="text-[10px]">
+              ₹{d.outstanding?.toLocaleString('en-IN')} Due
+            </Badge>
+          </div>
+          <div className="space-y-1">
+            <div className="flex justify-between text-[11px] text-muted-foreground">
+              <span>Paid: ₹{d.totalPaid?.toLocaleString('en-IN')}</span>
+              <span>Earned: ₹{d.totalEarned?.toLocaleString('en-IN')}</span>
+            </div>
+            <Progress value={progress} className="h-2" />
+          </div>
+        </Card>
+      );
+    }
+
+    // 2. Daily Worklogs / Recent Activity Visual Card
+    if (msg.toolName === 'query_daily_worklogs' && msg.queryData) {
+      const logs = msg.queryData.worklogs || [];
+      if (logs.length === 0) return null;
+
+      return (
+        <Card className="mt-2 bg-background/80 border-primary/20 p-3 rounded-xl space-y-2 shadow-sm">
+          <div className="flex items-center justify-between text-xs font-semibold text-foreground border-b border-border/40 pb-1.5">
+            <span className="flex items-center gap-1.5 text-primary">
+              <ClipboardList className="h-4 w-4" /> {language === 'ta' ? 'சமீபத்திய பணிகள்' : 'Recent Worklogs'}
+            </span>
+            <Badge variant="outline" className="text-[10px]">{logs.length} Logged</Badge>
+          </div>
+          <div className="space-y-1.5">
+            {logs.slice(0, 3).map((w: any, idx: number) => (
+              <div key={idx} className="p-2 rounded-lg bg-muted/40 text-[11px] flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-foreground">{w.title || 'Site Work'}</p>
+                  <p className="text-[10px] text-muted-foreground">{w.projects?.name || 'Project'} • {w.date}</p>
+                </div>
+                <Badge variant="secondary" className="text-[9px] bg-primary/10 text-primary">Verified</Badge>
+              </div>
+            ))}
+          </div>
+        </Card>
+      );
+    }
+
+    // 3. Material Stock Visual Card
+    if (msg.toolName === 'query_material_stock' && msg.queryData) {
+      const item = msg.queryData;
+      return (
+        <Card className="mt-2 bg-background/80 border-primary/20 p-3 rounded-xl space-y-1.5 shadow-sm">
+          <div className="flex items-center justify-between text-xs font-semibold text-foreground">
+            <span className="flex items-center gap-1.5 text-amber-500">
+              <Boxes className="h-4 w-4" /> {item.name || 'Material'}
+            </span>
+            <Badge className="bg-emerald-500 text-white text-[10px]">
+              {item.quantity || 0} {item.unit || 'Units'}
+            </Badge>
+          </div>
+          <p className="text-[11px] text-muted-foreground">Unit Price: ₹{item.unit_price || 0} / {item.unit || 'unit'}</p>
+        </Card>
+      );
+    }
+
+    // 4. Staged Action Confirmation Chip Card
+    if (msg.type === 'stage_action') {
+      return (
+        <Card className="mt-2 bg-amber-500/10 border-amber-500/30 p-2.5 rounded-xl space-y-1.5 shadow-sm">
+          <div className="flex items-center justify-between text-xs font-semibold text-amber-600 dark:text-amber-400">
+            <span className="flex items-center gap-1">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Staged Action
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 text-[10px] px-2 border-amber-500/40 text-amber-600 hover:bg-amber-500/20"
+              onClick={() => setIsBatchModalOpen(true)}
+            >
+              Review ({stagedActions.length})
+            </Button>
+          </div>
+        </Card>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <>
       {/* Floating Mic Orb / Assistant Controller */}
       <div className="fixed bottom-24 right-4 sm:bottom-6 sm:right-6 z-[100] flex flex-col items-end gap-3">
-        {/* Expanded Voice Control Card */}
+        {/* Gemini Live Interactive Conversation Window */}
         {isOpen && (
-          <Card className="w-[calc(100vw-2rem)] max-w-sm sm:w-96 glass border-primary/30 shadow-2xl overflow-hidden backdrop-blur-2xl animate-in slide-in-from-bottom-5">
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-center justify-between border-b border-border/40 pb-2">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                    <Sparkles className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold font-headline text-foreground">Constructor Voice AI</h4>
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
-                      {language === 'ta' ? 'தமிழ் குரல் உதவி' : 'Bilingual Assistant'}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  {stagedActions.length > 0 && (
-                    <Badge
-                      variant="secondary"
-                      className="cursor-pointer bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30 gap-1 text-xs"
-                      onClick={() => setIsBatchModalOpen(true)}
-                    >
-                      <CheckCircle2 className="h-3 w-3" />
-                      <span>{stagedActions.length} {language === 'ta' ? 'நிலுவை' : 'Staged'}</span>
-                    </Badge>
+          <Card className="w-[calc(100vw-2rem)] max-w-sm sm:w-[420px] glass border-primary/40 shadow-2xl overflow-hidden backdrop-blur-2xl animate-in slide-in-from-bottom-5">
+            <CardHeader className="p-3 border-b border-border/40 flex flex-row items-center justify-between space-y-0">
+              <div className="flex items-center gap-2">
+                <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-primary to-amber-500 text-primary-foreground shadow-md">
+                  <Sparkles className="h-4 w-4 animate-spin-slow" />
+                  {isListening && (
+                    <span className="absolute inset-0 rounded-full bg-primary/40 animate-ping" />
                   )}
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleCloseAssistantMode}>
-                    <X className="h-4 w-4" />
-                  </Button>
+                </div>
+                <div>
+                  <CardTitle className="text-sm font-bold font-headline text-foreground flex items-center gap-1.5">
+                    Constructor Live AI
+                    <Badge variant="outline" className="text-[9px] px-1 bg-emerald-500/10 text-emerald-500 border-emerald-500/30">
+                      Live
+                    </Badge>
+                  </CardTitle>
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+                    {language === 'ta' ? 'தமிழ் குரல் தோழன்' : 'Conversational Co-Pilot'}
+                  </span>
                 </div>
               </div>
+              <div className="flex items-center gap-1">
+                {stagedActions.length > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="cursor-pointer bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30 gap-1 text-[11px]"
+                    onClick={() => setIsBatchModalOpen(true)}
+                  >
+                    <CheckCircle2 className="h-3 w-3" />
+                    <span>{stagedActions.length} Staged</span>
+                  </Badge>
+                )}
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleCloseAssistantMode}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
 
-              {/* Dynamic Equalizer / Speech Visualizer */}
-              <div className="flex items-center justify-center py-3 bg-muted/20 rounded-xl border border-muted/20 relative overflow-hidden">
-                {isListening ? (
-                  <div className="flex items-center gap-1.5 h-10">
-                    <span className="w-1.5 bg-primary rounded-full animate-bounce h-8" />
-                    <span className="w-1.5 bg-amber-500 rounded-full animate-bounce [animation-delay:0.2s] h-10" />
-                    <span className="w-1.5 bg-primary rounded-full animate-bounce [animation-delay:0.4s] h-6" />
-                    <span className="w-1.5 bg-emerald-500 rounded-full animate-bounce [animation-delay:0.1s] h-9" />
-                  </div>
-                ) : isProcessing ? (
-                  <div className="flex items-center gap-2 text-xs font-semibold text-primary py-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>{language === 'ta' ? 'குரல் செயலாக்கப்படுகிறது...' : 'Processing AI Tools...'}</span>
+            <CardContent className="p-3 space-y-3">
+              {/* Scrollable Conversation Thread */}
+              <div ref={chatScrollRef} className="h-[260px] overflow-y-auto pr-1 space-y-3 scrollbar-thin">
+                {messages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center p-4 text-muted-foreground space-y-2">
+                    <div className="p-3 rounded-full bg-primary/10 text-primary animate-pulse">
+                      <Sparkles className="h-6 w-6" />
+                    </div>
+                    <p className="text-xs font-medium text-foreground">
+                      {language === 'ta' ? 'வணக்கம்! நான் உங்கள் குரல் தோழன்.' : 'Hey there! I am your site AI co-pilot.'}
+                    </p>
+                    <p className="text-[11px]">
+                      {language === 'ta'
+                        ? 'பேச மைக்கை அழுத்தவும் அல்லது தட்டச்சு செய்யவும் (எ.கா: "மணி கொத்தனாருக்கு எவ்வளவு கொடுத்தோம்?")'
+                        : 'Tap mic or speak freely like a friend (e.g. "What is the recent activity logged?")'}
+                    </p>
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground text-center py-2 px-4">
-                    {language === 'ta'
-                      ? 'பேச மைக்கை அழுத்தவும் (எ.கா: "மணி கொத்தனாருக்கு எவ்வளவு கொடுத்தோம்?")'
-                      : 'Tap Mic to Speak (e.g. "How much did Mani Mason get paid?")'}
-                  </p>
+                  messages.map(msg => (
+                    <div
+                      key={msg.id}
+                      className={`flex gap-2 text-xs ${
+                        msg.sender === 'user' ? 'justify-end' : 'justify-start'
+                      }`}
+                    >
+                      {msg.sender === 'ai' && (
+                        <div className="h-6 w-6 rounded-full bg-primary/20 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                          <Bot className="h-3.5 w-3.5" />
+                        </div>
+                      )}
+
+                      <div
+                        className={`max-w-[85%] rounded-2xl p-2.5 shadow-sm space-y-1 ${
+                          msg.sender === 'user'
+                            ? 'bg-primary text-primary-foreground rounded-br-none'
+                            : 'bg-muted/60 text-foreground border border-border/40 rounded-bl-none'
+                        }`}
+                      >
+                        <p className="leading-relaxed font-sans">
+                          {language === 'ta' ? msg.textTa || msg.text : msg.text}
+                        </p>
+
+                        {/* Interactive Visual Guidance Widget */}
+                        {msg.sender === 'ai' && renderVisualGuidanceCard(msg)}
+
+                        <span className="text-[9px] opacity-70 block text-right">
+                          {msg.timestamp}
+                        </span>
+                      </div>
+
+                      {msg.sender === 'user' && (
+                        <div className="h-6 w-6 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center shrink-0 mt-0.5">
+                          <User className="h-3.5 w-3.5" />
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+
+                {isProcessing && (
+                  <div className="flex items-center gap-2 text-xs text-primary bg-primary/10 p-2 rounded-xl w-fit">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>{language === 'ta' ? 'யோசிக்கிறது...' : 'Thinking co-pilot...'}</span>
+                  </div>
                 )}
               </div>
 
-              {/* Transcript & Manual Input Form */}
+              {/* Dynamic Live Visualizer Bar */}
+              <div className="flex items-center justify-between px-3 py-2 bg-muted/30 rounded-xl border border-muted/30">
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="icon"
+                    variant={isListening ? "destructive" : "default"}
+                    onClick={toggleListening}
+                    className={`h-9 w-9 rounded-full transition-all duration-300 ${
+                      isListening ? 'scale-105 animate-pulse' : ''
+                    }`}
+                  >
+                    {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                  </Button>
+                  <span className="text-[11px] font-semibold text-foreground">
+                    {isListening
+                      ? (language === 'ta' ? 'கேட்கிறது...' : 'Listening to you...')
+                      : (language === 'ta' ? 'பேச மைக்கை அழுத்தவும்' : 'Tap mic for live talk')}
+                  </span>
+                </div>
+
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={`h-7 px-2 text-[10px] gap-1 ${
+                    autoListenFollowup ? 'text-emerald-500' : 'text-muted-foreground'
+                  }`}
+                  onClick={() => setAutoListenFollowup(!autoListenFollowup)}
+                >
+                  <RefreshCw className={`h-3 w-3 ${autoListenFollowup ? 'animate-spin-slow' : ''}`} />
+                  <span>{autoListenFollowup ? 'Auto Live' : 'Manual'}</span>
+                </Button>
+              </div>
+
+              {/* Input Form for Manual Typing / Voice Editing */}
               <form onSubmit={handleManualSubmit} className="flex gap-1.5">
                 <Input
                   value={transcript}
                   onChange={(e) => setTranscript(e.target.value)}
-                  placeholder={language === 'ta' ? 'கேள்வி அல்லது கட்டளையை தட்டச்சு செய்யவும்...' : 'Type or edit voice prompt...'}
-                  className="h-8 text-xs flex-1"
+                  placeholder={language === 'ta' ? 'கேட்க விரும்பும் கேள்வி...' : 'Type or ask follow-up question...'}
+                  className="h-8 text-xs flex-1 rounded-xl"
                 />
-                <Button type="submit" size="sm" disabled={isProcessing || !transcript.trim()} className="h-8 px-2.5">
+                <Button type="submit" size="sm" disabled={isProcessing || !transcript.trim()} className="h-8 px-3 rounded-xl">
                   <Send className="h-3.5 w-3.5" />
                 </Button>
               </form>
-
-              {/* Verbal AI Response Display */}
-              {lastResponse && (
-                <div className="bg-primary/10 border border-primary/20 p-2.5 rounded-lg text-xs text-foreground space-y-1 animate-in fade-in-50">
-                  <div className="flex items-center gap-1.5 font-bold text-primary text-[11px] uppercase">
-                    <Volume2 className="h-3.5 w-3.5 animate-pulse" />
-                    <span>{language === 'ta' ? 'பதில்:' : 'AI Response:'}</span>
-                  </div>
-                  <p className="leading-relaxed">
-                    {language === 'ta' ? lastResponse.summaryTa || lastResponse.summaryEn : lastResponse.summaryEn || lastResponse.summaryTa}
-                  </p>
-                </div>
-              )}
             </CardContent>
           </Card>
         )}
 
-        {/* Floating Glowing Mic Button */}
+        {/* Floating Mic Button */}
         <Button
           size="icon"
           onClick={toggleListening}
@@ -315,7 +566,7 @@ export function VoiceBar() {
         </Button>
       </div>
 
-      {/* Batch Confirm Modal on Mode Close */}
+      {/* Batch Confirm Modal */}
       <BatchConfirmModal
         isOpen={isBatchModalOpen}
         onClose={() => {
