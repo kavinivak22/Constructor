@@ -7,8 +7,9 @@ function fallbackIntentParser(transcript: string, language: string) {
   const text = transcript.toLowerCase();
 
   // Contractor Payment / Wage Query
-  if (text.includes('paid') || text.includes('payment') || text.includes('wage') || text.includes('சம்பளம்') || text.includes('பணம்') || text.includes('கொடுத்தோம்') || text.includes('kuduthom') || text.includes('mani') || text.includes('murugan')) {
-    let contractorName = 'Mani';
+  if (text.includes('paid') || text.includes('payment') || text.includes('wage') || text.includes('சம்பளம்') || text.includes('பணம்') || text.includes('கொடுத்தோம்') || text.includes('kuduthom')) {
+    let contractorName = '';
+    if (text.includes('mani') || text.includes('மணி')) contractorName = 'Mani';
     if (text.includes('murugan') || text.includes('முருகன்')) contractorName = 'Murugan';
     if (text.includes('ramesh') || text.includes('ரமேஷ்')) contractorName = 'Ramesh';
 
@@ -16,14 +17,15 @@ function fallbackIntentParser(transcript: string, language: string) {
       type: 'query',
       toolName: 'query_contractor_payments',
       params: { contractorName, period: 'this_week' },
-      summaryEn: `Hey there! Let me pull up ${contractorName}'s payment account for you right away.`,
-      summaryTa: `வணக்கம்! ${contractorName} அவர்களின் சம்பளக் கணக்கை உடனடியாக எடுத்துத் தருகிறேன்.`
+      summaryEn: contractorName ? `Hey there! Checking payment details for ${contractorName}...` : `Hey there! Checking recent payment records...`,
+      summaryTa: contractorName ? `${contractorName} அவர்களின் சம்பளக் கணக்கை சரிபார்க்கிறேன்...` : `சமீபத்திய பணம் செலுத்திய பதிவுகளை சரிபார்க்கிறேன்...`
     };
   }
 
   // Material Stock Query
   if (text.includes('cement') || text.includes('steel') || text.includes('sand') || text.includes('stock') || text.includes('சிமெண்ட்') || text.includes('இரும்பு') || text.includes('மணல்') || text.includes('இருப்பு')) {
-    let materialName = 'Cement';
+    let materialName = '';
+    if (text.includes('cement') || text.includes('சிமெண்ட்')) materialName = 'Cement';
     if (text.includes('steel') || text.includes('இரும்பு')) materialName = 'TMT Steel';
     if (text.includes('sand') || text.includes('மணல்')) materialName = 'M-Sand';
 
@@ -31,8 +33,8 @@ function fallbackIntentParser(transcript: string, language: string) {
       type: 'query',
       toolName: 'query_material_stock',
       params: { materialName },
-      summaryEn: `Sure thing! Checking current stock level for ${materialName} now.`,
-      summaryTa: `கண்டிப்பாக! ${materialName} பொருட்களின் தற்போதைய இருப்பை சரிபார்க்கிறேன்.`
+      summaryEn: materialName ? `Checking current stock level for ${materialName}...` : `Checking inventory stock levels...`,
+      summaryTa: materialName ? `${materialName} இருப்பு நிலையை சரிபார்க்கிறேன்...` : `பொருட்களின் இருப்பு நிலையை சரிபார்க்கிறேன்...`
     };
   }
 

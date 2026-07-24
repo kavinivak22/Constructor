@@ -3,13 +3,13 @@
 import { createClient } from '@/utils/supabase/server';
 import type { StagedVoiceAction } from '@/lib/ai-tools/registry';
 
-// Voice-friendly date formatting helper (converts ISO date strings like 2026-07-23 into spoken words like "yesterday", "July 23rd")
+// Voice-friendly date formatting helper
 function formatVoiceDate(dateStr?: string) {
   if (!dateStr) return 'recently';
   const today = new Date().toISOString().split('T')[0];
   const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-  if (dateStr === today) return 'today';
-  if (dateStr === yesterday) return 'yesterday';
+  if (dateStr.startsWith(today)) return 'today';
+  if (dateStr.startsWith(yesterday)) return 'yesterday';
 
   try {
     const d = new Date(dateStr);
@@ -19,7 +19,7 @@ function formatVoiceDate(dateStr?: string) {
   }
 }
 
-// Voice-friendly currency formatting helpers (converts 5000 -> 5 thousand rupees, 1000000 -> 10 Lakh rupees)
+// Voice-friendly currency formatting helpers
 function formatVoiceCurrency(amount: number) {
   if (!amount || amount === 0) return '0 rupees';
   if (amount >= 10000000) return `${(amount / 10000000).toFixed(1)} crore rupees`;
@@ -46,6 +46,35 @@ export async function executeVoiceQueryAction(toolName: string, params: Record<s
     if (toolName === 'query_contractor_payments') {
       const contractorName = (params.contractorName || '').toLowerCase().trim();
 
+      // If no specific contractor name was mentioned in prompt, fetch recent payments across all contractors
+      if (!contractorName) {
+        const { data: recentPayments } = await supabase
+          .from('contractor_pay_entries')
+          .select('*, contractors(name)')
+          .order('created_at', { ascending: false })
+          .limit(3);
+
+        if (!recentPayments || recentPayments.length === 0) {
+          return {
+            success: true,
+            message: `No payment transactions found in contractor accounts.`,
+            messageTa: `ஒப்பந்ததாரர் கணக்குகளில் பணம் செலுத்திய பதிவுகள் எதுவும் இல்லை.`,
+            data: { totalPaid: 0, totalEarned: 0, outstanding: 0 }
+          };
+        }
+
+        const top = recentPayments[0];
+        const payList = recentPayments.map((p: any) => `${p.contractors?.name || 'Contractor'}: ${formatVoiceCurrency(p.paid_amount || 0)} (${formatVoiceDate(p.created_at)})`).join('; ');
+
+        return {
+          success: true,
+          message: `The most recent payment made was ${formatVoiceCurrency(top.paid_amount || 0)} to ${top.contractors?.name || 'Contractor'} on ${formatVoiceDate(top.created_at)}. Recent payments: ${payList}.`,
+          messageTa: `கடைசியாக செலுத்தப்பட்ட பணம் ${formatVoiceCurrencyTa(top.paid_amount || 0)} (${top.contractors?.name || 'ஒப்பந்ததாரருக்கு'} - ${formatVoiceDate(top.created_at)}).`,
+          data: { contractorName: top.contractors?.name, recentPayments }
+        };
+      }
+
+      // Specific contractor name search
       const { data: contractors } = await supabase.from('contractors').select('*');
 
       const matchedContractors = (contractors || []).filter((c: any) => 
@@ -56,8 +85,8 @@ export async function executeVoiceQueryAction(toolName: string, params: Record<s
       if (matchedContractors.length === 0) {
         return {
           success: true,
-          message: `No contractor found matching ${params.contractorName}.`,
-          messageTa: `${params.contractorName} பெயரில் ஒப்பந்ததாரர் எதுவும் கிடைக்கவில்லை.`,
+          message: `No contractor found matching "${params.contractorName}".`,
+          messageTa: `"${params.contractorName}" பெயரில் ஒப்பந்ததாரர் எதுவும் கிடைக்கவில்லை.`,
           data: { totalPaid: 0, totalEarned: 0, outstanding: 0 }
         };
       }
@@ -86,6 +115,18 @@ export async function executeVoiceQueryAction(toolName: string, params: Record<s
     if (toolName === 'query_material_stock') {
       const matName = (params.materialName || '').toLowerCase().trim();
       const { data: inventory } = await supabase.from('materials').select('*');
+
+      if (!matName) {
+        const count = inventory?.length || 0;
+        const matList = (inventory || []).map((m: any) => `${m.name}: ${m.quantity || 0} ${m.unit || 'units'}`).join(', ');
+        return {
+          success: true,
+          message: `Inventory stock overview: ${matList || 'No materials recorded'}.`,
+          messageTa: `பொருட்களின் இருப்பு விவரம்: ${matList || 'பொருட்கள் எதுவும் இல்லை'}.`,
+          data: { inventory }
+        };
+      }
+
       const matched = (inventory || []).filter((m: any) => m.name.toLowerCase().includes(matName));
 
       if (matched.length === 0) {
