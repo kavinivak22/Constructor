@@ -256,8 +256,14 @@ export function VoiceBar() {
       });
 
       // Navigation handler
-      if (data.type === 'navigation' && data.params?.targetPage) {
-        router.push(data.params.targetPage);
+      const targetPage = data.params?.targetPage || (data.toolName === 'navigate_app_page' ? data.params?.targetPage : null);
+      if (targetPage || data.type === 'navigation') {
+        const dest = targetPage || '/worklog';
+        toast({
+          title: language === 'ta' ? 'பக்கத்திற்கு செல்கிறது...' : 'Navigating Page...',
+          description: `Opening ${dest}`
+        });
+        router.push(dest);
       }
 
       // Stage Action handler
