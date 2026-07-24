@@ -36,14 +36,26 @@ function fallbackIntentParser(transcript: string, language: string) {
     };
   }
 
-  // Query Daily Worklogs
-  if (text.includes('works logged') || text.includes('work logged') || text.includes('logged today') || text.includes('any works') || text.includes('worklog') || text.includes('worklogs') || text.includes('இன்று பணிப்பதிவு')) {
+  // Query Daily Worklogs / Recent Activity
+  if (
+    text.includes('activity') ||
+    text.includes('activities') ||
+    text.includes('recent') ||
+    text.includes('logged') ||
+    text.includes('works') ||
+    text.includes('work') ||
+    text.includes('worklog') ||
+    text.includes('worklogs') ||
+    text.includes('இன்று') ||
+    text.includes('பணிப்பதிவு') ||
+    text.includes('வேலை')
+  ) {
     return {
       type: 'query',
       toolName: 'query_daily_worklogs',
       params: { dateFilter: 'today' },
-      summaryEn: `Checking worklogs logged today...`,
-      summaryTa: `இன்று பதிவு செய்யப்பட்ட பணிகளை சரிபார்க்கிறது...`
+      summaryEn: `Checking worklogs and recent activity logged today...`,
+      summaryTa: `இன்று பதிவு செய்யப்பட்ட பணிகள் மற்றும் சமீபத்திய செயல்பாடுகளை சரிபார்க்கிறது...`
     };
   }
 
@@ -193,12 +205,13 @@ function fallbackIntentParser(transcript: string, language: string) {
     };
   }
 
+  // General query fallback to worklogs
   return {
-    type: 'general_chat',
-    toolName: '',
-    params: {},
-    summaryEn: `I heard: "${transcript}". How can I assist you with your construction projects?`,
-    summaryTa: `நான் கேட்டது: "${transcript}". உங்கள் கட்டுமான திட்டங்களுக்கு நான் எவ்வாறு உதவ வேண்டும்?`
+    type: 'query',
+    toolName: 'query_daily_worklogs',
+    params: { dateFilter: 'today' },
+    summaryEn: `Checking latest site worklogs and recent activity...`,
+    summaryTa: `சமீபத்திய தள பணிகள் மற்றும் செயல்பாடுகளை சரிபார்க்கிறது...`
   };
 }
 
@@ -214,15 +227,19 @@ export async function POST(req: Request) {
     let parsedResult: any = null;
 
     if (apiKey) {
-      try {
-        const systemPrompt = `You are Constructor Voice AI, an intelligent Construction Management Voice Assistant for builders in India.
+      // Try official Gemini models (gemini-1.5-flash -> gemini-2.0-flash-exp)
+      const models = ['gemini-1.5-flash', 'gemini-2.0-flash-exp', 'gemini-1.5-pro'];
+
+      for (const model of models) {
+        try {
+          const systemPrompt = `You are Constructor Voice AI, an intelligent Construction Management Voice Assistant for builders in India.
 Your job is to understand natural language voice prompts spoken in English or Tamil (including Tanglish) and select the most appropriate AI Tool.
 
 Available Tools:
 ${JSON.stringify(CONSTRUCTOR_AI_TOOLS, null, 2)}
 
 Instructions:
-1. If the user is asking a data query (e.g. "How much did Mani get paid?", "What is cement stock?", "Show project financials", "Show employees", "Show client milestones"), return toolName starting with "query_".
+1. If the user is asking a data query (e.g. "How much did Mani get paid?", "What is cement stock?", "Show project financials", "Show employees", "Show client milestones", "What's the recent activity logged"), return toolName starting with "query_".
 2. If the user wants to log attendance, work, materials, payments, expenses, create project, add employee, return toolName starting with "stage_".
 3. If the user wants to go to a page (e.g., "Take me to contractor accounts"), return "navigate_app_page".
 4. Extract parameters accurately (names, roles like Mason/Helper, quantities, wage rates, payment amounts in INR).
@@ -237,32 +254,34 @@ Return JSON in this exact structure:
   "summaryTa": "Tamil speech response"
 }`;
 
-        const userPrompt = `User Spoken Language: ${language === 'ta' ? 'Tamil' : 'English'}\nUser Transcript: "${transcript}"`;
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+          const userPrompt = `User Spoken Language: ${language === 'ta' ? 'Tamil' : 'English'}\nUser Transcript: "${transcript}"`;
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-        const res = await fetch(geminiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [
-              { role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }
-            ],
-            generationConfig: {
-              responseMimeType: 'application/json',
-              temperature: 0.2
+          const res = await fetch(geminiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [
+                { role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }
+              ],
+              generationConfig: {
+                responseMimeType: 'application/json',
+                temperature: 0.2
+              }
+            })
+          });
+
+          if (res.ok) {
+            const geminiData = await res.json();
+            const rawContent = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (rawContent) {
+              parsedResult = JSON.parse(rawContent);
+              break; // Success! Break out of model loop
             }
-          })
-        });
-
-        if (res.ok) {
-          const geminiData = await res.json();
-          const rawContent = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (rawContent) {
-            parsedResult = JSON.parse(rawContent);
           }
+        } catch (err) {
+          console.warn(`Gemini API call failed for model ${model}:`, err);
         }
-      } catch (err) {
-        console.warn('Gemini API call failed, falling back to local intent parser:', err);
       }
     }
 
