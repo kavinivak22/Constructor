@@ -189,7 +189,7 @@ export async function POST(req: Request) {
     let parsedResult: any = null;
 
     if (apiKey) {
-      const models = ['gemini-1.5-flash', 'gemini-2.0-flash-exp', 'gemini-1.5-pro'];
+      const models = ['gemini-2.5-flash-native-audio-preview-12-2025', 'gemini-2.0-flash-exp', 'gemini-1.5-flash'];
 
       for (const model of models) {
         try {

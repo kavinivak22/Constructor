@@ -6,8 +6,8 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 /**
- * Gemini 2.0 Multimodal Live Streaming Gateway
- * Streams real-time audio input/output & binds server-side tool execution
+ * Gemini Live Native Multimodal Audio Gateway
+ * Uses native audio model gemini-2.5-flash-native-audio-preview-12-2025 with audio/text modalities
  */
 export async function POST(req: Request) {
   try {
@@ -39,48 +39,53 @@ Return JSON in this structure:
   "summaryTa": "Warm Tamil voice response"
 }`;
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
+    const models = [
+      'gemini-2.5-flash-native-audio-preview-12-2025',
+      'gemini-2.0-flash-exp',
+      'gemini-1.5-flash'
+    ];
 
-    const parts: any[] = [{ text: systemPrompt }];
-
-    if (pcmAudioBase64) {
-      parts.push({
-        inlineData: {
-          mimeType: 'audio/pcm;rate=16000',
-          data: pcmAudioBase64
-        }
-      });
-    } else if (transcript) {
-      parts.push({ text: `User Prompt (${language === 'ta' ? 'Tamil' : 'English'}): "${transcript}"` });
-    }
-
-    const res = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          temperature: 0.2
-        }
-      })
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      console.warn('Gemini 2.0 Live API error:', errText);
-      return NextResponse.json({ error: 'Gemini Live engine error', details: errText }, { status: res.status });
-    }
-
-    const data = await res.json();
-    const rawContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
     let parsed: any = null;
 
-    if (rawContent) {
+    for (const model of models) {
       try {
-        parsed = JSON.parse(rawContent);
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+        const parts: any[] = [{ text: systemPrompt }];
+
+        if (pcmAudioBase64) {
+          parts.push({
+            inlineData: {
+              mimeType: 'audio/pcm;rate=16000',
+              data: pcmAudioBase64
+            }
+          });
+        } else if (transcript) {
+          parts.push({ text: `User Prompt (${language === 'ta' ? 'Tamil' : 'English'}): "${transcript}"` });
+        }
+
+        const res = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts }],
+            generationConfig: {
+              responseMimeType: 'application/json',
+              temperature: 0.2
+            }
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const rawContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (rawContent) {
+            parsed = JSON.parse(rawContent);
+            break;
+          }
+        }
       } catch (err) {
-        console.warn('Failed to parse Gemini Live JSON response:', rawContent);
+        console.warn(`Model ${model} call failed:`, err);
       }
     }
 
