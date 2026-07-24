@@ -3,6 +3,39 @@
 import { createClient } from '@/utils/supabase/server';
 import type { StagedVoiceAction } from '@/lib/ai-tools/registry';
 
+// Voice-friendly date formatting helper (converts ISO date strings like 2026-07-23 into spoken words like "yesterday", "July 23rd")
+function formatVoiceDate(dateStr?: string) {
+  if (!dateStr) return 'recently';
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  if (dateStr === today) return 'today';
+  if (dateStr === yesterday) return 'yesterday';
+
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+}
+
+// Voice-friendly currency formatting helpers (converts 5000 -> 5 thousand rupees, 1000000 -> 10 Lakh rupees)
+function formatVoiceCurrency(amount: number) {
+  if (!amount || amount === 0) return '0 rupees';
+  if (amount >= 10000000) return `${(amount / 10000000).toFixed(1)} crore rupees`;
+  if (amount >= 100000) return `${(amount / 100000).toFixed(1)} Lakh rupees`;
+  if (amount >= 1000) return `${(amount / 1000).toFixed(0)} thousand rupees`;
+  return `${amount} rupees`;
+}
+
+function formatVoiceCurrencyTa(amount: number) {
+  if (!amount || amount === 0) return '0 ரூபாய்';
+  if (amount >= 10000000) return `${(amount / 10000000).toFixed(1)} கோடி ரூபாய்`;
+  if (amount >= 100000) return `${(amount / 100000).toFixed(1)} லட்சம் ரூபாய்`;
+  if (amount >= 1000) return `${(amount / 1000).toFixed(0)} ஆயிரம் ரூபாய்`;
+  return `${amount} ரூபாய்`;
+}
+
 /**
  * Executes data queries requested by voice
  */
@@ -23,8 +56,8 @@ export async function executeVoiceQueryAction(toolName: string, params: Record<s
       if (matchedContractors.length === 0) {
         return {
           success: true,
-          message: `No contractor found matching "${params.contractorName}".`,
-          messageTa: `"${params.contractorName}" பெயரில் ஒப்பந்ததாரர் எதுவும் கிடைக்கவில்லை.`,
+          message: `No contractor found matching ${params.contractorName}.`,
+          messageTa: `${params.contractorName} பெயரில் ஒப்பந்ததாரர் எதுவும் கிடைக்கவில்லை.`,
           data: { totalPaid: 0, totalEarned: 0, outstanding: 0 }
         };
       }
@@ -44,8 +77,8 @@ export async function executeVoiceQueryAction(toolName: string, params: Record<s
 
       return {
         success: true,
-        message: `${cName} has earned ₹${totalEarned.toLocaleString('en-IN')}, received ₹${totalPaid.toLocaleString('en-IN')}, with an outstanding balance of ₹${outstanding.toLocaleString('en-IN')}.`,
-        messageTa: `${cName} அவர்களுக்கு மொத்தம் ₹${totalEarned.toLocaleString('en-IN')} வருமானத்தில் ₹${totalPaid.toLocaleString('en-IN')} வழங்கப்பட்டுள்ளது. நிலுவை தொகை ₹${outstanding.toLocaleString('en-IN')}.`,
+        message: `${cName} has earned ${formatVoiceCurrency(totalEarned)}, received ${formatVoiceCurrency(totalPaid)}, with an outstanding balance of ${formatVoiceCurrency(outstanding)}.`,
+        messageTa: `${cName} அவர்களுக்கு மொத்தம் ${formatVoiceCurrencyTa(totalEarned)} வருமானத்தில் ${formatVoiceCurrencyTa(totalPaid)} வழங்கப்பட்டுள்ளது. நிலுவை தொகை ${formatVoiceCurrencyTa(outstanding)}.`,
         data: { contractorName: cName, totalEarned, totalPaid, outstanding }
       };
     }
@@ -58,8 +91,8 @@ export async function executeVoiceQueryAction(toolName: string, params: Record<s
       if (matched.length === 0) {
         return {
           success: true,
-          message: `No inventory records found for material "${params.materialName}".`,
-          messageTa: `"${params.materialName}" பொருட்களின் கணக்கு எதுவும் கிடைக்கவில்லை.`,
+          message: `No inventory records found for material ${params.materialName}.`,
+          messageTa: `${params.materialName} பொருட்களின் கணக்கு எதுவும் கிடைக்கவில்லை.`,
           data: {}
         };
       }
@@ -67,8 +100,8 @@ export async function executeVoiceQueryAction(toolName: string, params: Record<s
       const item = matched[0];
       return {
         success: true,
-        message: `${item.name} stock level is currently ${item.quantity || 0} ${item.unit || 'units'} at ₹${item.unit_price || 0} per unit.`,
-        messageTa: `${item.name} இருப்பு தற்போது ${item.quantity || 0} ${item.unit || 'அலகுகள்'} உள்ளது. அலகு விலை ₹${item.unit_price || 0}.`,
+        message: `${item.name} stock level is currently ${item.quantity || 0} ${item.unit || 'units'} at ${formatVoiceCurrency(item.unit_price || 0)} per unit.`,
+        messageTa: `${item.name} இருப்பு தற்போது ${item.quantity || 0} ${item.unit || 'அலகுகள்'} உள்ளது. அலகு விலை ${formatVoiceCurrencyTa(item.unit_price || 0)}.`,
         data: item
       };
     }
@@ -90,8 +123,8 @@ export async function executeVoiceQueryAction(toolName: string, params: Record<s
       const p = matched[0];
       return {
         success: true,
-        message: `Project ${p.name} has a budget of ₹${(p.budget || 0).toLocaleString('en-IN')} with progress at ${p.progress || 0}%.`,
-        messageTa: `${p.name} திட்டத்தின் பட்ஜெட் ₹${(p.budget || 0).toLocaleString('en-IN')}. முன்னேற்றம் ${p.progress || 0}%.`,
+        message: `Project ${p.name} has an estimated budget of ${formatVoiceCurrency(p.budget || 0)} with progress at ${p.progress || 0} percent.`,
+        messageTa: `${p.name} திட்டத்தின் பட்ஜெட் ${formatVoiceCurrencyTa(p.budget || 0)}. முன்னேற்றம் ${p.progress || 0} சதவீதம்.`,
         data: p
       };
     }
@@ -131,12 +164,14 @@ export async function executeVoiceQueryAction(toolName: string, params: Record<s
       }
 
       const latestLog = recentLogs[0];
-      const titles = recentLogs.map((w: any) => `${w.projects?.name || 'Site'} (${w.date}): ${w.title || 'Work'}`).join('; ');
+      const dateLabel = formatVoiceDate(latestLog.date);
+      const siteName = latestLog.projects?.name || 'the site';
+      const workTitle = latestLog.title || 'Work activity';
 
       return {
         success: true,
-        message: `No worklogs for today yet. The last logged work was on ${latestLog.date} (${latestLog.projects?.name || 'Site'}): ${latestLog.title || 'Activity'}. Recent history: ${titles}`,
-        messageTa: `இன்று பணிப்பதிவுகள் இல்லை. கடைசியாக பதிவு செய்யப்பட்ட பணி (${latestLog.date} - ${latestLog.projects?.name || 'தளத்தில்'}): ${latestLog.title || 'வேலை'}.`,
+        message: `No worklogs recorded for today yet. The last logged work was ${dateLabel} at ${siteName}: ${workTitle}.`,
+        messageTa: `இன்று பணிப்பதிவுகள் இல்லை. கடைசியாக பதிவு செய்யப்பட்ட வேலை ${dateLabel} (${siteName}): ${workTitle}.`,
         data: { count: recentLogs.length, worklogs: recentLogs }
       };
     }
@@ -144,12 +179,12 @@ export async function executeVoiceQueryAction(toolName: string, params: Record<s
     if (toolName === 'query_employees') {
       const { data: employees } = await supabase.from('users').select('display_name, role, email');
       const count = employees?.length || 0;
-      const staffList = (employees || []).map((e: any) => `${e.display_name || 'Staff'} (${e.role || 'Member'})`).join(', ');
+      const staffList = (employees || []).map((e: any) => `${e.display_name || 'Staff'}`).join(', ');
 
       return {
         success: true,
-        message: `Company has ${count} staff members: ${staffList}.`,
-        messageTa: `நிறுவனத்தில் ${count} பணியாளர்கள் உள்ளனர்: ${staffList}.`,
+        message: `Your company has ${count} team members: ${staffList}.`,
+        messageTa: `உங்கள் நிறுவனத்தில் ${count} பணியாளர்கள் உள்ளனர்: ${staffList}.`,
         data: { count, employees }
       };
     }
@@ -168,8 +203,8 @@ export async function executeVoiceQueryAction(toolName: string, params: Record<s
     if (toolName === 'query_pouch_balance') {
       return {
         success: true,
-        message: `Personal pouch balance is ₹24,500. Project petty cash float balance is ₹85,000.`,
-        messageTa: `தனிப்பட்ட பணப்பை இருப்பு ₹24,500. திட்ட சில்லறை செலவு இருப்பு ₹85,000.`,
+        message: `Personal pouch balance is 24 thousand rupees. Project petty cash float balance is 85 thousand rupees.`,
+        messageTa: `தனிப்பட்ட பணப்பை இருப்பு 24 ஆயிரம் ரூபாய். திட்ட சில்லறை செலவு இருப்பு 85 ஆயிரம் ரூபாய்.`,
         data: { personal: 24500, project: 85000 }
       };
     }
