@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { CONSTRUCTOR_AI_TOOLS } from '@/lib/ai-tools/registry';
 import { executeVoiceQueryAction } from '@/app/actions/voice-assistant';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Warm, conversational fallback rule engine covering all domain tools if Gemini API Key is missing or temporarily unavailable
 function fallbackIntentParser(transcript: string, language: string) {
   const text = transcript.toLowerCase();
