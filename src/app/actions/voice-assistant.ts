@@ -98,28 +98,46 @@ export async function executeVoiceQueryAction(toolName: string, params: Record<s
 
     if (toolName === 'query_daily_worklogs') {
       const todayStr = new Date().toISOString().split('T')[0];
-      const { data: worklogs } = await supabase
+      const { data: todayWorklogs } = await supabase
         .from('daily_worklogs')
         .select('*, projects(name)')
         .eq('date', todayStr);
 
-      const count = worklogs?.length || 0;
-      if (count === 0) {
+      const count = todayWorklogs?.length || 0;
+      if (count > 0) {
+        const titles = (todayWorklogs || []).map((w: any) => `${w.projects?.name || 'Site'}: ${w.title || 'Work'}`).join(', ');
         return {
           success: true,
-          message: `No worklogs have been recorded for today yet.`,
-          messageTa: `இன்று இதுவரை எந்த பணிப்பதிவுகளும் பதிவு செய்யப்படவில்லை.`,
+          message: `Found ${count} worklog${count > 1 ? 's' : ''} logged today: ${titles}.`,
+          messageTa: `இன்று ${count} பணிப்பதிவுகள் செய்யப்பட்டுள்ளன: ${titles}.`,
+          data: { count, worklogs: todayWorklogs }
+        };
+      }
+
+      // Fallback to most recent historical worklogs across all dates
+      const { data: recentLogs } = await supabase
+        .from('daily_worklogs')
+        .select('*, projects(name)')
+        .order('date', { ascending: false })
+        .limit(3);
+
+      if (!recentLogs || recentLogs.length === 0) {
+        return {
+          success: true,
+          message: `No worklog records found in the database.`,
+          messageTa: `பணிப்பதிவுகள் எதுவும் இதுவரை பதிவு செய்யப்படவில்லை.`,
           data: { count: 0, worklogs: [] }
         };
       }
 
-      const titles = (worklogs || []).map((w: any) => `${w.projects?.name || 'Site'}: ${w.title || 'Work'}`).join(', ');
+      const latestLog = recentLogs[0];
+      const titles = recentLogs.map((w: any) => `${w.projects?.name || 'Site'} (${w.date}): ${w.title || 'Work'}`).join('; ');
 
       return {
         success: true,
-        message: `Found ${count} worklog${count > 1 ? 's' : ''} logged today: ${titles}.`,
-        messageTa: `இன்று ${count} பணிப்பதிவுகள் செய்யப்பட்டுள்ளன: ${titles}.`,
-        data: { count, worklogs }
+        message: `No worklogs for today yet. The last logged work was on ${latestLog.date} (${latestLog.projects?.name || 'Site'}): ${latestLog.title || 'Activity'}. Recent history: ${titles}`,
+        messageTa: `இன்று பணிப்பதிவுகள் இல்லை. கடைசியாக பதிவு செய்யப்பட்ட பணி (${latestLog.date} - ${latestLog.projects?.name || 'தளத்தில்'}): ${latestLog.title || 'வேலை'}.`,
+        data: { count: recentLogs.length, worklogs: recentLogs }
       };
     }
 
