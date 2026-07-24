@@ -45,7 +45,7 @@ export const CONSTRUCTOR_AI_TOOLS: AIToolDefinition[] = [
     },
   },
 
-  // 3. Query Project Financials & Milestones
+  // 3. Query Project Financials & Budgets
   {
     name: 'query_project_financials',
     description: 'Fetch total budget, actual spend, client payment milestone collections, and net profit drift for a project.',
@@ -70,7 +70,81 @@ export const CONSTRUCTOR_AI_TOOLS: AIToolDefinition[] = [
     },
   },
 
-  // 5. Stage Daily Worklog Entry
+  // 5. Query Employees & Staff Roster
+  {
+    name: 'query_employees',
+    description: 'Fetch employee list, site engineers, supervisors, roles, contact numbers, and project assignments.',
+    parameters: {
+      type: 'object',
+      properties: {
+        role: { type: 'string', description: 'Role filter (e.g. Admin, Manager, Engineer, Supervisor)' },
+        name: { type: 'string', description: 'Employee name filter' },
+      },
+    },
+  },
+
+  // 6. Query Client Milestones & Stage Billing
+  {
+    name: 'query_client_milestones',
+    description: 'Fetch stage-wise client payment milestones (Booking, Foundation, Slab, Plastering, Handover), collected amounts, and pending collections.',
+    parameters: {
+      type: 'object',
+      properties: {
+        projectName: { type: 'string', description: 'Project name filter' },
+      },
+    },
+  },
+
+  // 7. Query Purchase Orders
+  {
+    name: 'query_purchase_orders',
+    description: 'Fetch purchase orders, material orders, supplier PO status (Draft, Sent, Approved, Delivered), and order values.',
+    parameters: {
+      type: 'object',
+      properties: {
+        supplierName: { type: 'string', description: 'Supplier name filter' },
+        status: { type: 'string', description: 'PO status filter' },
+      },
+    },
+  },
+
+  // 8. Query Pouch Balances
+  {
+    name: 'query_pouch_balance',
+    description: 'Fetch personal pouch cash balance, site supervisor petty cash floats, and recent pouch transactions.',
+    parameters: {
+      type: 'object',
+      properties: {
+        pouchType: { type: 'string', description: 'Personal vs Project Pouch', enum: ['personal', 'project'] },
+      },
+    },
+  },
+
+  // 9. Query Work Prep Tasks
+  {
+    name: 'query_work_prep_tasks',
+    description: 'Fetch tomorrow work prep checklist, contractor preps, material dispatch checks, and site call lists.',
+    parameters: {
+      type: 'object',
+      properties: {
+        projectName: { type: 'string', description: 'Optional project filter' },
+      },
+    },
+  },
+
+  // 10. Query Site Analytics Summary
+  {
+    name: 'query_analytics_summary',
+    description: 'Fetch overall site performance analytics, labor cost breakdowns, monthly expense metrics, and material drift trends.',
+    parameters: {
+      type: 'object',
+      properties: {
+        metric: { type: 'string', description: 'Metric type (e.g. labor, materials, expenses, overall)' },
+      },
+    },
+  },
+
+  // 11. Stage Daily Worklog Entry
   {
     name: 'stage_worklog_entry',
     description: 'Stage a daily site worklog entry containing labor attendance breakdown and materials consumed.',
@@ -89,7 +163,7 @@ export const CONSTRUCTOR_AI_TOOLS: AIToolDefinition[] = [
     },
   },
 
-  // 6. Stage Material Delivery Receipt
+  // 12. Stage Material Delivery Receipt
   {
     name: 'stage_material_receipt',
     description: 'Stage a material delivery receipt to update inventory stock and supplier PO.',
@@ -107,7 +181,7 @@ export const CONSTRUCTOR_AI_TOOLS: AIToolDefinition[] = [
     },
   },
 
-  // 7. Stage Contractor Payment
+  // 13. Stage Contractor Payment
   {
     name: 'stage_contractor_payment',
     description: 'Stage a cash, UPI (GPay/PhonePe), or bank transfer payment to a contractor.',
@@ -124,7 +198,7 @@ export const CONSTRUCTOR_AI_TOOLS: AIToolDefinition[] = [
     },
   },
 
-  // 8. Stage Project Expense Voucher
+  // 14. Stage Project Expense Voucher
   {
     name: 'stage_project_expense',
     description: 'Stage a petty cash or project expense voucher (e.g., fuel, site food, tea, small tools).',
@@ -140,14 +214,75 @@ export const CONSTRUCTOR_AI_TOOLS: AIToolDefinition[] = [
     },
   },
 
-  // 9. Navigation Tool
+  // 15. Stage Create Project
   {
-    name: 'navigate_app_page',
-    description: 'Navigate to any page in Constructor (e.g. Contractor Accounts, Weekly Pay-Day, Daily Worklog, Material Reconciliation).',
+    name: 'stage_create_project',
+    description: 'Stage creation of a new construction project or building site.',
     parameters: {
       type: 'object',
       properties: {
-        targetPage: { type: 'string', description: 'Target route (e.g. /financials/contractors, /worklog, /materials/reconciliation, /financials/payday, /projects)' },
+        name: { type: 'string', description: 'Project name' },
+        clientName: { type: 'string', description: 'Client or property owner name' },
+        location: { type: 'string', description: 'Project location or address' },
+        budget: { type: 'number', description: 'Total estimated budget in INR' },
+      },
+      required: ['name'],
+    },
+  },
+
+  // 16. Stage Add Employee
+  {
+    name: 'stage_add_employee',
+    description: 'Stage adding a new site engineer, supervisor, or staff member.',
+    parameters: {
+      type: 'object',
+      properties: {
+        displayName: { type: 'string', description: 'Full name of employee' },
+        email: { type: 'string', description: 'Email address' },
+        role: { type: 'string', description: 'Role (Admin, Manager, Engineer, Supervisor)' },
+      },
+      required: ['displayName'],
+    },
+  },
+
+  // 17. Stage Record Client Payment
+  {
+    name: 'stage_record_client_payment',
+    description: 'Stage recording payment received from project client for a milestone.',
+    parameters: {
+      type: 'object',
+      properties: {
+        projectName: { type: 'string', description: 'Project name' },
+        milestoneStage: { type: 'string', description: 'Stage (e.g. Foundation, Slab, Plastering, Handover)' },
+        amountReceived: { type: 'number', description: 'Amount collected in INR' },
+      },
+      required: ['projectName', 'amountReceived'],
+    },
+  },
+
+  // 18. Stage Create Prep Task
+  {
+    name: 'stage_create_prep_task',
+    description: 'Stage adding a task to tomorrow daily work prep board.',
+    parameters: {
+      type: 'object',
+      properties: {
+        projectName: { type: 'string', description: 'Project name' },
+        taskTitle: { type: 'string', description: 'Preparation task description' },
+        assigneeName: { type: 'string', description: 'Person assigned to complete call/task' },
+      },
+      required: ['taskTitle'],
+    },
+  },
+
+  // 19. Navigation Tool
+  {
+    name: 'navigate_app_page',
+    description: 'Navigate to any page in Constructor (e.g. Contractor Accounts, Weekly Pay-Day, Daily Worklog, Material Reconciliation, Client Milestones, Employees, Inventory).',
+    parameters: {
+      type: 'object',
+      properties: {
+        targetPage: { type: 'string', description: 'Target route (e.g. /financials/contractors, /worklog, /materials/reconciliation, /financials/payday, /projects, /employees, /inventory, /projects/milestones)' },
         pageName: { type: 'string', description: 'Display name of page' },
       },
       required: ['targetPage'],

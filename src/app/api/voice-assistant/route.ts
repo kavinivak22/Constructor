@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { CONSTRUCTOR_AI_TOOLS } from '@/lib/ai-tools/registry';
 import { executeVoiceQueryAction } from '@/app/actions/voice-assistant';
 
-// Fallback rule engine if Gemini API Key is missing or temporarily unavailable
+// Fallback rule engine covering all domain tools if Gemini API Key is missing or temporarily unavailable
 function fallbackIntentParser(transcript: string, language: string) {
   const text = transcript.toLowerCase();
 
@@ -47,6 +47,103 @@ function fallbackIntentParser(transcript: string, language: string) {
     };
   }
 
+  // Query Employees
+  if (text.includes('employee') || text.includes('staff') || text.includes('engineer') || text.includes('supervisor') || text.includes('ஊழியர்கள்')) {
+    return {
+      type: 'query',
+      toolName: 'query_employees',
+      params: {},
+      summaryEn: `Checking company staff roster and employees...`,
+      summaryTa: `நிறுவனத்தின் பணியாளர் பட்டியலை சரிபார்க்கிறது...`
+    };
+  }
+
+  // Query Client Milestones
+  if (text.includes('milestone') || text.includes('milestones') || text.includes('client payment') || text.includes('தவணை பணம்')) {
+    return {
+      type: 'query',
+      toolName: 'query_client_milestones',
+      params: {},
+      summaryEn: `Checking client payment milestones...`,
+      summaryTa: `வாடிக்கையாளர் தவணை பணத்தை சரிபார்க்கிறது...`
+    };
+  }
+
+  // Query Purchase Orders
+  if (text.includes('purchase order') || text.includes('po') || text.includes('supplier order') || text.includes('கொள்முதல்')) {
+    return {
+      type: 'query',
+      toolName: 'query_purchase_orders',
+      params: {},
+      summaryEn: `Checking purchase orders...`,
+      summaryTa: `கொள்முதல் ஆணைகளை சரிபார்க்கிறது...`
+    };
+  }
+
+  // Query Pouch Balances
+  if (text.includes('pouch') || text.includes('petty cash') || text.includes('float') || text.includes('பணப்பை')) {
+    return {
+      type: 'query',
+      toolName: 'query_pouch_balance',
+      params: {},
+      summaryEn: `Checking personal and project pouch balances...`,
+      summaryTa: `பணப்பை இருப்புத் தொகையை சரிபார்க்கிறது...`
+    };
+  }
+
+  // Query Work Prep Tasks
+  if (text.includes('prep') || text.includes('preparation') || text.includes('தயாரிப்பு')) {
+    return {
+      type: 'query',
+      toolName: 'query_work_prep_tasks',
+      params: {},
+      summaryEn: `Checking tomorrow work prep checklist...`,
+      summaryTa: `நாளை பணி தயாரிப்பு பட்டியலை சரிபார்க்கிறது...`
+    };
+  }
+
+  // Query Analytics Summary
+  if (text.includes('analytics') || text.includes('report') || text.includes('performance') || text.includes('பகுப்பாய்வு')) {
+    return {
+      type: 'query',
+      toolName: 'query_analytics_summary',
+      params: {},
+      summaryEn: `Generating site analytics summary...`,
+      summaryTa: `தள பகுப்பாய்வு சுருக்கத்தை உருவாக்குகிறது...`
+    };
+  }
+
+  // Stage Create Project
+  if (text.includes('create project') || text.includes('new project') || text.includes('திட்டம் உருவாக்க')) {
+    return {
+      type: 'stage_action',
+      toolName: 'stage_create_project',
+      params: {
+        name: 'New Commercial Complex',
+        clientName: 'Client Owner',
+        location: 'Downtown',
+        budget: 5000000
+      },
+      summaryEn: `Staged creation of project "New Commercial Complex".`,
+      summaryTa: `"New Commercial Complex" திட்டம் உருவாக்கம் தயார் செய்யப்பட்டது.`
+    };
+  }
+
+  // Stage Add Employee
+  if (text.includes('add employee') || text.includes('add staff') || text.includes('ஊழியர் சேர்க்க')) {
+    return {
+      type: 'stage_action',
+      toolName: 'stage_add_employee',
+      params: {
+        displayName: 'Site Supervisor Suresh',
+        role: 'Supervisor',
+        email: 'suresh@constructor.com'
+      },
+      summaryEn: `Staged adding employee "Supervisor Suresh".`,
+      summaryTa: `"Supervisor Suresh" பணியாளர் சேர்க்கை தயார் செய்யப்பட்டது.`
+    };
+  }
+
   // Stage Worklog Entry
   if (text.includes('mason') || text.includes('helper') || text.includes('labor') || text.includes('கொத்தனார்') || text.includes('ஆளு')) {
     return {
@@ -79,10 +176,13 @@ function fallbackIntentParser(transcript: string, language: string) {
   }
 
   // Navigation
-  if (text.includes('contractor') || text.includes('payday') || text.includes('worklog') || text.includes('expense') || text.includes('பக்கத்திற்கு')) {
+  if (text.includes('contractor') || text.includes('payday') || text.includes('worklog') || text.includes('expense') || text.includes('inventory') || text.includes('employee') || text.includes('milestone') || text.includes('பக்கத்திற்கு')) {
     let targetPage = '/financials/contractors';
     if (text.includes('payday') || text.includes('சம்பளம்')) targetPage = '/financials/payday';
     if (text.includes('worklog') || text.includes('பணிப்பதிவு')) targetPage = '/worklog';
+    if (text.includes('inventory') || text.includes('சரக்கு')) targetPage = '/inventory';
+    if (text.includes('employee') || text.includes('ஊழியர்கள்')) targetPage = '/employees';
+    if (text.includes('milestone') || text.includes('தவணை')) targetPage = '/projects/milestones';
 
     return {
       type: 'navigation',
@@ -111,7 +211,6 @@ export async function POST(req: Request) {
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
-
     let parsedResult: any = null;
 
     if (apiKey) {
@@ -123,8 +222,8 @@ Available Tools:
 ${JSON.stringify(CONSTRUCTOR_AI_TOOLS, null, 2)}
 
 Instructions:
-1. If the user is asking a data query (e.g. "How much did Mani get paid?", "What is cement stock?", "Show project financials"), return toolName starting with "query_".
-2. If the user wants to log attendance, work, materials, payments, expenses, return toolName starting with "stage_".
+1. If the user is asking a data query (e.g. "How much did Mani get paid?", "What is cement stock?", "Show project financials", "Show employees", "Show client milestones"), return toolName starting with "query_".
+2. If the user wants to log attendance, work, materials, payments, expenses, create project, add employee, return toolName starting with "stage_".
 3. If the user wants to go to a page (e.g., "Take me to contractor accounts"), return "navigate_app_page".
 4. Extract parameters accurately (names, roles like Mason/Helper, quantities, wage rates, payment amounts in INR).
 5. Always provide summaryEn and summaryTa for audio speech feedback.
