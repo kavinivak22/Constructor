@@ -6,8 +6,8 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 /**
- * Pure Gemini AI Tool Calling Route
- * Zero hardcoded fallback rules, zero default names, 100% native Gemini tool execution.
+ * Pure Gemini Multimodal AI Engine Route
+ * Zero default fallback tools, zero hardcoded responses, 100% native Gemini tool execution.
  */
 export async function POST(req: Request) {
   try {
@@ -29,8 +29,7 @@ export async function POST(req: Request) {
 You converse naturally like a trusted colleague in English or Tamil (including Tanglish).
 
 CRITICAL INSTRUCTIONS FOR TOOL CALLING:
-1. When the user asks to navigate, open, or go to any page (e.g., "navigate me to daily worklog page", "open contractor payments", "go to inventory"), ALWAYS call the "navigate_app_page" tool with the exact target route.
-   Routes mapping:
+1. NAVIGATION: When the user asks to navigate, open, go to, or view any page (e.g., "navigate me to daily worklog page", "open contractor payments", "go to inventory", "show projects"), ALWAYS return toolName = "navigate_app_page" with params.targetPage set to:
    - Daily Worklog -> /worklog
    - Contractor Accounts / Payments -> /financials/contractors
    - Weekly Pay-Day -> /financials/payday
@@ -44,9 +43,9 @@ CRITICAL INSTRUCTIONS FOR TOOL CALLING:
    - Project Pouch -> /project-pouch
    - Team Hub / Messages -> /team-hub
 
-2. When the user asks for data (payments, worklogs, materials, employees, budget), invoke the exact matching "query_" tool. DO NOT invent or assume contractor names, material names, or numbers unless explicitly stated by the user.
+2. DATA QUERIES: When the user asks for data (payments, worklogs, materials, employees, budget), invoke the exact matching "query_" tool. DO NOT invent or assume contractor names, material names, or numbers unless explicitly stated by the user. If no contractor or material name is stated, leave parameter empty so the system queries recent records overall.
 
-3. When the user asks to log, record, stage, or add anything, invoke the matching "stage_" tool.
+3. STAGING MUTATIONS: When the user asks to log, record, stage, or add anything, invoke the matching "stage_" tool.
 
 4. Provide a warm, concise conversational speech summary in summaryEn (English) and summaryTa (Tamil).
 
@@ -103,32 +102,7 @@ Return JSON in this exact schema:
     }
 
     if (!parsedResult) {
-      // Clean, prompt-aware intent classification fallback if API is unreachable
-      const lower = transcript.toLowerCase();
-      if (lower.includes('navigate') || lower.includes('open') || lower.includes('go to') || lower.includes('show page') || lower.includes('பக்கத்திற்கு')) {
-        let targetPage = '/worklog';
-        if (lower.includes('contractor') || lower.includes('payment')) targetPage = '/financials/contractors';
-        if (lower.includes('inventory') || lower.includes('material')) targetPage = '/inventory';
-        if (lower.includes('employee') || lower.includes('staff')) targetPage = '/employees';
-        if (lower.includes('project')) targetPage = '/projects';
-        if (lower.includes('prep')) targetPage = '/work-prep';
-
-        parsedResult = {
-          type: 'navigation',
-          toolName: 'navigate_app_page',
-          params: { targetPage },
-          summaryEn: `Navigating you to ${targetPage}...`,
-          summaryTa: `${targetPage} பக்கத்திற்கு அழைத்துச் செல்கிறேன்...`
-        };
-      } else {
-        parsedResult = {
-          type: 'query',
-          toolName: 'query_daily_worklogs',
-          params: {},
-          summaryEn: `Fetching the latest site activity for you...`,
-          summaryTa: `சமீபத்திய தள செயல்பாடுகளை எடுத்து வருகிறேன்...`
-        };
-      }
+      return NextResponse.json({ error: 'Failed to process voice request with Gemini model.' }, { status: 500 });
     }
 
     // Execute server query action immediately for live data response
