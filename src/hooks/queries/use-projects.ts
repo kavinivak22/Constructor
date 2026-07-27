@@ -28,13 +28,44 @@ export function useProjects() {
             if (projectIds.length === 0) return [];
 
             // Fetch projects using the IDs
-            const { data, error } = await supabase
+            const { data: projectsData, error } = await supabase
                 .from('projects')
                 .select('*')
                 .in('id', projectIds);
 
             if (error) throw error;
-            return data as Project[];
+            if (!projectsData || projectsData.length === 0) return [];
+
+            // Fetch latest worklog timestamps for each project to sort by recent updates
+            const { data: worklogsData } = await supabase
+                .from('daily_worklogs')
+                .select('project_id, date, created_at')
+                .in('project_id', projectIds)
+                .order('created_at', { ascending: false });
+
+            const latestLogMap = new Map<string, number>();
+            if (worklogsData) {
+                for (const log of worklogsData) {
+                    if (log.project_id && !latestLogMap.has(log.project_id)) {
+                        const logTime = new Date(log.created_at || log.date).getTime();
+                        latestLogMap.set(log.project_id, logTime);
+                    }
+                }
+            }
+
+            // Sort projects: projects recently updated with worklogs show up first
+            const sortedProjects = [...projectsData].sort((a: any, b: any) => {
+                const timeA = latestLogMap.has(a.id)
+                    ? latestLogMap.get(a.id)!
+                    : new Date(a.created_at || a.start_date || 0).getTime();
+                const timeB = latestLogMap.has(b.id)
+                    ? latestLogMap.get(b.id)!
+                    : new Date(b.created_at || b.start_date || 0).getTime();
+
+                return timeB - timeA;
+            });
+
+            return sortedProjects as Project[];
         },
         enabled: !!user,
     });
