@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
 import Image from 'next/image';
-import { cn } from '@/lib/utils';
 
 interface WorklogDetailDialogProps {
   worklog: any | null;
@@ -71,20 +70,20 @@ export function WorklogDetailDialog({ worklog, isOpen, onClose }: WorklogDetailD
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-xl p-0 overflow-hidden glass-card border-white/10 dark:border-white/5 rounded-3xl backdrop-blur-3xl shadow-2xl">
+      <DialogContent className="max-w-xl p-0 overflow-hidden bg-background/95 dark:bg-card/95 backdrop-blur-2xl border border-border/60 shadow-2xl rounded-3xl text-foreground">
         <div className="relative flex flex-col max-h-[85vh] overflow-y-auto scrollbar-thin">
           {/* Close Button Overlay */}
           <Button
             size="icon"
             variant="ghost"
             onClick={onClose}
-            className="absolute top-3 right-3 z-30 h-8 w-8 rounded-full glass border border-white/10 dark:border-white/5 text-foreground hover:bg-white/20"
+            className="absolute top-3 right-3 z-30 h-8 w-8 rounded-full bg-background/80 dark:bg-card/80 backdrop-blur-md border border-border/50 text-foreground hover:bg-muted"
           >
             <X className="h-4 w-4" />
           </Button>
 
-          {/* Image Section (Exact replica of WorklogFeedCard) */}
-          <div className="relative bg-white/5 dark:bg-black/20 overflow-hidden w-full aspect-[4/3] shrink-0">
+          {/* Image Section */}
+          <div className="relative bg-muted/40 overflow-hidden w-full aspect-[4/3] shrink-0 border-b border-border/40">
             {totalPhotos > 1 ? (
               <Carousel
                 className="w-full h-full"
@@ -109,8 +108,8 @@ export function WorklogDetailDialog({ worklog, isOpen, onClose }: WorklogDetailD
                   ))}
                 </CarouselContent>
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                  <CarouselPrevious className="left-2 bg-black/50 hover:bg-black/70 border-none text-white h-8 w-8" />
-                  <CarouselNext className="right-2 bg-black/50 hover:bg-black/70 border-none text-white h-8 w-8" />
+                  <CarouselPrevious className="left-2 bg-background/80 hover:bg-background border-border text-foreground h-8 w-8" />
+                  <CarouselNext className="right-2 bg-background/80 hover:bg-background border-border text-foreground h-8 w-8" />
                 </div>
               </Carousel>
             ) : totalPhotos === 1 ? (
@@ -122,32 +121,32 @@ export function WorklogDetailDialog({ worklog, isOpen, onClose }: WorklogDetailD
                 unoptimized
               />
             ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground/30">
-                <ImageIcon className="h-12 w-12 text-muted-foreground/45" />
+              <div className="flex items-center justify-center h-full text-muted-foreground/40 bg-muted/30">
+                <ImageIcon className="h-12 w-12 text-muted-foreground/50" />
               </div>
             )}
 
             {/* Date Badge Overlay */}
-            <div className="absolute top-3 left-3 z-10 glass border border-white/10 dark:border-white/5 px-3 py-1.5 rounded-xl shadow-sm text-xs font-semibold flex flex-col items-center pointer-events-none text-foreground">
-              <span className="text-muted-foreground uppercase text-[10px] leading-tight">{format(dateObj, 'MMM')}</span>
+            <div className="absolute top-3 left-3 z-10 bg-background/90 dark:bg-card/90 backdrop-blur-md border border-border/60 px-3 py-1.5 rounded-xl shadow-md text-xs font-semibold flex flex-col items-center pointer-events-none text-foreground">
+              <span className="text-muted-foreground uppercase text-[10px] leading-tight font-bold">{format(dateObj, 'MMM')}</span>
               <span className="text-lg leading-none font-bold text-foreground">{format(dateObj, 'dd')}</span>
             </div>
           </div>
 
-          {/* Content Section (Exact replica of WorklogFeedCard) */}
+          {/* Content Section */}
           <div className="flex flex-col p-6 space-y-4">
             {/* Badges Row */}
             <div className="flex flex-wrap items-center gap-2">
               {(worklog.project?.name || worklog.projects?.name) && (
-                <Badge variant="secondary" className="text-[10px] px-2 py-0.5 h-auto glass border-white/10 dark:border-white/5 text-foreground font-semibold bg-white/10">
+                <Badge variant="secondary" className="text-[11px] px-2.5 py-0.5 h-auto bg-primary/10 text-primary border-primary/20 font-semibold">
                   {worklog.project?.name || worklog.projects?.name}
                 </Badge>
               )}
-              <Badge variant="outline" className="text-[10px] px-2 py-0.5 h-auto glass border-white/10 dark:border-white/5 text-muted-foreground font-normal gap-1">
+              <Badge variant="outline" className="text-[11px] px-2.5 py-0.5 h-auto bg-muted/50 border-border text-muted-foreground font-medium gap-1">
                 <Users className="h-3 w-3 text-muted-foreground" /> {totalWorkers} Workers
               </Badge>
               {totalMaterials > 0 && (
-                <Badge variant="outline" className="text-[10px] px-2 py-0.5 h-auto glass border-white/10 dark:border-white/5 text-muted-foreground font-normal gap-1">
+                <Badge variant="outline" className="text-[11px] px-2.5 py-0.5 h-auto bg-muted/50 border-border text-muted-foreground font-medium gap-1">
                   <Package className="h-3 w-3 text-muted-foreground" /> {totalMaterials} Mats
                 </Badge>
               )}
@@ -155,37 +154,37 @@ export function WorklogDetailDialog({ worklog, isOpen, onClose }: WorklogDetailD
 
             {/* Title & Description */}
             <div>
-              <h3 className="font-bold text-xl leading-tight text-foreground mb-2">
+              <h3 className="font-bold text-xl leading-snug text-foreground mb-2">
                 {title}
               </h3>
-              <p className="text-sm text-muted-foreground/90 whitespace-pre-line leading-relaxed">
+              <p className="text-sm text-foreground/90 whitespace-pre-line leading-relaxed font-sans">
                 {description}
               </p>
             </div>
 
             {/* Labor Section */}
             {laborEntries.length > 0 && (
-              <div className="space-y-3 pt-2 border-t border-white/10 dark:border-white/5">
+              <div className="space-y-3 pt-3 border-t border-border/40">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <Users className="h-3.5 w-3.5" /> Labor & Activity
+                  <Users className="h-3.5 w-3.5 text-primary" /> Labor & Activity
                 </h4>
                 <div className="space-y-2">
                   {laborEntries.map((entry: any, eIdx: number) => (
-                    <div key={eIdx} className="p-3 rounded-xl bg-white/5 dark:bg-black/20 border border-white/5 space-y-2">
+                    <div key={eIdx} className="p-3.5 rounded-xl bg-muted/40 dark:bg-muted/20 border border-border/50 space-y-2">
                       <div className="flex justify-between items-start gap-2">
                         <span className="font-semibold text-sm text-foreground">{entry.contractor_name || entry.contractorName || 'Contractor Team'}</span>
                         {entry.category && (
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-white/10 text-foreground border-none">
+                          <Badge variant="secondary" className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary border-none font-semibold">
                             {entry.category}
                           </Badge>
                         )}
                       </div>
                       {entry.work_description && (
-                        <p className="text-xs text-muted-foreground/90">{entry.work_description}</p>
+                        <p className="text-xs text-foreground/80 leading-relaxed">{entry.work_description}</p>
                       )}
                       {entry.work_done_quantity !== null && entry.work_done_quantity !== undefined && (
                         <div className="text-[11px] font-medium text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-md w-fit flex items-center gap-1">
-                          <span className="text-muted-foreground/90">Work Done:</span>
+                          <span className="text-muted-foreground">Work Done:</span>
                           <span className="font-bold text-foreground">{entry.work_done_quantity}</span>
                           {(entry.work_done_unit || entry.unit) && <span className="text-foreground">{entry.work_done_unit || entry.unit}</span>}
                         </div>
@@ -193,7 +192,7 @@ export function WorklogDetailDialog({ worklog, isOpen, onClose }: WorklogDetailD
                       {entry.workers && entry.workers.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 pt-1">
                           {entry.workers.map((w: any, wIdx: number) => (
-                            <Badge key={wIdx} variant="outline" className="text-[10px] py-0 px-2 glass border-white/5 text-muted-foreground font-normal">
+                            <Badge key={wIdx} variant="outline" className="text-[10px] py-0.5 px-2 bg-background border-border text-muted-foreground font-medium">
                               {w.worker_type || w.workerType}: <span className="font-bold text-foreground ml-0.5">{w.count}</span>
                             </Badge>
                           ))}
@@ -207,15 +206,15 @@ export function WorklogDetailDialog({ worklog, isOpen, onClose }: WorklogDetailD
 
             {/* Materials Section */}
             {materialEntries.length > 0 && (
-              <div className="space-y-2 pt-2 border-t border-white/10 dark:border-white/5">
+              <div className="space-y-2 pt-3 border-t border-border/40">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <Package className="h-3.5 w-3.5" /> Materials Consumed
+                  <Package className="h-3.5 w-3.5 text-amber-500" /> Materials Consumed
                 </h4>
-                <div className="p-3 rounded-xl bg-white/5 dark:bg-black/20 border border-white/5 divide-y divide-white/5">
+                <div className="p-3.5 rounded-xl bg-muted/40 dark:bg-muted/20 border border-border/50 divide-y divide-border/30">
                   {materialEntries.map((m: any, mIdx: number) => (
-                    <div key={mIdx} className="flex justify-between items-center py-1.5 first:pt-0 last:pb-0 text-xs">
-                      <span className="text-foreground font-medium">{m.material_name || m.materialName || 'Material'}</span>
-                      <span className="text-muted-foreground font-semibold">
+                    <div key={mIdx} className="flex justify-between items-center py-2 first:pt-0 last:pb-0 text-xs">
+                      <span className="text-foreground font-semibold">{m.material_name || m.materialName || 'Material'}</span>
+                      <span className="text-muted-foreground font-bold">
                         {m.quantity_consumed || m.quantity} <span className="text-[10px] font-normal">{m.unit}</span>
                       </span>
                     </div>
@@ -225,12 +224,12 @@ export function WorklogDetailDialog({ worklog, isOpen, onClose }: WorklogDetailD
             )}
 
             {/* Footer Posted Timestamp */}
-            <div className="pt-4 border-t border-white/10 dark:border-white/5 flex items-center justify-between text-xs text-muted-foreground">
-              <span className="flex items-center gap-1">
+            <div className="pt-4 border-t border-border/40 flex items-center justify-between text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5">
                 <Clock className="h-3.5 w-3.5 text-muted-foreground" /> Posted {format(createdObj, 'h:mm a')}
               </span>
               {(worklog.creator?.display_name || worklog.created_by_user?.display_name) && (
-                <span className="text-xs text-muted-foreground/80 font-medium">
+                <span className="text-xs text-muted-foreground font-medium">
                   By {worklog.creator?.display_name || worklog.created_by_user?.display_name}
                 </span>
               )}
