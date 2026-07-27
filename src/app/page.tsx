@@ -172,7 +172,7 @@ export default function DashboardPage() {
                 const dd = String(tomorrowDate.getDate()).padStart(2, '0');
                 const tomorrowStr = `${yyyy}-${mm}-${dd}`;
                 
-                setTomorrowDateLabel(tomorrowDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }));
+                setTomorrowDateLabel(tomorrowDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
                 
                 const { data: profile } = await supabase
                     .from('users')
@@ -334,11 +334,11 @@ export default function DashboardPage() {
                                     <PhoneCall className="h-4 w-4" />
                                 </div>
                                 <div className="space-y-0.5">
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex flex-wrap items-center gap-1.5">
                                         <h3 className="text-sm font-bold text-foreground">
                                             {t('tomorrowPrepTitle', "Tomorrow's Work Preparation")}
                                         </h3>
-                                        <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 border-primary/30 text-primary bg-primary/10">
+                                        <Badge variant="outline" className="text-[10px] px-2 py-0.5 h-auto border-primary/30 text-primary bg-primary/10 whitespace-nowrap shrink-0 font-semibold rounded-full">
                                             {tomorrowDateLabel || t('tomorrow', 'Tomorrow')}
                                         </Badge>
                                     </div>
