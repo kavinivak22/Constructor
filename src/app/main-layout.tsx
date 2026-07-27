@@ -8,7 +8,6 @@ import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 import { AppHeader } from '@/components/layout/app-header';
 import { InviteCheckWrapper } from '@/components/auth/invite-check-wrapper';
 import { I18nProvider } from '@/lib/i18n-context';
-import { VoiceBar } from '@/components/voice-assistant/voice-bar';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -81,15 +80,10 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
     // If they are not on an auth route, we enforce routing rules.
     if (!isAuthRoute) {
       if (user) {
-        // User is authenticated
-        // NOTE: Removed automatic redirect to /register-company
-        // The InviteCheckWrapper component will handle this
         if (userProfile?.companyId && isRegisterCompanyRoute) {
-          // If user has a company, they should not be on the register page.
           router.push('/');
         }
       } else {
-        // User is not authenticated, send them to login.
         router.push('/login');
       }
     }
@@ -123,7 +117,6 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                 <MobileBottomNav />
               </div>
               <Toaster />
-              <VoiceBar />
             </div>
           ) : (
             <div className="relative flex min-h-screen bg-secondary overflow-hidden w-full">
@@ -141,7 +134,6 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
               <Toaster />
-              <VoiceBar />
             </div>
           )}
         </SidebarProvider>
