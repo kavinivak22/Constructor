@@ -325,35 +325,39 @@ export default function DashboardPage() {
                 {/* Quick Actions */}
                 <QuickActions />
 
-                {/* Tomorrow's Work Prep Card */}
-                <Card className="glass-card overflow-hidden relative border-primary/20 bg-gradient-to-r from-primary/5 via-transparent to-transparent">
-                    <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
-                        <PhoneCall className="h-24 w-24 text-primary" />
-                    </div>
-                    <CardContent className="p-6">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                    <Badge className="bg-primary/20 text-primary border-transparent">
-                                        {t('dailyPrepBoard', 'Daily Prep Board')}
-                                    </Badge>
-                                    <span className="text-xs text-muted-foreground font-medium">{t('forTomorrow', 'For')} {tomorrowDateLabel || t('tomorrow', 'Tomorrow')}</span>
+                {/* Tomorrow's Work Prep Card (Minimized to conserve space) */}
+                <Card className="glass-card overflow-hidden border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent shadow-sm">
+                    <CardContent className="p-3.5 sm:p-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                                <div className="h-9 w-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
+                                    <PhoneCall className="h-4 w-4" />
                                 </div>
-                                <h3 className="text-lg font-bold text-foreground">{t('tomorrowPrepTitle', "Tomorrow's Work Preparation")}</h3>
-                                <p className="text-sm text-muted-foreground max-w-xl">
-                                    {tomorrowTasksCount === null ? (
-                                        t('loadingSchedule', "Loading tomorrow's schedule...")
-                                    ) : tomorrowTasksCount > 0 ? (
-                                        `${t('youHave', 'You have')} ${tomorrowTasksCount} ${t('tasksScheduled', 'tasks scheduled for tomorrow. Call assignees and contractors to prepare.')}`
-                                    ) : (
-                                        t('noTomorrowTasks', "No tasks are scheduled for tomorrow yet, but you can review your contractors and team members to plan ahead.")
-                                    )}
-                                </p>
+                                <div className="space-y-0.5">
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-sm font-bold text-foreground">
+                                            {t('tomorrowPrepTitle', "Tomorrow's Work Preparation")}
+                                        </h3>
+                                        <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 border-primary/30 text-primary bg-primary/10">
+                                            {tomorrowDateLabel || t('tomorrow', 'Tomorrow')}
+                                        </Badge>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        {tomorrowTasksCount === null ? (
+                                            t('loadingSchedule', "Loading tomorrow's schedule...")
+                                        ) : tomorrowTasksCount > 0 ? (
+                                            `${tomorrowTasksCount} ${t('tasksScheduledShort', 'tasks scheduled for tomorrow. Call assignees and contractors to prepare.')}`
+                                        ) : (
+                                            t('noPlansForTomorrow', 'No plans for tomorrow yet!')
+                                        )}
+                                    </p>
+                                </div>
                             </div>
-                            <Button asChild className="shrink-0 group">
+
+                            <Button asChild size="sm" className="shrink-0 h-8 text-xs rounded-lg px-3 group">
                                 <Link href="/work-prep">
-                                    <PhoneCall className="mr-2 h-4 w-4 transition-transform group-hover:scale-110" />
-                                    {t('startPrepPlan', 'Start Prep Plan')}
+                                    <PhoneCall className="mr-1.5 h-3.5 w-3.5 transition-transform group-hover:scale-110" />
+                                    {tomorrowTasksCount && tomorrowTasksCount > 0 ? t('viewPrepBoard', 'View Prep Board') : t('startPrep', 'Start Prep')}
                                 </Link>
                             </Button>
                         </div>
