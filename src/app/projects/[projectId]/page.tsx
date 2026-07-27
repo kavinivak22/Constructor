@@ -353,7 +353,7 @@ export default function ProjectDetailsPage() {
                                                 </Card>
                                             </div>
                                         </CarouselItem>
-                                    ););
+                                    );
                                 })}
                             </CarouselContent>
                             <CarouselPrevious variant="ghost" className="absolute left-2 top-1/2 -translate-y-1/2 z-10 hidden sm:flex h-8 w-8 rounded-full bg-white/50 hover:bg-white/75 text-foreground" />
