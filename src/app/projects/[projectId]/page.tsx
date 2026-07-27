@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { useProject, useProjectMembersCount } from '@/hooks/queries';
 import { useProjectWorklogs } from '@/hooks/queries/use-worklogs';
 import { CreateWorklogDialog } from '@/components/worklog/create-worklog-dialog';
+import { WorklogDetailDialog } from '@/components/worklog/worklog-detail-dialog';
 
 
 
@@ -44,6 +45,9 @@ export default function ProjectDetailsPage() {
     const [isLoadingTasks, setIsLoadingTasks] = useState(true);
     const [isLoadingUpcoming, setIsLoadingUpcoming] = useState(true);
     const [refreshTasksTrigger, setRefreshTasksTrigger] = useState(0);
+
+    const [selectedWorklog, setSelectedWorklog] = useState<any | null>(null);
+    const [isWorklogDialogOpen, setIsWorklogDialogOpen] = useState(false);
 
     // Fetch project tasks and upcoming works
     useEffect(() => {
@@ -318,10 +322,15 @@ export default function ProjectDetailsPage() {
 
                                     // Use first photo or placeholder
                                     const imageUrl = worklog.photos?.[0]?.photo_url || 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=2940&auto=format&fit=crop';
-
-                                    return (
+                                     return (
                                         <CarouselItem key={worklog.id} className="pl-4 basis-[85%] md:basis-1/2 lg:basis-1/3">
-                                            <Link href={`/worklog?projectId=${projectIdString}&worklogId=${worklog.id}`} className="cursor-pointer block h-full">
+                                            <div
+                                                onClick={() => {
+                                                    setSelectedWorklog(worklog);
+                                                    setIsWorklogDialogOpen(true);
+                                                }}
+                                                className="cursor-pointer block h-full"
+                                            >
                                                 <Card className="glass-card h-full hover:scale-[1.02] transition-transform duration-300">
                                                     <CardContent className="p-0 flex flex-col h-full">
                                                         <div className="relative aspect-[3/2] w-full overflow-hidden rounded-t-lg">
@@ -342,9 +351,9 @@ export default function ProjectDetailsPage() {
                                                         </div>
                                                     </CardContent>
                                                 </Card>
-                                            </Link>
+                                            </div>
                                         </CarouselItem>
-                                    );
+                                    ););
                                 })}
                             </CarouselContent>
                             <CarouselPrevious variant="ghost" className="absolute left-2 top-1/2 -translate-y-1/2 z-10 hidden sm:flex h-8 w-8 rounded-full bg-white/50 hover:bg-white/75 text-foreground" />
@@ -537,6 +546,12 @@ export default function ProjectDetailsPage() {
                     </CardContent>
                 </Card>
             </main>
+
+            <WorklogDetailDialog
+                worklog={selectedWorklog}
+                isOpen={isWorklogDialogOpen}
+                onClose={() => setIsWorklogDialogOpen(false)}
+            />
         </div>
     );
 }
