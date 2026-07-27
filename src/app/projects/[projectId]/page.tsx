@@ -25,6 +25,7 @@ import { WorklogDetailDialog } from '@/components/worklog/worklog-detail-dialog'
 import { getProjectTasks, getUpcomingWorks, toggleTaskStatus, deleteTaskAction, type TaskItem } from '@/app/actions/tasks';
 import { CreateTaskDialog } from '@/components/projects/create-task-dialog';
 import { EditTaskDialog } from '@/components/projects/edit-task-dialog';
+import { EditProjectDialog } from '@/components/projects/edit-project-dialog';
 import { CreateUpcomingDialog } from '@/components/projects/create-upcoming-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Trash2 } from 'lucide-react';
@@ -218,12 +219,15 @@ export default function ProjectDetailsPage() {
                     </Badge>
                 </div>
                 {isAdminOrManager && (
-                    <Button variant="outline" size="sm" asChild>
-                        <Link href="#">
-                            <Edit className="mr-2 h-3 w-3" />
-                            Edit
-                        </Link>
-                    </Button>
+                    <EditProjectDialog
+                        project={project}
+                        trigger={
+                            <Button variant="outline" size="sm">
+                                <Edit className="mr-2 h-3 w-3" />
+                                Edit
+                            </Button>
+                        }
+                    />
                 )}
             </header>
             <main className="flex-1 p-4 overflow-y-auto md:p-6 space-y-6 bg-transparent">
