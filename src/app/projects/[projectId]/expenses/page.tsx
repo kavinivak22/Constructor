@@ -428,48 +428,65 @@ export default function ExpensesPage() {
             )}
 
             {!isLoading && filteredExpenses.length > 0 && (
-              <div className="space-y-4">
-                {filteredExpenses.map(expense => (
-                  <Card key={expense.id} className="glass-card">
-                    <CardContent className="p-4 flex justify-between items-start">
-                      <div className="flex-1 flex gap-4 items-start">
-                        <div className='flex items-center justify-center bg-muted rounded-full h-10 w-10 shrink-0 mt-1'>
-                          {getCategoryIcon(expense.category)}
-                        </div>
-                        <div className="flex-1 space-y-1">
-                          <p className="font-semibold">{expense.description}</p>
-                          <Badge variant="secondary" className="capitalize">{expense.category}</Badge>
-                          <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground pt-1">
-                            <div className="flex items-center gap-1.5">
-                              <CalendarIcon className="h-3.5 w-3.5" />
-                              <span>{formatDate(new Date((expense.expense_date || expense.expenseDate) as string))}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <User className="h-3.5 w-3.5" />
-                              <span>{expense.user?.displayName || expense.user?.name || 'Unknown'}</span>
+              <div className="space-y-3">
+                {filteredExpenses.map(expense => {
+                  // Helper to clean up verbose Payout descriptions for clean, crisp rendering
+                  const rawDesc = expense.description || 'Expense';
+                  const cleanDesc = rawDesc
+                    .replace(/Contractor Wages:\s*/gi, '')
+                    .replace(/\(Mason Coolie\)/gi, 'Mason')
+                    .replace(/\(Female Coolie\)/gi, 'Female Coolie');
+
+                  return (
+                    <Card key={expense.id} className="glass-card hover:border-white/20 transition-all rounded-xl sm:rounded-2xl">
+                      <CardContent className="p-3 sm:p-4 flex items-start justify-between gap-2.5 sm:gap-3">
+                        <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
+                          <div className="flex items-center justify-center bg-primary/10 border border-primary/20 rounded-xl h-8 w-8 sm:h-10 sm:w-10 shrink-0 text-primary mt-0.5">
+                            {getCategoryIcon(expense.category)}
+                          </div>
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <h4 className="font-bold text-xs sm:text-sm text-foreground line-clamp-2 leading-snug font-headline">
+                              {cleanDesc}
+                            </h4>
+                            <div className="flex items-center flex-wrap gap-x-2.5 gap-y-1 text-[11px] sm:text-xs text-muted-foreground pt-0.5">
+                              <Badge variant="secondary" className="capitalize text-[10px] px-1.5 py-0 h-4 shrink-0 bg-white/5 border-white/10">
+                                {expense.category}
+                              </Badge>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <CalendarIcon className="h-3 w-3 text-muted-foreground/70" />
+                                <span>{formatDate(new Date((expense.expense_date || expense.expenseDate) as string))}</span>
+                              </div>
+                              <span className="text-white/20 hidden sm:inline">•</span>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <User className="h-3 w-3 text-muted-foreground/70" />
+                                <span className="truncate max-w-[100px] sm:max-w-[140px]">{expense.user?.displayName || expense.user?.name || 'Unknown'}</span>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="text-right flex flex-col items-end ml-4">
-                        <p className="font-bold text-lg mb-2">{formatCurrency(expense.amount)}</p>
-                        {(userProfile?.role === 'admin' || expense.user_id === user?.id || expense.userId === user?.id) && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="w-8 h-8 p-0">
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEdit(expense)}>Edit</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDeleteRequest(expense)} className="text-red-600">Delete</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+
+                        <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-1">
+                          <span className="font-bold text-xs sm:text-base text-foreground tracking-tight">
+                            {formatCurrency(expense.amount)}
+                          </span>
+                          {(userProfile?.role === 'admin' || expense.user_id === user?.id || expense.userId === user?.id) && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-foreground">
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="glass-card border-white/10">
+                                <DropdownMenuItem onClick={() => handleEdit(expense)} className="text-xs">Edit</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDeleteRequest(expense)} className="text-xs text-red-500">Delete</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
 

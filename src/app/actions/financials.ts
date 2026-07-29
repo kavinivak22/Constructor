@@ -1052,7 +1052,7 @@ export async function processWeeklyPayout(payoutId: string, status: 'approved' |
                                 const parsed = JSON.parse(item.reference_details)
                                 if (parsed && parsed.type === 'contractor_wages') {
                                     const categories = (parsed.breakdown || []).map((b: any) => b.category).join(', ')
-                                    displayDetails = `Contractor Wages: ${categories}`
+                                    displayDetails = categories ? categories : 'Wages'
                                 }
                             } catch (e) {
                                 // fallback
@@ -1063,7 +1063,7 @@ export async function processWeeklyPayout(payoutId: string, status: 'approved' |
                             project_id: item.project_id,
                             category: category,
                             amount: Number(item.amount_paid),
-                            description: `Payout: ${item.recipient_name} (${displayDetails})`,
+                            description: displayDetails ? `Payout: ${item.recipient_name} (${displayDetails})` : `Payout: ${item.recipient_name}`,
                             expense_date: new Date().toISOString().split('T')[0],
                             created_by: user.id,
                             payment_status: 'paid',
