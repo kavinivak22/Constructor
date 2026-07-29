@@ -630,7 +630,7 @@ export default function WorkPrepPage() {
       deficitQty,
       isLowBuffer,
     };
-  }).filter(m => m.isRequired || searchQuery === '');
+  }).filter(m => m.isRequired && (searchQuery === '' || m.name.toLowerCase().includes(searchQuery.toLowerCase())));
 
   const criticalMaterialCount = materialsAuditList.filter(m => m.isDeficit).length;
 
