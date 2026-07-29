@@ -103,10 +103,6 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
 
     if (saveRes.success && saveRes.progress !== undefined) {
       if (onProgressUpdated) onProgressUpdated(saveRes.progress);
-      toast({
-        title: 'Quality Check Updated',
-        description: `Project progress updated to ${saveRes.progress}%.`,
-      });
     }
   };
 

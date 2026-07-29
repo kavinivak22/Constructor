@@ -80,10 +80,6 @@ export function AIProcessProgressWidget({ projectId, projectName, onProgressUpda
 
     if (saveRes.success && saveRes.progress !== undefined) {
       if (onProgressUpdated) onProgressUpdated(saveRes.progress);
-      toast({
-        title: 'Task Status Updated',
-        description: `Project progress updated to ${saveRes.progress}%.`,
-      });
     }
   };
 
@@ -121,10 +117,6 @@ export function AIProcessProgressWidget({ projectId, projectName, onProgressUpda
 
     if (saveRes.success && saveRes.progress !== undefined) {
       if (onProgressUpdated) onProgressUpdated(saveRes.progress);
-      toast({
-        title: 'Quality Checklist Item Updated',
-        description: `Overall progress is now ${saveRes.progress}%.`,
-      });
     }
   };
 
