@@ -22,6 +22,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent } from '@/components/ui/card';
 import { ArrowLeft, PlusCircle, MoreHorizontal, Calendar as CalendarIcon, Search, IndianRupee, User, CalendarDays, FileDown } from 'lucide-react';
@@ -61,6 +69,7 @@ export default function ExpensesPage() {
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [viewingExpense, setViewingExpense] = useState<Expense | null>(null);
   const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -438,14 +447,18 @@ export default function ExpensesPage() {
                     .replace(/\(Female Coolie\)/gi, 'Female Coolie');
 
                   return (
-                    <Card key={expense.id} className="glass-card hover:border-white/20 transition-all rounded-xl sm:rounded-2xl">
+                    <Card 
+                      key={expense.id} 
+                      onClick={() => setViewingExpense(expense)}
+                      className="glass-card hover:border-white/30 transition-all rounded-xl sm:rounded-2xl cursor-pointer group hover:shadow-md"
+                    >
                       <CardContent className="p-3 sm:p-4 flex items-start justify-between gap-2.5 sm:gap-3">
                         <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
-                          <div className="flex items-center justify-center bg-primary/10 border border-primary/20 rounded-xl h-8 w-8 sm:h-10 sm:w-10 shrink-0 text-primary mt-0.5">
+                          <div className="flex items-center justify-center bg-primary/10 border border-primary/20 rounded-xl h-8 w-8 sm:h-10 sm:w-10 shrink-0 text-primary mt-0.5 group-hover:scale-105 transition-transform">
                             {getCategoryIcon(expense.category)}
                           </div>
                           <div className="min-w-0 flex-1 space-y-1">
-                            <h4 className="font-bold text-xs sm:text-sm text-foreground line-clamp-2 leading-snug font-headline">
+                            <h4 className="font-bold text-xs sm:text-sm text-foreground line-clamp-2 leading-snug font-headline group-hover:text-primary transition-colors">
                               {cleanDesc}
                             </h4>
                             <div className="flex items-center flex-wrap gap-x-2.5 gap-y-1 text-[11px] sm:text-xs text-muted-foreground pt-0.5">
@@ -471,14 +484,14 @@ export default function ExpensesPage() {
                           </span>
                           {(userProfile?.role === 'admin' || expense.user_id === user?.id || expense.userId === user?.id) && (
                             <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
+                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                                 <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-foreground">
                                   <MoreHorizontal className="w-4 h-4" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="glass-card border-white/10">
-                                <DropdownMenuItem onClick={() => handleEdit(expense)} className="text-xs">Edit</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleDeleteRequest(expense)} className="text-xs text-red-500">Delete</DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEdit(expense); }} className="text-xs">Edit</DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteRequest(expense); }} className="text-xs text-red-500">Delete</DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           )}
@@ -511,6 +524,116 @@ export default function ExpensesPage() {
         projectId={projectId as string}
         onSuccess={handleExpenseUpdate}
       />
+
+      {/* Expense Details Dialog */}
+      <Dialog open={!!viewingExpense} onOpenChange={(open) => !open && setViewingExpense(null)}>
+        <DialogContent className="sm:max-w-md glass-card border-white/10 p-5 rounded-2xl">
+          {viewingExpense && (
+            <div className="space-y-4">
+              <DialogHeader className="space-y-1.5 text-left">
+                <div className="flex items-center justify-between gap-2 pr-6">
+                  <Badge variant="secondary" className="capitalize text-xs px-2.5 py-0.5 bg-primary/10 text-primary border-primary/20 font-semibold">
+                    {viewingExpense.category}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground font-medium">
+                    {formatDate(new Date((viewingExpense.expense_date || viewingExpense.expenseDate) as string))}
+                  </span>
+                </div>
+                <DialogTitle className="text-base sm:text-lg font-bold font-headline pt-1 text-foreground leading-snug">
+                  {viewingExpense.description}
+                </DialogTitle>
+              </DialogHeader>
+
+              {/* Amount Banner */}
+              <div className="p-3.5 sm:p-4 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium">Expense Amount</p>
+                  <p className="text-xl sm:text-2xl font-extrabold text-primary font-headline mt-0.5">
+                    {formatCurrency(viewingExpense.amount)}
+                  </p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary shrink-0">
+                  <IndianRupee className="w-5 h-5" />
+                </div>
+              </div>
+
+              {/* Details Grid */}
+              <div className="grid grid-cols-2 gap-3 text-xs p-3.5 rounded-xl bg-background/50 border border-white/10">
+                <div>
+                  <p className="text-muted-foreground font-medium text-[11px]">Logged By</p>
+                  <p className="font-semibold text-foreground mt-0.5 truncate">
+                    {viewingExpense.user?.displayName || viewingExpense.user?.name || 'Site Manager'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium text-[11px]">Category</p>
+                  <p className="font-semibold text-foreground capitalize mt-0.5">
+                    {viewingExpense.category}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium text-[11px]">Project Site</p>
+                  <p className="font-semibold text-foreground mt-0.5 truncate">
+                    {project?.name || 'Current Site'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground font-medium text-[11px]">Status</p>
+                  <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/30 font-semibold mt-0.5 px-2 py-0">
+                    {(viewingExpense.payment_status || 'Paid').toUpperCase()}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Notes & References */}
+              {viewingExpense.notes && (
+                <div className="space-y-1 text-xs">
+                  <p className="text-muted-foreground font-medium text-[11px]">Notes & Reference Details</p>
+                  <div className="p-3 rounded-xl bg-background/30 border border-white/5 text-muted-foreground leading-relaxed whitespace-pre-wrap max-h-32 overflow-y-auto text-[11px]">
+                    {viewingExpense.notes}
+                  </div>
+                </div>
+              )}
+
+              {/* Receipt attachment if available */}
+              {(viewingExpense.receipt_url || viewingExpense.receiptUrl) && (
+                <div className="space-y-1 text-xs pt-1">
+                  <p className="text-muted-foreground font-medium text-[11px]">Receipt Document</p>
+                  <a 
+                    href={viewingExpense.receipt_url || viewingExpense.receiptUrl} 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline font-semibold"
+                  >
+                    View Uploaded Receipt
+                  </a>
+                </div>
+              )}
+
+              {/* Footer Actions */}
+              <DialogFooter className="flex flex-row justify-end gap-2 pt-2 border-t border-white/10">
+                {(userProfile?.role === 'admin' || viewingExpense.user_id === user?.id || viewingExpense.userId === user?.id) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const exp = viewingExpense;
+                      setViewingExpense(null);
+                      handleEdit(exp);
+                    }}
+                    className="text-xs border-white/10 h-8"
+                  >
+                    Edit Expense
+                  </Button>
+                )}
+                <Button size="sm" onClick={() => setViewingExpense(null)} className="text-xs h-8">
+                  Close
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
         <AlertDialogContent>
