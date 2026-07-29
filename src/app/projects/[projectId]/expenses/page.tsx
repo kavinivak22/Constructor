@@ -285,18 +285,18 @@ export default function ExpensesPage() {
   return (
     <>
       <div className="flex flex-col h-full bg-transparent">
-        <header className="flex items-center gap-4 p-4 md:px-6 shrink-0 bg-transparent sticky top-0 z-10">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="w-5 h-5" />
+        <header className="flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 shrink-0 glass sticky top-0 z-10 border-b border-white/10 h-11 sm:h-14">
+          <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 shrink-0" onClick={() => router.back()}>
+            <ArrowLeft className="w-4 h-4" />
           </Button>
-          <div className="flex-1">
-            <h1 className="text-xl md:text-2xl font-bold tracking-tight font-headline">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xs sm:text-lg font-bold tracking-tight font-headline truncate leading-none">
               Project Expenses
             </h1>
-            <p className="text-sm text-muted-foreground">{project?.name || 'Loading...'}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground truncate leading-none mt-0.5">{project?.name || 'Loading...'}</p>
           </div>
-          <Button onClick={handleAddNew}>
-            <PlusCircle className="w-4 h-4 mr-2" />
+          <Button size="sm" className="h-7 sm:h-8 text-xs font-semibold px-2.5 sm:px-3" onClick={handleAddNew}>
+            <PlusCircle className="w-3.5 h-3.5 mr-1" />
             Log Expense
           </Button>
         </header>
