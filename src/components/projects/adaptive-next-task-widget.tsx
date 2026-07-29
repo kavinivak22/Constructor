@@ -84,16 +84,9 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
             c.id === checkId ? { ...c, is_completed: !c.is_completed } : c
           );
 
-          // DO NOT auto-change task status to 'completed' here so task stays until logged!
-          let newStatus = t.status;
-          const completedCount = updatedChecklists.filter(c => c.is_completed).length;
-          if (completedCount > 0 && t.status === 'pending') {
-            newStatus = 'in-progress';
-          }
-
           return {
             ...t,
-            status: newStatus,
+            status: t.status,
             checklists: updatedChecklists
           };
         })

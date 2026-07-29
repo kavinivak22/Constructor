@@ -95,17 +95,9 @@ export function AIProcessProgressWidget({ projectId, projectName, onProgressUpda
             c.id === checkId ? { ...c, is_completed: !c.is_completed } : c
           );
 
-          let newStatus = t.status;
-          const completedCount = updatedChecklists.filter(c => c.is_completed).length;
-          if (completedCount === updatedChecklists.length && updatedChecklists.length > 0) {
-            newStatus = 'completed';
-          } else if (completedCount > 0) {
-            newStatus = 'in-progress';
-          }
-
           return {
             ...t,
-            status: newStatus as any,
+            status: t.status,
             checklists: updatedChecklists
           };
         })

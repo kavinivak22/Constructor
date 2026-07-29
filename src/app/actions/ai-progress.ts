@@ -640,18 +640,7 @@ function calculateOverallProgressFromProcesses(processes: SubheadingProcess[]): 
       if (task.status === 'completed') {
         taskScoreSum += 1.0;
       } else if (task.status === 'in-progress') {
-        // If task has checklist items, calculate partial ratio
-        if (task.checklists && task.checklists.length > 0) {
-          const completedChecks = task.checklists.filter(c => c.is_completed).length;
-          taskScoreSum += (completedChecks / task.checklists.length);
-        } else {
-          taskScoreSum += 0.5;
-        }
-      } else if (task.checklists && task.checklists.length > 0) {
-        const completedChecks = task.checklists.filter(c => c.is_completed).length;
-        if (completedChecks > 0) {
-          taskScoreSum += (completedChecks / task.checklists.length);
-        }
+        taskScoreSum += 0.5;
       }
     }
 
