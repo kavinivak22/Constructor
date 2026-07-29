@@ -27,7 +27,7 @@ import { CreateTaskDialog } from '@/components/projects/create-task-dialog';
 import { EditTaskDialog } from '@/components/projects/edit-task-dialog';
 import { EditProjectDialog } from '@/components/projects/edit-project-dialog';
 import { AdaptiveNextTaskWidget } from '@/components/projects/adaptive-next-task-widget';
-import { AIProcessProgressWidget } from '@/components/projects/ai-process-progress-widget';
+import { BuildingPlanSummaryCard } from '@/components/projects/building-plan-summary-card';
 import { CreateUpcomingDialog } from '@/components/projects/create-upcoming-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Trash2 } from 'lucide-react';
@@ -286,6 +286,9 @@ export default function ProjectDetailsPage() {
                         <Link href={`/projects/${projectId}/expenses`}>View Expenses</Link>
                     </Button>
                     <Button variant="outline" asChild>
+                        <Link href={`/projects/${projectId}/building-plan`}>Building Plan</Link>
+                    </Button>
+                    <Button variant="outline" asChild>
                         <Link href={`/work-prep?projectId=${projectIdString}`}>Tomorrow's Prep</Link>
                     </Button>
                     <CreateWorklogDialog
@@ -300,7 +303,7 @@ export default function ProjectDetailsPage() {
                     projectName={project.name}
                 />
 
-                <AIProcessProgressWidget
+                <BuildingPlanSummaryCard
                     projectId={projectIdString}
                     projectName={project.name}
                 />
