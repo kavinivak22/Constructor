@@ -948,18 +948,7 @@ export default function WorkPrepPage() {
                     {/* Auto-Suggested Tasks Banner from Building Construction Plan */}
                     {suggestedTasks.length > 0 && (
                       <div className="p-4 rounded-2xl bg-gradient-to-r from-primary/15 via-primary/5 to-background border border-primary/30 space-y-3 shadow-md">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="bg-primary/20 text-primary border-primary/40 text-xs px-2.5 py-0.5 font-bold uppercase tracking-wider">
-                              <Sparkles className="h-3 w-3 mr-1 text-primary" /> Auto-Suggested from Building Plan
-                            </Badge>
-                          </div>
-                          <span className="text-xs text-muted-foreground font-semibold">
-                            {suggestedTasks.length} Suggested Task{suggestedTasks.length > 1 ? 's' : ''}
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {suggestedTasks.map((s, idx) => (
                             <div key={idx} className="p-3 rounded-xl bg-background/80 border border-primary/20 space-y-2 flex flex-col justify-between">
                               <div>
