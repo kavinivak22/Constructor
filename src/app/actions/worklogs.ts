@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers'
 import { z } from 'zod'
+import { evaluateWorklogProgressWithGemini } from '@/app/actions/ai-progress';
 
 // --- Schemas ---
 
@@ -151,6 +152,13 @@ export async function createWorklog(data: WorklogData) {
                 .insert(photoRecords)
 
             if (photoError) throw photoError
+        }
+
+        // Trigger Gemini AI Progress Evaluation asynchronously to update task completion & overall progress
+        try {
+            await evaluateWorklogProgressWithGemini(projectId, worklogId);
+        } catch (aiErr) {
+            console.warn('Non-blocking AI evaluation warning:', aiErr);
         }
 
         return { success: true, worklogId }
