@@ -294,64 +294,76 @@ export default function ExpensesPage() {
 
         <main className="flex-1 p-4 overflow-y-auto md:p-6">
           <div className='max-w-4xl mx-auto'>
-            <div className="mb-6 space-y-4">
+            <div className="mb-4 space-y-3">
+              {/* Stat Card: Compact on mobile, rich on desktop */}
               <Card className="glass-card w-full">
-                <CardContent className="p-4 flex items-center gap-4">
-                  <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10">
-                    <IndianRupee className="w-6 h-6 text-primary" />
+                <CardContent className="p-3 sm:p-4 flex items-center justify-between sm:justify-start gap-3 sm:gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-9 h-9 sm:w-12 sm:h-12 rounded-xl bg-primary/10 shrink-0">
+                      <IndianRupee className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs sm:text-sm text-muted-foreground font-medium">Total Filtered Expenses</p>
+                      <p className="text-lg sm:text-2xl font-bold tracking-tight text-foreground">{formatCurrency(totalExpenses)}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Filtered Expenses</p>
-                    <p className="text-2xl font-bold">{formatCurrency(totalExpenses)}</p>
-                  </div>
+                  <Badge variant="secondary" className="sm:hidden text-xs font-semibold px-2.5 py-1 shrink-0">
+                    {filteredExpenses.length} Items
+                  </Badge>
                 </CardContent>
               </Card>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+
+              {/* Responsive Compact Filter Controls */}
+              <div className="space-y-2.5 sm:space-y-4">
+                {/* Search Input */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search expenses..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
+                    className="pl-9 h-9 text-xs sm:text-sm bg-background/50 border-white/10"
                   />
                 </div>
-                <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+
+                {/* Filter Grid: 2-column grid on mobile, inline flex row on desktop */}
+                <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3">
+                  {/* Date Filter */}
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         id="date"
-                        variant={"outline"}
+                        variant="outline"
+                        size="sm"
                         className={cn(
-                          "w-full sm:w-[260px] justify-start text-left font-normal",
+                          "w-full sm:w-[220px] justify-start text-left font-normal text-xs h-9 bg-background/50 border-white/10 truncate",
                           !dateRange && "text-muted-foreground"
                         )}
                       >
-                        <CalendarDays className="mr-2 h-4 w-4" />
-                        {dateRange?.from ? (
-                          dateRange.to ? (
-                            <>
-                              {format(dateRange.from, "LLL dd, y")} -{" "}
-                              {format(dateRange.to, "LLL dd, y")}
-                            </>
+                        <CalendarDays className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">
+                          {dateRange?.from ? (
+                            dateRange.to ? (
+                              `${format(dateRange.from, "MMM dd")} - ${format(dateRange.to, "MMM dd")}`
+                            ) : (
+                              format(dateRange.from, "MMM dd")
+                            )
                           ) : (
-                            format(dateRange.from, "LLL dd, y")
-                          )
-                        ) : (
-                          <span>Filter by date...</span>
-                        )}
+                            "Filter date..."
+                          )}
+                        </span>
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="end">
-                      <div className='flex'>
-                        <div className='p-2 border-r'>
-                          <div className='flex flex-col items-start'>
-                            <Button variant="ghost" className='w-full justify-start' onClick={() => setDateRange({ from: startOfDay(new Date()), to: endOfDay(new Date()) })}>Today</Button>
-                            <Button variant="ghost" className='w-full justify-start' onClick={() => setDateRange({ from: startOfDay(subDays(new Date(), 1)), to: endOfDay(subDays(new Date(), 1)) })}>Yesterday</Button>
-                            <Button variant="ghost" className='w-full justify-start' onClick={() => setDateRange({ from: startOfDay(subDays(new Date(), 6)), to: endOfDay(new Date()) })}>Last 7 days</Button>
-                            <Button variant="ghost" className='w-full justify-start' onClick={() => setDateRange({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) })}>This Month</Button>
-                            <Button variant="ghost" className='w-full justify-start' onClick={() => setDateRange({ from: startOfMonth(subDays(new Date(), 30)), to: endOfMonth(subDays(new Date(), 30)) })}>Last Month</Button>
-                            <Button variant="ghost" className='w-full justify-start text-red-600' onClick={() => setDateRange(undefined)}>Clear</Button>
+                      <div className="flex">
+                        <div className="p-2 border-r">
+                          <div className="flex flex-col items-start">
+                            <Button variant="ghost" className="w-full justify-start text-xs h-8" onClick={() => setDateRange({ from: startOfDay(new Date()), to: endOfDay(new Date()) })}>Today</Button>
+                            <Button variant="ghost" className="w-full justify-start text-xs h-8" onClick={() => setDateRange({ from: startOfDay(subDays(new Date(), 1)), to: endOfDay(subDays(new Date(), 1)) })}>Yesterday</Button>
+                            <Button variant="ghost" className="w-full justify-start text-xs h-8" onClick={() => setDateRange({ from: startOfDay(subDays(new Date(), 6)), to: endOfDay(new Date()) })}>Last 7 days</Button>
+                            <Button variant="ghost" className="w-full justify-start text-xs h-8" onClick={() => setDateRange({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) })}>This Month</Button>
+                            <Button variant="ghost" className="w-full justify-start text-xs h-8" onClick={() => setDateRange({ from: startOfMonth(subDays(new Date(), 30)), to: endOfMonth(subDays(new Date(), 30)) })}>Last Month</Button>
+                            <Button variant="ghost" className="w-full justify-start text-xs h-8 text-red-500" onClick={() => setDateRange(undefined)}>Clear</Button>
                           </div>
                         </div>
                         <Calendar
@@ -365,28 +377,43 @@ export default function ExpensesPage() {
                       </div>
                     </PopoverContent>
                   </Popover>
+
+                  {/* Category Select */}
                   <Select onValueChange={setCategoryFilter} defaultValue="all">
-                    <SelectTrigger className='w-full sm:w-48'>
-                      <SelectValue placeholder="Filter by category" />
+                    <SelectTrigger className="w-full sm:w-44 h-9 text-xs bg-background/50 border-white/10">
+                      <SelectValue placeholder="Category" />
                     </SelectTrigger>
                     <SelectContent>
                       {expenseCategories.map(category => (
-                        <SelectItem key={category} value={category} className="capitalize">{category === 'all' ? 'All Categories' : category}</SelectItem>
+                        <SelectItem key={category} value={category} className="capitalize text-xs">
+                          {category === 'all' ? 'All Categories' : category}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <div className="flex items-center space-x-2 w-full sm:w-auto">
+
+                  {/* My/All Toggle */}
+                  <div className="col-span-1 flex items-center justify-between sm:justify-start gap-2 h-9 px-3 rounded-lg border border-white/10 bg-background/50">
                     <Switch
                       id="user-filter-toggle"
                       checked={userFilter === 'me'}
                       onCheckedChange={(checked) => setUserFilter(checked ? 'me' : 'all')}
+                      className="scale-90"
                     />
-                    <Label htmlFor="user-filter-toggle" className="text-sm font-medium whitespace-nowrap">
+                    <Label htmlFor="user-filter-toggle" className="text-xs font-medium whitespace-nowrap cursor-pointer">
                       {userFilter === 'me' ? 'My Expenses' : 'All Expenses'}
                     </Label>
                   </div>
-                  <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={filteredExpenses.length === 0} className="w-full sm:w-auto">
-                    <FileDown className="mr-2 h-4 w-4" />
+
+                  {/* Export Button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportPDF}
+                    disabled={filteredExpenses.length === 0}
+                    className="col-span-1 h-9 text-xs bg-background/50 border-white/10"
+                  >
+                    <FileDown className="mr-1.5 h-3.5 w-3.5" />
                     Export
                   </Button>
                 </div>
