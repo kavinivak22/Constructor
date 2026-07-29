@@ -1,25 +1,20 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import {
-  CheckCircle2,
-  Clock,
-  Sparkles,
+  ChevronLeft,
   ChevronRight,
-  ClipboardCheck,
   Plus,
-  ShieldCheck,
   Zap,
   Loader2
 } from 'lucide-react';
 import { getProjectScope, saveProjectScope, type SubheadingProcess, type ProcessTask } from '@/app/actions/ai-progress';
 import { CreateWorklogDialog } from '@/components/worklog/create-worklog-dialog';
-import { useToast } from '@/hooks/use-toast';
 
 interface AdaptiveNextTaskWidgetProps {
   projectId: string;
@@ -28,11 +23,10 @@ interface AdaptiveNextTaskWidgetProps {
 }
 
 export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdated }: AdaptiveNextTaskWidgetProps) {
-  const { toast } = useToast();
   const [processes, setProcesses] = useState<SubheadingProcess[]>([]);
   const [appliedProfileId, setAppliedProfileId] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
 
   const fetchScope = async () => {
     setIsLoading(true);
@@ -40,6 +34,13 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
     if (res.success && res.processes) {
       setProcesses(res.processes);
       setAppliedProfileId(res.appliedProfileId);
+
+      // Find first uncompleted task index as initial default
+      const flatList = res.processes.flatMap(p => p.tasks || []);
+      const firstUncompleted = flatList.findIndex(t => t.status !== 'completed');
+      if (firstUncompleted !== -1) {
+        setCurrentTaskIndex(firstUncompleted);
+      }
     }
     setIsLoading(false);
   };
@@ -50,41 +51,43 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
     }
   }, [projectId]);
 
-  // Find the current active process and next task with its quality checklist
-  let activeProcess: SubheadingProcess | null = null;
-  let activeTask: ProcessTask | null = null;
-
+  // Flatten all tasks into a single navigational array
+  const flatTaskList: { task: ProcessTask; processTitle: string; processId: string }[] = [];
   for (const proc of processes) {
-    const nextTask = proc.tasks?.find(t => t.status !== 'completed');
-    if (nextTask) {
-      activeProcess = proc;
-      activeTask = nextTask;
-      break;
+    if (proc.tasks) {
+      for (const t of proc.tasks) {
+        flatTaskList.push({
+          task: t,
+          processTitle: proc.title,
+          processId: proc.id
+        });
+      }
     }
   }
 
-  // Handle toggling a checklist item in real-time
-  const handleToggleChecklist = async (checkId: string) => {
-    if (!activeProcess || !activeTask) return;
+  const activeItem = flatTaskList[currentTaskIndex] || flatTaskList[0];
+  const activeTask = activeItem?.task;
+  const activeProcessTitle = activeItem?.processTitle;
 
-    setIsSaving(true);
+  // Handle toggling a checklist item in real-time WITHOUT auto-completing the task
+  const handleToggleChecklist = async (checkId: string) => {
+    if (!activeItem || !activeTask) return;
+
     const updatedProcesses = processes.map(p => {
-      if (p.id !== activeProcess!.id) return p;
+      if (p.id !== activeItem.processId) return p;
       return {
         ...p,
         tasks: p.tasks.map(t => {
-          if (t.id !== activeTask!.id) return t;
+          if (t.id !== activeTask.id) return t;
 
           const updatedChecklists = t.checklists.map(c =>
             c.id === checkId ? { ...c, is_completed: !c.is_completed } : c
           );
 
-          // Auto-mark task in-progress or completed
+          // DO NOT auto-change task status to 'completed' here so task stays until logged!
           let newStatus = t.status;
           const completedCount = updatedChecklists.filter(c => c.is_completed).length;
-          if (completedCount === updatedChecklists.length && updatedChecklists.length > 0) {
-            newStatus = 'completed';
-          } else if (completedCount > 0) {
+          if (completedCount > 0 && t.status === 'pending') {
             newStatus = 'in-progress';
           }
 
@@ -99,7 +102,6 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
 
     setProcesses(updatedProcesses);
     const saveRes = await saveProjectScope(projectId, updatedProcesses, appliedProfileId);
-    setIsSaving(false);
 
     if (saveRes.success && saveRes.progress !== undefined) {
       if (onProgressUpdated) onProgressUpdated(saveRes.progress);
@@ -116,8 +118,8 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
     );
   }
 
-  if (!activeTask || !activeProcess) {
-    return null; // All tasks completed or scope not configured yet
+  if (!activeTask || flatTaskList.length === 0) {
+    return null; // No scope configured yet
   }
 
   const completedChecks = activeTask.checklists?.filter(c => c.is_completed).length || 0;
@@ -126,36 +128,63 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
 
   return (
     <Card className="glass-card border-primary/30 bg-gradient-to-r from-primary/10 via-background/80 to-primary/5 shadow-xl relative overflow-hidden">
-      <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-        <ShieldCheck className="h-32 w-32 text-primary" />
-      </div>
-
-      <CardHeader className="p-4 sm:p-5 pb-2">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+      <CardHeader className="p-4 sm:p-5 pb-2 space-y-2">
+        {/* Top Badges Row */}
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="bg-primary/15 text-primary border-primary/30 text-xs px-2.5 py-0.5 font-bold uppercase tracking-wider">
-              <Zap className="h-3 w-3 mr-1" /> Next Target Task
+              <Zap className="h-3 w-3 mr-1" /> Next Task
             </Badge>
-            <span className="text-xs text-muted-foreground font-medium truncate max-w-[200px]">
-              {activeProcess.title}
+            <span className="text-xs text-muted-foreground font-medium truncate max-w-[180px] sm:max-w-[240px]">
+              {activeProcessTitle}
             </span>
           </div>
-          {totalChecks > 0 && (
-            <Badge variant="secondary" className="text-xs font-semibold bg-primary/10 text-primary">
-              {completedChecks} / {totalChecks} Quality Checks Done ({checkProgressPct}%)
-            </Badge>
-          )}
+
+          {/* Manual Task Navigation Buttons */}
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={currentTaskIndex === 0}
+              onClick={() => setCurrentTaskIndex(prev => Math.max(0, prev - 1))}
+              className="h-7 w-7 rounded-lg"
+              title="Previous Task Checklist"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-[11px] text-muted-foreground font-semibold px-1">
+              {currentTaskIndex + 1}/{flatTaskList.length}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={currentTaskIndex === flatTaskList.length - 1}
+              onClick={() => setCurrentTaskIndex(prev => Math.min(flatTaskList.length - 1, prev + 1))}
+              className="h-7 w-7 rounded-lg"
+              title="Next Task Checklist"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
-        <CardTitle className="text-lg sm:text-xl font-bold font-headline text-foreground mt-2 flex items-center gap-2">
+        {/* Quality Checks Done Badge moved right under top row as requested in markup */}
+        {totalChecks > 0 && (
+          <div>
+            <Badge variant="secondary" className="text-xs font-semibold bg-primary/10 text-primary px-2.5 py-0.5">
+              {completedChecks} / {totalChecks} Quality Checks Done ({checkProgressPct}%)
+            </Badge>
+          </div>
+        )}
+
+        {/* Task Title */}
+        <CardTitle className="text-lg sm:text-xl font-bold font-headline text-foreground pt-1">
           {activeTask.title}
         </CardTitle>
-        <CardDescription className="text-xs text-muted-foreground">
-          Site Quality Inspection Checklist — Check off items on site before logging work.
-        </CardDescription>
       </CardHeader>
 
       <CardContent className="p-4 sm:p-5 pt-2 space-y-4">
+        {/* Checklist Grid */}
         {totalChecks > 0 ? (
           <div className="space-y-2">
             <Progress value={checkProgressPct} className="h-1.5 bg-muted" />
@@ -187,14 +216,12 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
           <p className="text-xs text-muted-foreground italic">No quality checklist items specified for this task.</p>
         )}
 
-        <div className="pt-2 flex flex-wrap items-center justify-between gap-3 border-t border-border/40">
-          <span className="text-xs text-muted-foreground flex items-center gap-1">
-            <Clock className="h-3.5 w-3.5 text-primary" /> Active Phase Inspection
-          </span>
+        {/* Bottom Full-Width Log Work Button */}
+        <div className="pt-2">
           <CreateWorklogDialog
             projectId={projectId}
             trigger={
-              <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-md">
+              <Button size="default" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-md h-11 text-sm rounded-xl">
                 <Plus className="mr-1.5 h-4 w-4" /> Log Work for This Task
               </Button>
             }
