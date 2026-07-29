@@ -478,6 +478,16 @@ export default function WorkPrepPage() {
     });
   };
 
+  const handleUpdateMaterialQtyInTask = (taskId: string, materialId: string, quantity: number) => {
+    setTaskMaterials(prev => {
+      const existing = prev[taskId] || [];
+      const updated = existing.map(m =>
+        m.materialId === materialId ? { ...m, quantity: Math.max(0, quantity) } : m
+      );
+      return { ...prev, [taskId]: updated };
+    });
+  };
+
   // Quick Task Creation Handler (with contractor & materials)
   const handleAddMaterialToNewTaskModal = () => {
     if (newTaskSelectedMaterialId === 'none') return;
@@ -1061,21 +1071,31 @@ export default function WorkPrepPage() {
                                         </span>
                                       </div>
 
-                                      {/* Attached Materials List */}
+                                      {/* Attached Materials List with Editable Quantity */}
                                       {currentMaterials.length > 0 && (
                                         <div className="flex flex-wrap gap-2 pt-1">
                                           {currentMaterials.map(req => {
                                             const mat = materials.find(m => m.id === req.materialId);
                                             return (
-                                              <Badge key={req.materialId} variant="outline" className="text-xs py-1 px-2.5 bg-white/5 border-white/10 flex items-center gap-1.5">
-                                                <span>{mat?.name}: <strong>{req.quantity} {mat?.unit_of_measurement}</strong></span>
+                                              <div key={req.materialId} className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-xl bg-background/80 border border-primary/30 text-xs shadow-sm">
+                                                <span className="font-semibold text-foreground">{mat?.name}:</span>
+                                                <Input
+                                                  type="number"
+                                                  min="0"
+                                                  step="any"
+                                                  value={req.quantity || ''}
+                                                  onChange={(e) => handleUpdateMaterialQtyInTask(task.id, req.materialId, parseFloat(e.target.value) || 0)}
+                                                  className="w-16 h-7 text-center font-bold text-primary bg-background border-primary/40 focus:border-primary text-xs px-1 py-0 rounded-md"
+                                                />
+                                                <span className="text-muted-foreground font-medium text-[11px]">{mat?.unit_of_measurement}</span>
                                                 <button
                                                   onClick={() => handleRemoveMaterialFromTask(task.id, req.materialId)}
-                                                  className="text-muted-foreground hover:text-red-400 ml-1"
+                                                  className="text-muted-foreground hover:text-red-400 ml-1 p-0.5"
+                                                  title="Remove material"
                                                 >
-                                                  <X className="h-3 w-3" />
+                                                  <X className="h-3.5 w-3.5" />
                                                 </button>
-                                              </Badge>
+                                              </div>
                                             );
                                           })}
                                         </div>
