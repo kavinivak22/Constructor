@@ -113,9 +113,10 @@ interface CreateWorklogDialogProps {
     initialData?: any; // For editing
     worklogId?: string; // For editing
     forceOpen?: boolean;
+    initialTitle?: string;
 }
 
-export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData, worklogId, forceOpen }: CreateWorklogDialogProps) {
+export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData, worklogId, forceOpen, initialTitle }: CreateWorklogDialogProps) {
     const isEditing = !!initialData;
     const [open, setOpen] = useState(forceOpen || false);
 
@@ -172,13 +173,19 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
     const form = useForm<CreateWorklogFormValues>({
         resolver: zodResolver(createWorklogSchema),
         defaultValues: {
-            title: initialData?.title || "",
+            title: initialData?.title || initialTitle || "",
             date: defaultDate,
             labor: defaultLabor,
             materials: defaultMaterials,
             photos: defaultPhotos,
         },
     });
+
+    useEffect(() => {
+        if (initialTitle && !initialData?.title) {
+            form.setValue('title', initialTitle);
+        }
+    }, [initialTitle, open]);
 
     // Reset form when initialData changes or dialog opens/closes
     useEffect(() => {

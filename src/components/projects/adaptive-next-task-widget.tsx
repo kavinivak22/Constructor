@@ -220,6 +220,7 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
         <div className="pt-2">
           <CreateWorklogDialog
             projectId={projectId}
+            initialTitle={activeTask.title}
             trigger={
               <Button size="default" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-md h-11 text-sm rounded-xl">
                 <Plus className="mr-1.5 h-4 w-4" /> Log Work for This Task
