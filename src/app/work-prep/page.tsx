@@ -402,9 +402,13 @@ export default function WorkPrepPage() {
     });
   };
 
-  // Date checker helper
-  const isTaskTomorrow = (dueDateStr: string | null | undefined) => {
+  // Date checker helper (resilient string & selection checking)
+  const isTaskTomorrow = (dueDateStr: string | null | undefined, taskId?: string) => {
+    if (taskId && selectedTaskIds.has(taskId)) return true;
     if (!dueDateStr) return false;
+    const cleanDueDate = String(dueDateStr).substring(0, 10);
+    if (cleanDueDate === tomorrowDateStr) return true;
+
     try {
       const taskDate = new Date(dueDateStr);
       const tomorrowDate = new Date(tomorrowDateStr);
@@ -420,7 +424,7 @@ export default function WorkPrepPage() {
 
   // Filter tasks scheduled for tomorrow based on selected project
   const tomorrowAllTasks = tasks.filter(task => {
-    const isScheduledForTomorrow = isTaskTomorrow(task.due_date);
+    const isScheduledForTomorrow = isTaskTomorrow(task.due_date, task.id);
     const matchesProject = selectedProjectId === 'all' || task.project_id === selectedProjectId;
     return isScheduledForTomorrow && matchesProject;
   });
@@ -556,6 +560,7 @@ export default function WorkPrepPage() {
       const createdTaskId = result.task.id;
       const newTaskObj: TaskItem = {
         ...result.task,
+        due_date: tomorrowDateStr,
         project_name: suggested.projectName,
         assigned_user: null,
       };
