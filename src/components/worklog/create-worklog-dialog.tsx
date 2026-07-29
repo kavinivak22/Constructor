@@ -187,11 +187,11 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
         }
     }, [initialTitle, open]);
 
-    // Reset form when initialData changes or dialog opens/closes
+    // Reset form when initialData or initialTitle changes or dialog opens/closes
     useEffect(() => {
         if (open) {
             form.reset({
-                title: initialData?.title || "",
+                title: initialData?.title || initialTitle || "",
                 date: defaultDate,
                 labor: defaultLabor,
                 materials: defaultMaterials,
@@ -199,7 +199,7 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
             });
             if (initialData?.project_id) setSelectedProjectId(initialData.project_id);
         }
-    }, [open, initialData, form]);
+    }, [open, initialData, initialTitle, form]);
 
 
     const { fields: laborFields, append: appendLabor, remove: removeLabor } = useFieldArray({
