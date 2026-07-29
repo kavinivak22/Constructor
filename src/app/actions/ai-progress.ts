@@ -456,16 +456,36 @@ export async function getProjectScope(projectId: string): Promise<{
 }> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase
-      .from('projects')
-      .select('description, scope_data')
-      .eq('id', projectId)
-      .single();
 
-    if (error) throw error;
+    // Primary: Read from projects.scope_data column
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('scope_data')
+        .eq('id', projectId)
+        .single();
 
-    if (data?.scope_data) {
-      const scope = typeof data.scope_data === 'string' ? JSON.parse(data.scope_data) : data.scope_data;
+      if (!error && data?.scope_data) {
+        const scope = typeof data.scope_data === 'string' ? JSON.parse(data.scope_data) : data.scope_data;
+        return {
+          success: true,
+          processes: scope.processes || [],
+          appliedProfileId: scope.appliedProfileId,
+        };
+      }
+    } catch (colErr) {
+      console.warn('Fallback querying project scope from company_settings:', colErr);
+    }
+
+    // Fallback: Read from company_settings table
+    const { data: fallbackData } = await supabase
+      .from('company_settings')
+      .select('setting_value')
+      .eq('setting_key', `scope_${projectId}`)
+      .maybeSingle();
+
+    if (fallbackData?.setting_value) {
+      const scope = typeof fallbackData.setting_value === 'string' ? JSON.parse(fallbackData.setting_value) : fallbackData.setting_value;
       return {
         success: true,
         processes: scope.processes || [],
@@ -498,17 +518,53 @@ export async function saveProjectScope(
       updated_at: new Date().toISOString()
     };
 
-    // Update project scope and calculated progress in DB
-    const { error: updateError } = await supabase
-      .from('projects')
-      .update({
-        scope_data: scopePayload,
-        progress: totalProgress,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', projectId);
+    // Try updating project scope and calculated progress on projects table
+    let primarySuccess = false;
+    try {
+      const { error: updateError } = await supabase
+        .from('projects')
+        .update({
+          scope_data: scopePayload,
+          progress: totalProgress,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', projectId);
 
-    if (updateError) throw updateError;
+      if (!updateError) {
+        primarySuccess = true;
+      }
+    } catch (e) {
+      console.warn('Primary update to projects table scope_data failed, using company_settings fallback');
+    }
+
+    // Backup / Fallback: Save to company_settings
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: userProfile } = await supabase
+        .from('users')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+      const companyId = userProfile?.company_id || user.id;
+
+      await supabase
+        .from('company_settings')
+        .upsert({
+          company_id: companyId,
+          setting_key: `scope_${projectId}`,
+          setting_value: scopePayload,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'company_id,setting_key' });
+
+      // Always update overall project progress column
+      await supabase
+        .from('projects')
+        .update({
+          progress: totalProgress,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', projectId);
+    }
 
     // 2. If user checked "Make changes in [Profile Name] Profile too", sync master template
     if (syncToMasterProfileId) {
