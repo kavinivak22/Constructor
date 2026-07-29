@@ -948,6 +948,9 @@ export default function WorkPrepPage() {
                     {/* Auto-Suggested Tasks Banner from Building Construction Plan */}
                     {suggestedTasks.length > 0 && (
                       <div className="p-4 rounded-2xl bg-gradient-to-r from-primary/15 via-primary/5 to-background border border-primary/30 space-y-3 shadow-md">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                          <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" /> Suggestions
+                        </h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {suggestedTasks.map((s, idx) => (
                             <div key={idx} className="p-3 rounded-xl bg-background/80 border border-primary/20 space-y-2 flex flex-col justify-between">
