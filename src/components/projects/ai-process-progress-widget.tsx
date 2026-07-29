@@ -25,6 +25,7 @@ import {
 import { getProjectScope, saveProjectScope, type SubheadingProcess } from '@/app/actions/ai-progress';
 import { ProcessScopeDialog } from '@/components/projects/process-scope-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useSupabase } from '@/supabase/provider';
 
 interface AIProcessProgressWidgetProps {
   projectId: string;
