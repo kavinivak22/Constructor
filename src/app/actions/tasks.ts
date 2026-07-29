@@ -262,3 +262,40 @@ export async function editTaskAction(taskId: string, data: {
     }
 }
 
+export async function dispatchWorkPrepPlan(data: {
+    selectedTaskIds: string[];
+    taskContractors: Record<string, string>;
+    tomorrowDateStr: string;
+}) {
+    const supabase = await createClient();
+
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Unauthorized');
+
+        if (data.selectedTaskIds.length === 0) return { success: true };
+
+        // Update all selected tasks in Supabase with due_date = tomorrowDateStr & assigned_to contractor/user
+        for (const taskId of data.selectedTaskIds) {
+            const contractorId = data.taskContractors[taskId] || null;
+            const updatePayload: any = {
+                due_date: data.tomorrowDateStr,
+                is_upcoming: false,
+                updated_at: new Date().toISOString()
+            };
+            if (contractorId) {
+                updatePayload.assigned_to = contractorId;
+            }
+            await supabase
+                .from('tasks')
+                .update(updatePayload)
+                .eq('id', taskId);
+        }
+
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error dispatching work prep plan:', error);
+        return { success: false, error: error.message };
+    }
+}
+

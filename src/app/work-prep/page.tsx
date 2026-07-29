@@ -16,7 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { createProjectTask } from '@/app/actions/tasks';
+import { createProjectTask, dispatchWorkPrepPlan } from '@/app/actions/tasks';
 import {
   Phone,
   PhoneCall,
@@ -645,10 +645,17 @@ export default function WorkPrepPage() {
   const readinessIndex = Math.min(100, Math.round(taskWeight + contractorAssignedWeight + contactConfirmationWeight + materialScore));
 
   // Dispatch Handler
-  const handleProcessPrep = () => {
+  const handleProcessPrep = async () => {
     const nowStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     setIsDispatched(true);
     setDispatchedAt(nowStr);
+
+    // Call Server Action to persist tasks, due dates & contractor assignments to Supabase DB
+    await dispatchWorkPrepPlan({
+      selectedTaskIds: Array.from(selectedTaskIds),
+      taskContractors,
+      tomorrowDateStr,
+    });
 
     const dispatchData = {
       isDispatched: true,
@@ -664,7 +671,7 @@ export default function WorkPrepPage() {
 
     toast({
       title: 'Work Prep Finalized & Dispatched!',
-      description: `Tomorrow's site plan recorded with ${readinessIndex}% readiness index.`,
+      description: `Tomorrow's site plan recorded & synced to database (${readinessIndex}% readiness index).`,
     });
   };
 
