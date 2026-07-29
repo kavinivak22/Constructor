@@ -33,7 +33,6 @@ import {
   Sparkles,
   AlertCircle,
   AlertTriangle,
-  HelpCircle,
   PhoneOff,
   UserCheck,
   Loader2,
@@ -47,12 +46,21 @@ import {
   Share2,
   Plus,
   Send,
-  RefreshCw,
-  Info
+  ShieldCheck,
+  Zap,
+  Trash2
 } from 'lucide-react';
 import { format, addDays } from 'date-fns';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { getProjectScope } from '@/app/actions/ai-progress';
+
+type SuggestedTask = {
+  projectId: string;
+  projectName: string;
+  taskTitle: string;
+  processTitle: string;
+  checklistsCount: number;
+};
 
 type TaskItem = {
   id: string;
@@ -112,9 +120,11 @@ type MaterialItem = {
   supplier_name: string;
   site_id: string;
   site_name?: string;
-  isRequiredForTomorrow?: boolean;
-  matchedTaskTitle?: string;
-  allocatedQty?: number;
+};
+
+type MaterialRequirement = {
+  materialId: string;
+  quantity: number;
 };
 
 type CallStatus = 'pending' | 'called' | 'confirmed' | 'no-answer';
@@ -143,24 +153,30 @@ export default function WorkPrepPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [contractors, setContractors] = useState<Contractor[]>([]);
   const [materials, setMaterials] = useState<MaterialItem[]>([]);
+  const [suggestedTasks, setSuggestedTasks] = useState<SuggestedTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Step 1 State: Selected Tasks for tomorrow's prep
+  // Step 1 State: Selected Tasks & Task-Level Assignments
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+  // taskId -> contractorId
+  const [taskContractors, setTaskContractors] = useState<Record<string, string>>({});
+  // taskId -> MaterialRequirement[]
+  const [taskMaterials, setTaskMaterials] = useState<Record<string, MaterialRequirement[]>>({});
 
   // Step 1 Modal: Quick task creation
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskProjectId, setNewTaskProjectId] = useState('');
   const [newTaskPriority, setNewTaskPriority] = useState('medium');
+  const [newTaskContractorId, setNewTaskContractorId] = useState<string>('none');
+  const [newTaskSelectedMaterialId, setNewTaskSelectedMaterialId] = useState<string>('none');
+  const [newTaskMaterialQty, setNewTaskMaterialQty] = useState<number>(10);
+  const [newTaskMaterialReqs, setNewTaskMaterialReqs] = useState<MaterialRequirement[]>([]);
   const [isSubmittingTask, setIsSubmittingTask] = useState(false);
 
   // Step 2 State: Call status tracking
   const [callStatuses, setCallStatuses] = useState<Record<string, CallStatus>>({});
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Step 3 State: Planned Material Allocations (materialId -> quantity)
-  const [materialAllocations, setMaterialAllocations] = useState<Record<string, number>>({});
 
   // Step 4 State: Final Dispatched Manifest
   const [isDispatched, setIsDispatched] = useState<boolean>(false);
@@ -206,12 +222,11 @@ export default function WorkPrepPage() {
         const projectIds = (projectsData || []).map(p => p.id);
         const siteIds = Array.from(new Set((projectsData || []).map(p => p.site_id).filter(Boolean))) as string[];
 
-        // Default new task project if available
         if (projectsData && projectsData.length > 0) {
           setNewTaskProjectId(projectsData[0].id);
         }
 
-        // 3. Fetch employees (users in the same company)
+        // 3. Fetch employees
         const { data: employeesData, error: employeesError } = await supabase
           .from('users')
           .select('id, display_name, email, phone, photo_url, role')
@@ -239,7 +254,7 @@ export default function WorkPrepPage() {
         }));
         setContractors(mappedContractors);
 
-        // 5. Fetch materials for company sites
+        // 5. Fetch materials
         if (siteIds.length > 0) {
           const { data: materialsData, error: materialsError } = await supabase
             .from('materials')
@@ -263,7 +278,7 @@ export default function WorkPrepPage() {
           }
         }
 
-        // 6. Fetch tasks for company projects
+        // 6. Fetch tasks
         if (projectIds.length > 0) {
           const { data: tasksData, error: tasksError } = await supabase
             .from('tasks')
@@ -296,6 +311,35 @@ export default function WorkPrepPage() {
             .filter(t => isTaskTomorrow(t.due_date))
             .map(t => t.id);
           setSelectedTaskIds(new Set(tomorrowIds));
+
+          // Auto-suggest next uncompleted task from each project's Building Plan
+          const suggestions: SuggestedTask[] = [];
+          for (const p of projectsData || []) {
+            try {
+              const scopeRes = await getProjectScope(p.id);
+              if (scopeRes.success && scopeRes.processes) {
+                for (const proc of scopeRes.processes) {
+                  const nextTask = proc.tasks?.find(t => t.status !== 'completed');
+                  if (nextTask) {
+                    const alreadyScheduled = mappedTasks.some(mt => mt.project_id === p.id && mt.title.toLowerCase() === nextTask.title.toLowerCase());
+                    if (!alreadyScheduled) {
+                      suggestions.push({
+                        projectId: p.id,
+                        projectName: p.name,
+                        taskTitle: nextTask.title,
+                        processTitle: proc.title,
+                        checklistsCount: nextTask.checklists?.length || 0
+                      });
+                    }
+                    break;
+                  }
+                }
+              }
+            } catch (scErr) {
+              console.warn('Scope query error for project:', p.id, scErr);
+            }
+          }
+          setSuggestedTasks(suggestions);
         }
       } catch (err: any) {
         console.error('Error loading work preparation data:', err);
@@ -339,21 +383,21 @@ export default function WorkPrepPage() {
     }
   }, [tomorrowDateStr]);
 
-  // Save call checklist status change
+  // Save call status change
   const handleStatusChange = (id: string, status: CallStatus) => {
     const newStatuses = { ...callStatuses, [id]: status };
     setCallStatuses(newStatuses);
     localStorage.setItem(`work-prep-calls-${tomorrowDateStr}`, JSON.stringify(newStatuses));
 
     const labels: Record<CallStatus, string> = {
-      pending: 'Cleared call log status.',
+      pending: 'Reset status.',
       called: 'Marked as Contacted.',
-      confirmed: 'Marked as Confirmed!',
+      confirmed: 'Marked as Confirmed Readiness!',
       'no-answer': 'Marked as No Answer.',
     };
 
     toast({
-      title: 'Call Status Updated',
+      title: 'Status Updated',
       description: labels[status],
     });
   };
@@ -397,7 +441,54 @@ export default function WorkPrepPage() {
     });
   };
 
-  // Handle quick task creation for tomorrow
+  // Handle contractor assignment for a task
+  const handleAssignContractorToTask = (taskId: string, contractorId: string) => {
+    setTaskContractors(prev => ({
+      ...prev,
+      [taskId]: contractorId,
+    }));
+  };
+
+  // Handle material attachment for a task
+  const handleAddMaterialToTask = (taskId: string, materialId: string, quantity: number) => {
+    if (!materialId || materialId === 'none') return;
+    setTaskMaterials(prev => {
+      const existing = prev[taskId] || [];
+      const index = existing.findIndex(m => m.materialId === materialId);
+      let updated: MaterialRequirement[];
+      if (index >= 0) {
+        updated = [...existing];
+        updated[index] = { materialId, quantity: updated[index].quantity + quantity };
+      } else {
+        updated = [...existing, { materialId, quantity }];
+      }
+      return { ...prev, [taskId]: updated };
+    });
+  };
+
+  const handleRemoveMaterialFromTask = (taskId: string, materialId: string) => {
+    setTaskMaterials(prev => {
+      const existing = prev[taskId] || [];
+      const updated = existing.filter(m => m.materialId !== materialId);
+      return { ...prev, [taskId]: updated };
+    });
+  };
+
+  // Quick Task Creation Handler (with contractor & materials)
+  const handleAddMaterialToNewTaskModal = () => {
+    if (newTaskSelectedMaterialId === 'none') return;
+    setNewTaskMaterialReqs(prev => {
+      const idx = prev.findIndex(m => m.materialId === newTaskSelectedMaterialId);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = { materialId: newTaskSelectedMaterialId, quantity: copy[idx].quantity + newTaskMaterialQty };
+        return copy;
+      }
+      return [...prev, { materialId: newTaskSelectedMaterialId, quantity: newTaskMaterialQty }];
+    });
+    setNewTaskSelectedMaterialId('none');
+  };
+
   const handleCreateQuickTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskTitle.trim() || !newTaskProjectId) return;
@@ -412,9 +503,21 @@ export default function WorkPrepPage() {
     setIsSubmittingTask(false);
 
     if (result.success && result.task) {
+      const createdTaskId = result.task.id;
+
+      // Assign contractor if selected
+      if (newTaskContractorId && newTaskContractorId !== 'none') {
+        setTaskContractors(prev => ({ ...prev, [createdTaskId]: newTaskContractorId }));
+      }
+
+      // Assign materials if selected
+      if (newTaskMaterialReqs.length > 0) {
+        setTaskMaterials(prev => ({ ...prev, [createdTaskId]: newTaskMaterialReqs }));
+      }
+
       toast({
-        title: 'Task Created for Tomorrow',
-        description: `"${newTaskTitle}" has been added to tomorrow's schedule.`,
+        title: 'Task Created & Configured!',
+        description: `"${newTaskTitle}" added to tomorrow's plan.`,
       });
 
       const selectedProj = projects.find(p => p.id === newTaskProjectId);
@@ -425,9 +528,12 @@ export default function WorkPrepPage() {
       };
 
       setTasks(prev => [newTaskObj, ...prev]);
-      setSelectedTaskIds(prev => new Set(prev).add(newTaskObj.id));
+      setSelectedTaskIds(prev => new Set(prev).add(createdTaskId));
 
+      // Reset modal state
       setNewTaskTitle('');
+      setNewTaskContractorId('none');
+      setNewTaskMaterialReqs([]);
       setIsAddTaskOpen(false);
     } else {
       toast({
@@ -438,143 +544,95 @@ export default function WorkPrepPage() {
     }
   };
 
-  // Employees assigned to selected tasks
-  const selectedAssignedEmployees = employees.filter(emp => {
-    const matchesTask = selectedTasksList.some(t => t.assigned_to === emp.id);
-    const matchesSearch = searchQuery.trim() === '' ||
-      (emp.display_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (emp.role || '').toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesTask && matchesSearch;
-  });
-
-  // Recommendation Keyword Mappings for Contractors
-  const categoryKeywords: Record<string, string[]> = {
-    'mason': ['mason', 'masonry', 'brick', 'cement', 'concrete', 'plaster', 'block', 'slab', 'wall', 'mortar', 'stone', 'structural'],
-    'carpenter': ['carpenter', 'carpentry', 'wood', 'door', 'window', 'frame', 'cabinet', 'plywood', 'furniture', 'interior'],
-    'electrician': ['electrician', 'electrical', 'wire', 'wiring', 'cable', 'switch', 'light', 'panel', 'breaker', 'power', 'conduit'],
-    'plumber': ['plumber', 'plumbing', 'pipe', 'leak', 'water', 'drain', 'tap', 'sink', 'toilet', 'faucet', 'sanitary'],
-    'painter': ['painter', 'painting', 'paint', 'coat', 'brush', 'roller', 'wallcoat', 'primer', 'polish'],
-    'tiler': ['tiler', 'tile', 'tiling', 'floor', 'flooring', 'marble', 'granite', 'grout'],
-    'supervisor': ['supervisor', 'supervise', 'manage', 'inspect', 'audit', 'site manager'],
-    'helper': ['helper', 'coolie', 'laborer', 'shifting', 'clean', 'carrying', 'unloading', 'site clean']
-  };
-
-  const getTaskMatchingExplanation = (contractor: Contractor) => {
-    const category = (contractor.category || '').toLowerCase();
-    const name = contractor.name.toLowerCase();
-
-    for (const task of selectedTasksList) {
-      const taskText = `${task.title} ${task.description || ''}`.toLowerCase();
-
-      if (taskText.includes(name)) {
-        return `Matches task: "${task.title}"`;
-      }
-
-      for (const [groupKey, keywords] of Object.entries(categoryKeywords)) {
-        if (category.includes(groupKey) || groupKey.includes(category)) {
-          const matchedKeyword = keywords.find(keyword => taskText.includes(keyword));
-          if (matchedKeyword) {
-            return `Category matches "${matchedKeyword}" in task: "${task.title}"`;
-          }
-        }
-      }
-    }
-    return null;
-  };
-
-  const prioritizedContractors = contractors
-    .map(c => {
-      const matchExplanation = getTaskMatchingExplanation(c);
-      return {
-        ...c,
-        isRecommended: !!matchExplanation,
-        matchExplanation
-      };
-    })
-    .filter(c => {
-      const matchesSearch = searchQuery.trim() === '' ||
-        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (c.category || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (c.contactPerson || '').toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesSearch;
-    })
-    .sort((a, b) => {
-      if (a.isRecommended && !b.isRecommended) return -1;
-      if (!a.isRecommended && b.isRecommended) return 1;
-      return a.name.localeCompare(b.name);
+  const handleAddSuggestedTask = async (suggested: SuggestedTask) => {
+    const result = await createProjectTask({
+      projectId: suggested.projectId,
+      title: suggested.taskTitle,
+      dueDate: tomorrowDateStr,
+      priority: 'high',
     });
 
-  // Material keyword matching for Step 3
-  const materialKeywords: Record<string, string[]> = {
-    'cement': ['cement', 'concrete', 'slab', 'plaster', 'mortar', 'masonry', 'foundation', 'brick'],
-    'sand': ['sand', 'mortar', 'plaster', 'concrete', 'flooring'],
-    'brick': ['brick', 'wall', 'masonry', 'block', 'partition'],
-    'paint': ['paint', 'painting', 'primer', 'coat', 'wallcoat'],
-    'tile': ['tile', 'tiling', 'flooring', 'bathroom', 'kitchen'],
-    'wire': ['wire', 'wiring', 'electrical', 'cable', 'conduit', 'switch'],
-    'pipe': ['pipe', 'plumbing', 'drain', 'water', 'sanitary'],
-    'wood': ['wood', 'carpentry', 'door', 'window', 'plywood', 'frame']
+    if (result.success && result.task) {
+      const createdTaskId = result.task.id;
+      const newTaskObj: TaskItem = {
+        ...result.task,
+        project_name: suggested.projectName,
+        assigned_user: null,
+      };
+
+      setTasks(prev => [newTaskObj, ...prev]);
+      setSelectedTaskIds(prev => new Set(prev).add(createdTaskId));
+      setSuggestedTasks(prev => prev.filter(s => !(s.taskTitle === suggested.taskTitle && s.projectId === suggested.projectId)));
+
+      toast({
+        title: 'Suggested Task Added to Prep!',
+        description: `"${suggested.taskTitle}" added to tomorrow's work plan.`,
+      });
+    } else {
+      toast({
+        title: 'Error',
+        description: result.error || 'Failed to add suggested task.',
+        variant: 'destructive',
+      });
+    }
   };
 
-  // Materials relevant to selected tasks
-  const relevantMaterials = materials.map(mat => {
-    const matName = mat.name.toLowerCase();
-    const matCat = mat.category.toLowerCase();
-    
-    let matchedTaskTitle: string | undefined = undefined;
+  // Step 2: Assigned Contractors & Employees for tomorrow's selected tasks
+  const assignedContractorIdsForTomorrow = Array.from(new Set(
+    selectedTasksList
+      .map(t => taskContractors[t.id])
+      .filter(Boolean)
+  ));
 
-    for (const task of selectedTasksList) {
-      const taskText = `${task.title} ${task.description || ''}`.toLowerCase();
-      
-      if (taskText.includes(matName) || taskText.includes(matCat)) {
-        matchedTaskTitle = task.title;
-        break;
-      }
+  const assignedContractorsForTomorrow = contractors.filter(c => assignedContractorIdsForTomorrow.includes(c.id));
+  const assignedEmployeesForTomorrow = employees.filter(emp => selectedTasksList.some(t => t.assigned_to === emp.id));
 
-      for (const [key, words] of Object.entries(materialKeywords)) {
-        if (matName.includes(key) || matCat.includes(key)) {
-          const matchedWord = words.find(w => taskText.includes(w));
-          if (matchedWord) {
-            matchedTaskTitle = task.title;
-            break;
-          }
-        }
-      }
-      if (matchedTaskTitle) break;
-    }
+  const totalContactsToCall = [...assignedContractorsForTomorrow.map(c => c.id), ...assignedEmployeesForTomorrow.map(e => e.id)];
+  const confirmedContactsCount = totalContactsToCall.filter(id => callStatuses[id] === 'confirmed').length;
+
+  // Step 3: Material Requirements Calculation across selected tasks for tomorrow
+  const requiredMaterialsAggregated: Record<string, number> = {};
+
+  selectedTasksList.forEach(task => {
+    const reqs = taskMaterials[task.id] || [];
+    reqs.forEach(req => {
+      requiredMaterialsAggregated[req.materialId] = (requiredMaterialsAggregated[req.materialId] || 0) + req.quantity;
+    });
+  });
+
+  const materialsAuditList = materials.map(mat => {
+    const requiredQty = requiredMaterialsAggregated[mat.id] || 0;
+    const isRequired = requiredQty > 0;
+    const isDeficit = isRequired && mat.current_stock < requiredQty;
+    const deficitQty = Math.max(0, requiredQty - mat.current_stock);
+    const isLowBuffer = isRequired && !isDeficit && mat.current_stock <= mat.minimum_stock_level;
 
     return {
       ...mat,
-      isRequiredForTomorrow: !!matchedTaskTitle,
-      matchedTaskTitle,
-      allocatedQty: materialAllocations[mat.id] || 0
+      requiredQty,
+      isRequired,
+      isDeficit,
+      deficitQty,
+      isLowBuffer,
     };
-  }).sort((a, b) => {
-    if (a.isRequiredForTomorrow && !b.isRequiredForTomorrow) return -1;
-    if (!a.isRequiredForTomorrow && b.isRequiredForTomorrow) return 1;
-    return a.name.localeCompare(b.name);
-  });
+  }).filter(m => m.isRequired || searchQuery === '');
 
-  // Materials stock issues count
-  const criticalMaterialCount = relevantMaterials.filter(m => m.isRequiredForTomorrow && m.current_stock === 0).length;
-  const lowMaterialCount = relevantMaterials.filter(m => m.isRequiredForTomorrow && m.current_stock > 0 && m.current_stock <= m.minimum_stock_level).length;
+  const criticalMaterialCount = materialsAuditList.filter(m => m.isDeficit).length;
 
-  // Contacts calculation
-  const contactsToCall = [
-    ...selectedAssignedEmployees.map(e => e.id),
-    ...prioritizedContractors.filter(c => c.isRecommended).map(c => c.id)
-  ];
-  const confirmedContactsCount = contactsToCall.filter(id => callStatuses[id] === 'confirmed').length;
+  // Overall Preparation Readiness Index Calculation
+  const taskWeight = selectedTasksList.length > 0 ? 30 : 0;
+  const contractorAssignedWeight = selectedTasksList.length > 0
+    ? (selectedTasksList.filter(t => taskContractors[t.id]).length / selectedTasksList.length) * 20
+    : 20;
+  const contactConfirmationWeight = totalContactsToCall.length > 0
+    ? (confirmedContactsCount / totalContactsToCall.length) * 30
+    : 30;
+  const materialDeficitDeduction = criticalMaterialCount * 15;
+  const materialScore = Math.max(0, 20 - materialDeficitDeduction);
 
-  // Overall Preparation Readiness Percentage Calculation
-  const taskWeight = selectedTasksList.length > 0 ? 35 : 0;
-  const contactWeight = contactsToCall.length > 0 ? (confirmedContactsCount / contactsToCall.length) * 45 : 45;
-  const materialDeduction = (criticalMaterialCount * 15) + (lowMaterialCount * 5);
-  const materialScore = Math.max(0, 20 - materialDeduction);
-  
-  const readinessIndex = Math.min(100, Math.round(taskWeight + contactWeight + materialScore));
+  const readinessIndex = Math.min(100, Math.round(taskWeight + contractorAssignedWeight + contactConfirmationWeight + materialScore));
 
-  // Process & Dispatch Prep Plan
+  // Dispatch Handler
   const handleProcessPrep = () => {
     const nowStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     setIsDispatched(true);
@@ -586,69 +644,74 @@ export default function WorkPrepPage() {
       readinessIndex,
       selectedTaskCount: selectedTasksList.length,
       confirmedContactsCount,
-      totalContactsToCall: contactsToCall.length,
+      totalContactsToCall: totalContactsToCall.length,
       criticalMaterialCount
     };
 
     localStorage.setItem(`work-prep-manifest-${tomorrowDateStr}`, JSON.stringify(dispatchData));
 
     toast({
-      title: 'Work Prep Processed Successfully!',
-      description: `Tomorrow's prep plan is finalized with ${readinessIndex}% readiness index.`,
+      title: 'Work Prep Finalized & Dispatched!',
+      description: `Tomorrow's site plan recorded with ${readinessIndex}% readiness index.`,
     });
   };
 
-  // Copy Summary for WhatsApp / Chat
+  // Copy Summary to Clipboard
   const handleCopySummary = () => {
-    const tasksSummary = selectedTasksList.map((t, i) => `${i + 1}. ${t.title} (${t.project_name})`).join('\n');
-    const teamSummary = selectedAssignedEmployees.map(e => `• ${e.display_name} (${e.role}) - ${callStatuses[e.id] === 'confirmed' ? 'Confirmed' : 'Pending'}`).join('\n');
-    const contractorSummary = prioritizedContractors.filter(c => c.isRecommended).map(c => `• ${c.name} (${c.category}) - ${callStatuses[c.id] === 'confirmed' ? 'Confirmed' : 'Pending'}`).join('\n');
+    const tasksSummary = selectedTasksList.map((t, i) => {
+      const contractorName = contractors.find(c => c.id === taskContractors[t.id])?.name || 'Unassigned Contractor';
+      const matReqs = (taskMaterials[t.id] || []).map(r => {
+        const mat = materials.find(m => m.id === r.materialId);
+        return `${mat?.name || 'Material'}: ${r.quantity} ${mat?.unit_of_measurement || ''}`;
+      }).join(', ');
+
+      return `${i + 1}. ${t.title} (${t.project_name})\n   Contractor: ${contractorName}\n   Materials: ${matReqs || 'None specified'}`;
+    }).join('\n\n');
 
     const summaryText = `*Tomorrow's Site Work Prep Plan (${formattedTomorrowHeader})*\n\n` +
       `*Readiness Score:* ${readinessIndex}%\n\n` +
-      `*PLANNED WORK (${selectedTasksList.length}):*\n${tasksSummary || 'No tasks selected'}\n\n` +
-      `*CONFIRMED TEAM (${selectedAssignedEmployees.length}):*\n${teamSummary || 'None'}\n\n` +
-      `*CONTRACTORS (${prioritizedContractors.filter(c => c.isRecommended).length}):*\n${contractorSummary || 'None'}\n\n` +
-      `*MATERIALS STATUS:* ${criticalMaterialCount > 0 ? `⚠️ ${criticalMaterialCount} Out of Stock items!` : '✅ Materials Checked'}\n\n` +
+      `*PLANNED WORK & CONTRACTORS (${selectedTasksList.length}):*\n${tasksSummary || 'No tasks selected'}\n\n` +
+      `*WORKFORCE CONFIRMED:* ${confirmedContactsCount} / ${totalContactsToCall.length}\n` +
+      `*MATERIAL DEFICITS:* ${criticalMaterialCount > 0 ? `⚠️ ${criticalMaterialCount} Material Shortages!` : '✅ Stock Sufficient'}\n\n` +
       `Generated via Constructor App.`;
 
     navigator.clipboard.writeText(summaryText);
     toast({
       title: 'Summary Copied to Clipboard!',
-      description: 'Ready to paste on WhatsApp or Team Hub.',
+      description: 'Ready to share on WhatsApp or Team Hub.',
     });
   };
 
-  // Print manifest
+  // Print Sheet Handler
   const handlePrintManifest = () => {
     window.print();
   };
 
-  // Render status badge for call planner
+  // Helper badge renderer for contact status
   const renderStatusBadge = (id: string) => {
     const status = callStatuses[id] || 'pending';
     switch (status) {
       case 'confirmed':
         return (
-          <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white border-transparent flex items-center gap-1">
+          <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white flex items-center gap-1 text-[10px] font-semibold">
             <UserCheck className="h-3 w-3" /> Confirmed
           </Badge>
         );
       case 'called':
         return (
-          <Badge className="bg-blue-500 hover:bg-blue-600 text-white border-transparent flex items-center gap-1">
+          <Badge className="bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-1 text-[10px] font-semibold">
             <Phone className="h-3 w-3" /> Contacted
           </Badge>
         );
       case 'no-answer':
         return (
-          <Badge className="bg-red-500 hover:bg-red-600 text-white border-transparent flex items-center gap-1">
+          <Badge className="bg-red-500 hover:bg-red-600 text-white flex items-center gap-1 text-[10px] font-semibold">
             <PhoneOff className="h-3 w-3" /> No Answer
           </Badge>
         );
       default:
         return (
-          <Badge variant="outline" className="text-muted-foreground flex items-center gap-1">
+          <Badge variant="outline" className="text-muted-foreground flex items-center gap-1 text-[10px] font-medium border-white/10">
             <Clock className="h-3 w-3" /> Pending Call
           </Badge>
         );
@@ -656,29 +719,29 @@ export default function WorkPrepPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-transparent">
-      {/* Top Header */}
-      <header className="flex flex-col md:flex-row md:items-center gap-4 p-4 md:px-6 shrink-0 bg-transparent sticky top-0 z-40">
-        <div className="flex items-center gap-4 flex-1">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+    <div className="flex flex-col min-h-screen bg-transparent">
+      {/* App Header Bar matching standard App Layout */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 md:px-6 shrink-0 sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-white/5">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => router.back()}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-xl md:text-2xl font-bold tracking-tight font-headline flex items-center gap-2">
-              <PhoneCall className="h-6 w-6 text-primary" />
+            <h1 className="text-lg sm:text-2xl font-bold tracking-tight font-headline flex items-center gap-2">
+              <PhoneCall className="h-5 w-5 sm:h-6 sm:w-6 text-primary shrink-0" />
               Work Preparation Wizard
             </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Tomorrow's Plan: <span className="font-semibold text-foreground">{formattedTomorrowHeader}</span>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+              Tomorrow: <span className="font-semibold text-foreground">{formattedTomorrowHeader}</span>
             </p>
           </div>
         </div>
 
-        {/* Project Filter */}
-        <div className="flex items-center gap-2 max-w-xs ml-auto">
+        {/* Project Switcher */}
+        <div className="flex items-center gap-2 w-full sm:w-auto sm:max-w-xs sm:ml-auto">
           <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
           <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
-            <SelectTrigger className="w-[180px] bg-background/50 border-white/10 glass-card">
+            <SelectTrigger className="w-full sm:w-[180px] bg-background/50 border-white/10 glass-card text-xs sm:text-sm">
               <SelectValue placeholder="All Projects" />
             </SelectTrigger>
             <SelectContent>
@@ -693,19 +756,20 @@ export default function WorkPrepPage() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 p-4 overflow-y-auto md:p-6 space-y-6 bg-transparent">
+      {/* Main Content Body */}
+      <main className="flex-1 p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 bg-transparent max-w-7xl mx-auto w-full">
         {isLoading ? (
-          <div className="flex justify-center items-center h-64">
+          <div className="flex flex-col justify-center items-center h-64 space-y-3">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-xs text-muted-foreground">Loading site schedule and resource data...</p>
           </div>
         ) : (
           <>
-            {/* 4-Step Progress Stepper Navigation Header */}
+            {/* 4-Step Stepper Progress Navigation Header */}
             <Card className="glass-card overflow-hidden">
-              <CardContent className="p-4 sm:p-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 relative">
-                  {/* Step 1 */}
+              <CardContent className="p-3 sm:p-5">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+                  {/* Step 1 Pill */}
                   <button
                     onClick={() => setCurrentStep(1)}
                     className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
@@ -725,13 +789,13 @@ export default function WorkPrepPage() {
                     }`}>
                       {selectedTasksList.length > 0 && currentStep !== 1 ? <Check className="h-4 w-4" /> : '1'}
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold uppercase tracking-wider line-clamp-1">Step 1</p>
-                      <p className="text-sm font-semibold truncate">Plan Work</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider line-clamp-1">Step 1</p>
+                      <p className="text-xs sm:text-sm font-semibold truncate">Plan & Assign</p>
                     </div>
                   </button>
 
-                  {/* Step 2 */}
+                  {/* Step 2 Pill */}
                   <button
                     onClick={() => setCurrentStep(2)}
                     className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
@@ -751,13 +815,13 @@ export default function WorkPrepPage() {
                     }`}>
                       {confirmedContactsCount > 0 && currentStep !== 2 ? <Check className="h-4 w-4" /> : '2'}
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold uppercase tracking-wider line-clamp-1">Step 2</p>
-                      <p className="text-sm font-semibold truncate">Contractors & Team</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider line-clamp-1">Step 2</p>
+                      <p className="text-xs sm:text-sm font-semibold truncate">Workforce Calls</p>
                     </div>
                   </button>
 
-                  {/* Step 3 */}
+                  {/* Step 3 Pill */}
                   <button
                     onClick={() => setCurrentStep(3)}
                     className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
@@ -777,20 +841,20 @@ export default function WorkPrepPage() {
                     }`}>
                       {currentStep !== 3 && criticalMaterialCount === 0 ? <Check className="h-4 w-4" /> : '3'}
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold uppercase tracking-wider line-clamp-1">Step 3</p>
-                      <p className="text-sm font-semibold truncate">Check Materials</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider line-clamp-1">Step 3</p>
+                      <p className="text-xs sm:text-sm font-semibold truncate">Check Stock</p>
                     </div>
                   </button>
 
-                  {/* Step 4 */}
+                  {/* Step 4 Pill */}
                   <button
                     onClick={() => setCurrentStep(4)}
                     className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
                       currentStep === 4
                         ? 'bg-primary/10 border-primary text-primary shadow-sm ring-1 ring-primary/30'
                         : isDispatched
-                        ? 'bg-emerald-500/10 border-emerald-500 text-emerald-500'
+                        ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400'
                         : 'bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10'
                     }`}
                   >
@@ -803,9 +867,9 @@ export default function WorkPrepPage() {
                     }`}>
                       {isDispatched ? <Check className="h-4 w-4" /> : '4'}
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold uppercase tracking-wider line-clamp-1">Step 4</p>
-                      <p className="text-sm font-semibold truncate">Process Prep</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider line-clamp-1">Step 4</p>
+                      <p className="text-xs sm:text-sm font-semibold truncate">Finalize Prep</p>
                     </div>
                   </button>
                 </div>
@@ -813,149 +877,341 @@ export default function WorkPrepPage() {
             </Card>
 
             {/* ========================================================================= */}
-            {/* STEP 1: PLAN THE WORK */}
+            {/* STEP 1: PLAN WORK & ASSIGN CONTRACTOR + MATERIALS PER TASK */}
             {/* ========================================================================= */}
             {currentStep === 1 && (
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 <Card className="glass-card">
-                  <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
+                  <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-4">
                     <div>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <ClipboardList className="h-5 w-5 text-primary" />
-                        Step 1: Plan Tomorrow's Work Schedule
+                      <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                        <ClipboardList className="h-5 w-5 text-primary shrink-0" />
+                        Step 1: Plan Work, Assign Contractors & Select Materials
                       </CardTitle>
-                      <CardDescription>
-                        Select tasks & milestones for tomorrow, or add new work items to the plan.
+                      <CardDescription className="text-xs sm:text-sm">
+                        Select tomorrow's tasks, assign responsible contractors, and specify required materials.
                       </CardDescription>
                     </div>
 
+                    {/* Add Task Dialog with Contractor & Material Pickers */}
                     <Dialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen}>
                       <DialogTrigger asChild>
-                        <Button size="sm">
+                        <Button size="sm" className="w-full sm:w-auto shrink-0 bg-primary hover:bg-primary/90">
                           <Plus className="h-4 w-4 mr-1.5" />
                           Add Task for Tomorrow
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="sm:max-w-[425px]">
+                      <DialogContent className="sm:max-w-[500px] w-[95vw] glass-card border-white/10 max-h-[90vh] overflow-y-auto">
                         <form onSubmit={handleCreateQuickTask}>
                           <DialogHeader>
-                            <DialogTitle>Add Task Scheduled for Tomorrow</DialogTitle>
-                            <DialogDescription>
-                              Quickly add a task to tomorrow's preparation plan ({formattedTomorrowHeader}).
+                            <DialogTitle className="flex items-center gap-2">
+                              <Plus className="h-5 w-5 text-primary" />
+                              Add Task Scheduled for Tomorrow
+                            </DialogTitle>
+                            <DialogDescription className="text-xs sm:text-sm">
+                              Create a new task and configure contractor & material requirements.
                             </DialogDescription>
                           </DialogHeader>
+                          
                           <div className="grid gap-4 py-4">
+                            {/* Task Title */}
                             <div className="grid gap-2">
                               <Label htmlFor="task-title">Task Title</Label>
                               <Input
                                 id="task-title"
                                 value={newTaskTitle}
                                 onChange={(e) => setNewTaskTitle(e.target.value)}
-                                placeholder="e.g. Pour concrete for column 4"
+                                placeholder="e.g. Brick Wall Plastering - Block A"
                                 required
+                                className="bg-background/50 border-white/10"
                               />
                             </div>
-                            <div className="grid gap-2">
-                              <Label htmlFor="task-project">Project</Label>
-                              <Select value={newTaskProjectId} onValueChange={setNewTaskProjectId}>
-                                <SelectTrigger id="task-project">
-                                  <SelectValue placeholder="Select project" />
+
+                            {/* Project & Priority */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div className="grid gap-2">
+                                <Label htmlFor="task-project">Project</Label>
+                                <Select value={newTaskProjectId} onValueChange={setNewTaskProjectId}>
+                                  <SelectTrigger id="task-project" className="bg-background/50 border-white/10">
+                                    <SelectValue placeholder="Select project" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {projects.map(p => (
+                                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              <div className="grid gap-2">
+                                <Label htmlFor="task-priority">Priority</Label>
+                                <Select value={newTaskPriority} onValueChange={setNewTaskPriority}>
+                                  <SelectTrigger id="task-priority" className="bg-background/50 border-white/10">
+                                    <SelectValue placeholder="Select priority" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="low">Low Priority</SelectItem>
+                                    <SelectItem value="medium">Medium Priority</SelectItem>
+                                    <SelectItem value="high">High Priority</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+
+                            {/* Contractor Selection */}
+                            <div className="grid gap-2 pt-2 border-t border-white/5">
+                              <Label htmlFor="task-contractor" className="flex items-center gap-1.5 text-xs font-semibold">
+                                <Building2 className="h-3.5 w-3.5 text-primary" /> Assign Contractor
+                              </Label>
+                              <Select value={newTaskContractorId} onValueChange={setNewTaskContractorId}>
+                                <SelectTrigger id="task-contractor" className="bg-background/50 border-white/10">
+                                  <SelectValue placeholder="Select Contractor" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {projects.map(p => (
-                                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                  <SelectItem value="none">No Contractor / In-House Team</SelectItem>
+                                  {contractors.map(c => (
+                                    <SelectItem key={c.id} value={c.id}>
+                                      {c.name} {c.category ? `(${c.category})` : ''}
+                                    </SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
                             </div>
-                            <div className="grid gap-2">
-                              <Label htmlFor="task-priority">Priority</Label>
-                              <Select value={newTaskPriority} onValueChange={setNewTaskPriority}>
-                                <SelectTrigger id="task-priority">
-                                  <SelectValue placeholder="Select priority" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="low">Low</SelectItem>
-                                  <SelectItem value="medium">Medium</SelectItem>
-                                  <SelectItem value="high">High</SelectItem>
-                                </SelectContent>
-                              </Select>
+
+                            {/* Material Requirement Selection */}
+                            <div className="grid gap-2 pt-2 border-t border-white/5">
+                              <Label className="flex items-center gap-1.5 text-xs font-semibold">
+                                <Boxes className="h-3.5 w-3.5 text-primary" /> Required Materials
+                              </Label>
+
+                              <div className="flex gap-2">
+                                <Select value={newTaskSelectedMaterialId} onValueChange={setNewTaskSelectedMaterialId}>
+                                  <SelectTrigger className="flex-1 bg-background/50 border-white/10 text-xs">
+                                    <SelectValue placeholder="Pick material" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">Select material...</SelectItem>
+                                    {materials.map(m => (
+                                      <SelectItem key={m.id} value={m.id}>
+                                        {m.name} ({m.unit_of_measurement})
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={newTaskMaterialQty}
+                                  onChange={(e) => setNewTaskMaterialQty(Math.max(1, Number(e.target.value)))}
+                                  className="w-20 bg-background/50 border-white/10 text-xs"
+                                  placeholder="Qty"
+                                />
+
+                                <Button type="button" variant="outline" size="sm" onClick={handleAddMaterialToNewTaskModal}>
+                                  Add
+                                </Button>
+                              </div>
+
+                              {newTaskMaterialReqs.length > 0 && (
+                                <div className="space-y-1 mt-2">
+                                  {newTaskMaterialReqs.map(r => {
+                                    const mat = materials.find(m => m.id === r.materialId);
+                                    return (
+                                      <div key={r.materialId} className="flex items-center justify-between text-xs bg-white/5 p-2 rounded border border-white/5">
+                                        <span>{mat?.name}</span>
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-semibold text-primary">{r.quantity} {mat?.unit_of_measurement}</span>
+                                          <button
+                                            type="button"
+                                            onClick={() => setNewTaskMaterialReqs(prev => prev.filter(m => m.materialId !== r.materialId))}
+                                            className="text-red-400 hover:text-red-300"
+                                          >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
                           </div>
+
                           <DialogFooter>
-                            <Button type="submit" disabled={isSubmittingTask}>
+                            <Button type="submit" disabled={isSubmittingTask} className="w-full sm:w-auto">
                               {isSubmittingTask && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                              Create & Add to Plan
+                              Create & Include Task
                             </Button>
                           </DialogFooter>
                         </form>
                       </DialogContent>
                     </Dialog>
                   </CardHeader>
-                  <CardContent className="p-6">
+
+                  <CardContent className="p-4 sm:p-6 space-y-4">
+                    {/* Auto-Suggested Tasks Banner from Building Construction Plan */}
+                    {suggestedTasks.length > 0 && (
+                      <div className="p-4 rounded-2xl bg-gradient-to-r from-primary/15 via-primary/5 to-background border border-primary/30 space-y-3 shadow-md">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="bg-primary/20 text-primary border-primary/40 text-xs px-2.5 py-0.5 font-bold uppercase tracking-wider">
+                              <Sparkles className="h-3 w-3 mr-1 text-primary" /> Auto-Suggested from Building Plan
+                            </Badge>
+                          </div>
+                          <span className="text-xs text-muted-foreground font-semibold">
+                            {suggestedTasks.length} Suggested Task{suggestedTasks.length > 1 ? 's' : ''}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                          {suggestedTasks.map((s, idx) => (
+                            <div key={idx} className="p-3 rounded-xl bg-background/80 border border-primary/20 space-y-2 flex flex-col justify-between">
+                              <div>
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-[11px] font-bold text-primary">{s.projectName}</span>
+                                  {s.checklistsCount > 0 && (
+                                    <span className="text-[10px] text-muted-foreground">{s.checklistsCount} Quality Checks</span>
+                                  )}
+                                </div>
+                                <h5 className="font-bold text-sm text-foreground mt-0.5">{s.taskTitle}</h5>
+                                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{s.processTitle}</p>
+                              </div>
+                              <Button
+                                size="sm"
+                                onClick={() => handleAddSuggestedTask(s)}
+                                className="w-full mt-2 bg-primary/15 hover:bg-primary/25 text-primary font-bold text-xs border border-primary/30 h-8.5 rounded-lg"
+                              >
+                                <Plus className="h-3.5 w-3.5 mr-1" /> Add to Tomorrow's Prep
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     {tomorrowAllTasks.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center p-12 text-center">
-                        <CheckCircle2 className="h-12 w-12 text-emerald-500/80 mb-3" />
+                      <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center border-2 border-dashed border-white/10 rounded-2xl">
+                        <CheckCircle2 className="h-10 w-10 sm:h-12 sm:w-12 text-emerald-500/80 mb-3" />
                         <h3 className="text-base font-bold text-foreground">No Tasks Scheduled for Tomorrow</h3>
-                        <p className="text-sm text-muted-foreground mt-1 max-w-md">
-                          There are no tasks or milestones scheduled for tomorrow yet. Click "Add Task for Tomorrow" above to create one now!
+                        <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-md">
+                          Click "Add Task for Tomorrow" above to create and configure a task for tomorrow!
                         </p>
                       </div>
                     ) : (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between text-xs text-muted-foreground pb-2 border-b border-white/5">
-                          <span>Include in Tomorrow's Work Prep</span>
-                          <span>{selectedTaskIds.size} of {tomorrowAllTasks.length} Selected</span>
+                          <span>Include Tasks in Tomorrow's Plan</span>
+                          <span className="font-semibold text-foreground">{selectedTaskIds.size} of {tomorrowAllTasks.length} Selected</span>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Task Cards with Inline Contractor & Material Assigners */}
+                        <div className="space-y-4">
                           {tomorrowAllTasks.map(task => {
                             const isSelected = selectedTaskIds.has(task.id);
+                            const currentContractorId = taskContractors[task.id] || 'none';
+                            const currentMaterials = taskMaterials[task.id] || [];
+
                             return (
                               <div
                                 key={task.id}
-                                onClick={() => toggleTaskSelection(task.id)}
-                                className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                                className={`p-4 rounded-xl border space-y-3 transition-all ${
                                   isSelected
-                                    ? 'bg-primary/10 border-primary shadow-sm'
-                                    : 'bg-white/5 border-white/10 opacity-60 hover:opacity-100'
+                                    ? 'bg-primary/5 border-primary/50 shadow-sm'
+                                    : 'bg-white/5 border-white/10 opacity-60'
                                 }`}
                               >
+                                {/* Task Title Header & Selection Checkbox */}
                                 <div className="flex items-start gap-3">
                                   <Checkbox
                                     checked={isSelected}
                                     onCheckedChange={() => toggleTaskSelection(task.id)}
-                                    className="mt-1"
+                                    className="mt-1 h-5 w-5 shrink-0"
                                   />
-                                  <div className="flex-1 space-y-1">
+                                  <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between gap-2">
-                                      <p className="font-semibold text-sm text-foreground">{task.title}</p>
+                                      <p className="font-semibold text-sm sm:text-base text-foreground">{task.title}</p>
                                       <Badge
                                         variant={task.priority === 'high' ? 'destructive' : 'secondary'}
-                                        className="capitalize text-[10px]"
+                                        className="capitalize text-[10px] shrink-0"
                                       >
                                         {task.priority || 'medium'}
                                       </Badge>
                                     </div>
-                                    {task.description && (
-                                      <p className="text-xs text-muted-foreground line-clamp-2">{task.description}</p>
-                                    )}
-                                    <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-2">
-                                      <span className="flex items-center gap-1 font-medium text-foreground/70">
-                                        <Building2 className="h-3 w-3" /> {task.project_name}
-                                      </span>
-                                      {task.assigned_user ? (
-                                        <span className="text-primary font-semibold">
-                                          Assignee: {task.assigned_user.display_name}
-                                        </span>
-                                      ) : (
-                                        <span className="text-amber-500 font-medium flex items-center gap-0.5">
-                                          <AlertCircle className="h-3 w-3" /> Unassigned
-                                        </span>
-                                      )}
-                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-0.5">{task.project_name}</p>
                                   </div>
                                 </div>
+
+                                {isSelected && (
+                                  <div className="pt-3 border-t border-white/5 space-y-3 pl-8">
+                                    {/* Contractor Picker Row */}
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                      <span className="text-xs font-semibold flex items-center gap-1 text-foreground/80">
+                                        <Building2 className="h-3.5 w-3.5 text-primary" /> Assigned Contractor:
+                                      </span>
+                                      <Select
+                                        value={currentContractorId}
+                                        onValueChange={(val) => handleAssignContractorToTask(task.id, val)}
+                                      >
+                                        <SelectTrigger className="w-full sm:w-[240px] h-8 text-xs bg-background/50 border-white/10">
+                                          <SelectValue placeholder="Select contractor" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="none">No Contractor / In-House</SelectItem>
+                                          {contractors.map(c => (
+                                            <SelectItem key={c.id} value={c.id}>
+                                              {c.name} {c.category ? `(${c.category})` : ''}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+
+                                    {/* Material Picker Row */}
+                                    <div className="space-y-2">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-xs font-semibold flex items-center gap-1 text-foreground/80">
+                                          <Boxes className="h-3.5 w-3.5 text-primary" /> Required Materials:
+                                        </span>
+                                      </div>
+
+                                      {/* Attached Materials List */}
+                                      {currentMaterials.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 pt-1">
+                                          {currentMaterials.map(req => {
+                                            const mat = materials.find(m => m.id === req.materialId);
+                                            return (
+                                              <Badge key={req.materialId} variant="outline" className="text-xs py-1 px-2.5 bg-white/5 border-white/10 flex items-center gap-1.5">
+                                                <span>{mat?.name}: <strong>{req.quantity} {mat?.unit_of_measurement}</strong></span>
+                                                <button
+                                                  onClick={() => handleRemoveMaterialFromTask(task.id, req.materialId)}
+                                                  className="text-muted-foreground hover:text-red-400 ml-1"
+                                                >
+                                                  <X className="h-3 w-3" />
+                                                </button>
+                                              </Badge>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+
+                                      {/* Quick Add Material to Task */}
+                                      <div className="flex gap-2 max-w-md pt-1">
+                                        <Select onValueChange={(val) => handleAddMaterialToTask(task.id, val, 10)}>
+                                          <SelectTrigger className="h-8 text-xs bg-background/50 border-white/10 flex-1">
+                                            <SelectValue placeholder="+ Select material to add..." />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {materials.map(m => (
+                                              <SelectItem key={m.id} value={m.id}>
+                                                {m.name} ({m.unit_of_measurement})
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
@@ -963,10 +1219,10 @@ export default function WorkPrepPage() {
                       </div>
                     )}
 
-                    <div className="flex justify-end pt-6 mt-6 border-t border-white/5">
-                      <Button onClick={() => setCurrentStep(2)} disabled={selectedTasksList.length === 0}>
-                        Step 2: Choose Contractors & Team
-                        <ArrowRight className="h-4 w-4 ml-2" />
+                    <div className="flex justify-end pt-4 sm:pt-6 mt-4 sm:mt-6 border-t border-white/5">
+                      <Button onClick={() => setCurrentStep(2)} disabled={selectedTasksList.length === 0} className="w-full sm:w-auto gap-2">
+                        Step 2: Contact Workforce & Contractors
+                        <ArrowRight className="h-4 w-4" />
                       </Button>
                     </div>
                   </CardContent>
@@ -975,220 +1231,157 @@ export default function WorkPrepPage() {
             )}
 
             {/* ========================================================================= */}
-            {/* STEP 2: CHOOSE CONTRACTORS & TEAM */}
+            {/* STEP 2: WORKFORCE & CONTRACTOR CALL LIST */}
             {/* ========================================================================= */}
             {currentStep === 2 && (
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 <Card className="glass-card">
-                  <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
+                  <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-4">
                     <div>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Users className="h-5 w-5 text-primary" />
-                        Step 2: Assign & Confirm Contractors / Team
+                      <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                        <Users className="h-5 w-5 text-primary shrink-0" />
+                        Step 2: Confirm Assigned Workforce & Contractors
                       </CardTitle>
-                      <CardDescription>
-                        Call and confirm readiness of team members & recommended contractors for tomorrow's work.
+                      <CardDescription className="text-xs sm:text-sm">
+                        Call contractors and team members assigned to tomorrow's selected tasks.
                       </CardDescription>
                     </div>
-
-                    <div className="relative w-full sm:w-[220px]">
-                      <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                      <Input
-                        type="search"
-                        placeholder="Search contacts..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-8 h-8 text-xs bg-background/50 border-white/10 rounded-md"
-                      />
-                    </div>
                   </CardHeader>
-                  <CardContent className="p-0">
-                    <Tabs defaultValue="team" className="w-full">
-                      <TabsList className="w-full justify-start rounded-none border-b border-white/5 bg-transparent p-0 h-10">
-                        <TabsTrigger
-                          value="team"
-                          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 text-sm font-medium"
-                        >
-                          Team Members ({selectedAssignedEmployees.length})
-                        </TabsTrigger>
-                        <TabsTrigger
-                          value="contractors"
-                          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 text-sm font-medium"
-                        >
-                          Contractors ({prioritizedContractors.length})
-                        </TabsTrigger>
-                      </TabsList>
 
-                      {/* Employees Tab */}
-                      <TabsContent value="team" className="p-0 m-0">
-                        <ScrollArea className="h-[450px]">
-                          {selectedAssignedEmployees.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center p-8 text-center h-[300px]">
-                              <Users className="h-10 w-10 text-muted-foreground/50 mb-2" />
-                              <p className="font-semibold text-foreground/90">No Team Members Assigned</p>
-                              <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-                                No employees are currently assigned to tomorrow's selected tasks.
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="divide-y divide-white/5">
-                              {selectedAssignedEmployees.map(emp => {
-                                const status = callStatuses[emp.id] || 'pending';
-                                return (
-                                  <div key={emp.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/5 transition-colors">
-                                    <div className="flex items-center gap-3">
-                                      <Avatar className="h-10 w-10 border border-white/10 shrink-0">
-                                        <AvatarImage src={emp.photo_url || undefined} alt={emp.display_name || ''} />
-                                        <AvatarFallback>{(emp.display_name || 'U').charAt(0)}</AvatarFallback>
-                                      </Avatar>
-                                      <div>
-                                        <div className="flex items-center gap-2">
-                                          <p className="font-semibold text-sm text-foreground">{emp.display_name}</p>
-                                          <Badge variant="outline" className="text-[10px] font-semibold uppercase">
-                                            {emp.role}
-                                          </Badge>
-                                        </div>
-                                        <p className="text-xs text-muted-foreground mt-0.5">{emp.email}</p>
-                                      </div>
-                                    </div>
+                  <CardContent className="p-4 sm:p-6 space-y-4">
+                    {totalContactsToCall.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-white/10 rounded-xl">
+                        <Users className="h-10 w-10 text-muted-foreground/50 mb-2" />
+                        <p className="font-semibold text-foreground text-sm sm:text-base">No Assigned Contacts Found</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-xs">
+                          Assign contractors to tomorrow's tasks in Step 1 to generate your call checklist.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-white/5">
+                        {/* Assigned Contractors */}
+                        {assignedContractorsForTomorrow.map(c => {
+                          const status = callStatuses[c.id] || 'pending';
+                          const assignedTaskTitles = selectedTasksList
+                            .filter(t => taskContractors[t.id] === c.id)
+                            .map(t => t.title);
 
-                                    <div className="flex items-center gap-3 shrink-0 ml-auto sm:ml-0">
-                                      {renderStatusBadge(emp.id)}
-                                      <Select
-                                        value={status}
-                                        onValueChange={(val) => handleStatusChange(emp.id, val as CallStatus)}
-                                      >
-                                        <SelectTrigger className="w-[120px] h-8 text-xs border-white/10 bg-background/50">
-                                          <SelectValue placeholder="Set Status" />
-                                        </SelectTrigger>
-                                        <SelectContent align="end">
-                                          <SelectItem value="pending">Reset</SelectItem>
-                                          <SelectItem value="called">Mark Called</SelectItem>
-                                          <SelectItem value="confirmed">Confirm Readiness</SelectItem>
-                                          <SelectItem value="no-answer">No Answer</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-
-                                      {emp.phone ? (
-                                        <Button size="sm" className="h-8 gap-1.5" asChild>
-                                          <a href={`tel:${emp.phone}`}>
-                                            <Phone className="h-3.5 w-3.5" /> Call
-                                          </a>
-                                        </Button>
-                                      ) : (
-                                        <Button size="sm" variant="outline" className="h-8 opacity-40 cursor-not-allowed" disabled>
-                                          No Phone
-                                        </Button>
-                                      )}
-                                    </div>
+                          return (
+                            <div key={c.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              <div className="flex items-start gap-3">
+                                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20 shrink-0 mt-0.5">
+                                  <Building2 className="h-4 w-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-semibold text-xs sm:text-sm text-foreground truncate">{c.name}</p>
+                                    <Badge className="text-[9px] font-semibold uppercase bg-white/10 text-muted-foreground">
+                                      Contractor
+                                    </Badge>
                                   </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </ScrollArea>
-                      </TabsContent>
+                                  <p className="text-xs text-primary font-medium mt-0.5 truncate">
+                                    Task: {assignedTaskTitles.join(', ') || 'Assigned Work'}
+                                  </p>
+                                </div>
+                              </div>
 
-                      {/* Contractors Tab */}
-                      <TabsContent value="contractors" className="p-0 m-0">
-                        <ScrollArea className="h-[450px]">
-                          {prioritizedContractors.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center p-8 text-center h-[300px]">
-                              <Building2 className="h-10 w-10 text-muted-foreground/50 mb-2" />
-                              <p className="font-semibold text-foreground/90">No Contractors Found</p>
-                              <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-                                No registered contractors match your query.
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="divide-y divide-white/5">
-                              {prioritizedContractors.map(c => {
-                                const status = callStatuses[c.id] || 'pending';
-                                return (
-                                  <div
-                                    key={c.id}
-                                    className={`p-4 flex flex-col gap-3 hover:bg-white/5 transition-colors ${
-                                      c.isRecommended ? 'bg-primary/5 border-l-2 border-l-primary' : ''
-                                    }`}
+                              <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
+                                {renderStatusBadge(c.id)}
+
+                                <div className="flex items-center gap-2">
+                                  <Select
+                                    value={status}
+                                    onValueChange={(val) => handleStatusChange(c.id, val as CallStatus)}
                                   >
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                      <div className="flex items-start gap-3">
-                                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20 shrink-0">
-                                          <Building2 className="h-4 w-4" />
-                                        </div>
-                                        <div>
-                                          <div className="flex flex-wrap items-center gap-2">
-                                            <p className="font-semibold text-sm text-foreground">{c.name}</p>
-                                            {c.category && (
-                                              <Badge className="text-[10px] font-semibold bg-white/10 text-muted-foreground uppercase">
-                                                {c.category}
-                                              </Badge>
-                                            )}
-                                            {c.isRecommended && (
-                                              <Badge className="text-[10px] font-bold bg-primary text-primary-foreground flex items-center gap-0.5">
-                                                <Sparkles className="h-2.5 w-2.5" /> Recommended
-                                              </Badge>
-                                            )}
-                                          </div>
-                                          {c.contactPerson && (
-                                            <p className="text-xs text-muted-foreground mt-0.5">Contact: {c.contactPerson}</p>
-                                          )}
-                                        </div>
-                                      </div>
+                                    <SelectTrigger className="w-[120px] h-8 text-xs bg-background/50 border-white/10">
+                                      <SelectValue placeholder="Set Status" />
+                                    </SelectTrigger>
+                                    <SelectContent align="end">
+                                      <SelectItem value="pending">Reset</SelectItem>
+                                      <SelectItem value="called">Mark Called</SelectItem>
+                                      <SelectItem value="confirmed">Confirmed</SelectItem>
+                                      <SelectItem value="no-answer">No Answer</SelectItem>
+                                    </SelectContent>
+                                  </Select>
 
-                                      <div className="flex items-center gap-3 shrink-0 ml-auto sm:ml-0">
-                                        {renderStatusBadge(c.id)}
-                                        <Select
-                                          value={status}
-                                          onValueChange={(val) => handleStatusChange(c.id, val as CallStatus)}
-                                        >
-                                          <SelectTrigger className="w-[120px] h-8 text-xs border-white/10 bg-background/50">
-                                            <SelectValue placeholder="Set Status" />
-                                          </SelectTrigger>
-                                          <SelectContent align="end">
-                                            <SelectItem value="pending">Reset</SelectItem>
-                                            <SelectItem value="called">Mark Called</SelectItem>
-                                            <SelectItem value="confirmed">Confirm Availability</SelectItem>
-                                            <SelectItem value="no-answer">No Answer</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-
-                                        {c.phone ? (
-                                          <Button size="sm" className="h-8 gap-1.5" asChild>
-                                            <a href={`tel:${c.phone}`}>
-                                              <Phone className="h-3.5 w-3.5" /> Call
-                                            </a>
-                                          </Button>
-                                        ) : (
-                                          <Button size="sm" variant="outline" className="h-8 opacity-40 cursor-not-allowed" disabled>
-                                            No Phone
-                                          </Button>
-                                        )}
-                                      </div>
-                                    </div>
-
-                                    {c.isRecommended && c.matchExplanation && (
-                                      <div className="text-[11px] bg-primary/10 text-primary px-3 py-1.5 rounded-md border border-primary/10 flex items-center gap-1.5">
-                                        <Sparkles className="h-3 w-3 shrink-0" />
-                                        <span>{c.matchExplanation}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
+                                  {c.phone ? (
+                                    <Button size="sm" className="h-8 gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" asChild>
+                                      <a href={`tel:${c.phone}`}>
+                                        <Phone className="h-3.5 w-3.5" /> Call
+                                      </a>
+                                    </Button>
+                                  ) : (
+                                    <Button size="sm" variant="outline" className="h-8 text-xs opacity-40" disabled>
+                                      No Phone
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                          )}
-                        </ScrollArea>
-                      </TabsContent>
-                    </Tabs>
+                          );
+                        })}
 
-                    <div className="flex justify-between p-6 border-t border-white/5">
-                      <Button variant="outline" onClick={() => setCurrentStep(1)}>
+                        {/* Assigned Employees */}
+                        {assignedEmployeesForTomorrow.map(emp => {
+                          const status = callStatuses[emp.id] || 'pending';
+                          return (
+                            <div key={emp.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-9 w-9 border border-white/10 shrink-0">
+                                  <AvatarImage src={emp.photo_url || undefined} />
+                                  <AvatarFallback>{(emp.display_name || 'U').charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-xs sm:text-sm text-foreground truncate">{emp.display_name}</p>
+                                  <p className="text-[11px] text-muted-foreground uppercase font-mono">{emp.role}</p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
+                                {renderStatusBadge(emp.id)}
+
+                                <div className="flex items-center gap-2">
+                                  <Select
+                                    value={status}
+                                    onValueChange={(val) => handleStatusChange(emp.id, val as CallStatus)}
+                                  >
+                                    <SelectTrigger className="w-[120px] h-8 text-xs bg-background/50 border-white/10">
+                                      <SelectValue placeholder="Set Status" />
+                                    </SelectTrigger>
+                                    <SelectContent align="end">
+                                      <SelectItem value="pending">Reset</SelectItem>
+                                      <SelectItem value="called">Mark Called</SelectItem>
+                                      <SelectItem value="confirmed">Confirmed</SelectItem>
+                                      <SelectItem value="no-answer">No Answer</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+
+                                  {emp.phone ? (
+                                    <Button size="sm" className="h-8 gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" asChild>
+                                      <a href={`tel:${emp.phone}`}>
+                                        <Phone className="h-3.5 w-3.5" /> Call
+                                      </a>
+                                    </Button>
+                                  ) : (
+                                    <Button size="sm" variant="outline" className="h-8 text-xs opacity-40" disabled>
+                                      No Phone
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <div className="flex flex-col sm:flex-row justify-between gap-3 pt-4 border-t border-white/5">
+                      <Button variant="outline" onClick={() => setCurrentStep(1)} className="w-full sm:w-auto">
                         <ArrowLeft className="h-4 w-4 mr-2" /> Back to Step 1
                       </Button>
-                      <Button onClick={() => setCurrentStep(3)}>
-                        Step 3: Check Materials Availability
-                        <ArrowRight className="h-4 w-4 ml-2" />
+                      <Button onClick={() => setCurrentStep(3)} className="w-full sm:w-auto gap-2">
+                        Step 3: Check Required Materials Stock
+                        <ArrowRight className="h-4 w-4" />
                       </Button>
                     </div>
                   </CardContent>
@@ -1197,111 +1390,103 @@ export default function WorkPrepPage() {
             )}
 
             {/* ========================================================================= */}
-            {/* STEP 3: CHECK MATERIALS AVAILABILITY */}
+            {/* STEP 3: REQUIRED MATERIALS STOCK AUDIT */}
             {/* ========================================================================= */}
             {currentStep === 3 && (
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {criticalMaterialCount > 0 && (
                   <Alert variant="destructive" className="bg-red-500/10 border-red-500/40 text-red-400">
-                    <AlertTriangle className="h-4 w-4 text-red-500" />
-                    <AlertTitle className="font-bold">Stockout Alert for Tomorrow's Work!</AlertTitle>
-                    <AlertDescription className="text-xs mt-1">
-                      {criticalMaterialCount} material(s) required for tomorrow's work currently have 0 units in stock! Please order or restock them before starting site work.
+                    <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
+                    <AlertTitle className="font-bold text-xs sm:text-sm">Stock Deficit Warning!</AlertTitle>
+                    <AlertDescription className="text-[11px] sm:text-xs mt-1">
+                      {criticalMaterialCount} required material(s) have stock deficits for tomorrow's planned work items.
                     </AlertDescription>
                   </Alert>
                 )}
 
                 <Card className="glass-card">
                   <CardHeader className="border-b border-white/5 pb-4">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Boxes className="h-5 w-5 text-primary" />
-                      Step 3: Verify Material Availability & Inventory Stock
+                    <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                      <Boxes className="h-5 w-5 text-primary shrink-0" />
+                      Step 3: Verify Required Materials Availability
                     </CardTitle>
-                    <CardDescription>
-                      Check stock levels for materials required by tomorrow's planned work items.
+                    <CardDescription className="text-xs sm:text-sm">
+                      Compare total required quantities for tomorrow's tasks against current site stock.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="p-6 space-y-6">
-                    {relevantMaterials.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center p-12 text-center">
-                        <Package className="h-12 w-12 text-muted-foreground/50 mb-3" />
-                        <h3 className="text-base font-bold text-foreground">No Materials Listed in Site Inventory</h3>
-                        <p className="text-sm text-muted-foreground mt-1 max-w-md">
-                          Add materials to your project inventory to enable automatic stock checks.
+
+                  <CardContent className="p-4 sm:p-6 space-y-4">
+                    {materialsAuditList.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-white/10 rounded-xl">
+                        <Package className="h-10 w-10 text-muted-foreground/50 mb-2" />
+                        <p className="font-semibold text-foreground text-sm sm:text-base">No Required Materials Specified</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-xs">
+                          Attach required materials to tasks in Step 1 to run an automated stock audit.
                         </p>
                       </div>
                     ) : (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {relevantMaterials.map(material => {
-                            const isStockout = material.current_stock === 0;
-                            const isLowStock = material.current_stock > 0 && material.current_stock <= material.minimum_stock_level;
-
-                            return (
-                              <div
-                                key={material.id}
-                                className={`p-4 rounded-xl border space-y-3 ${
-                                  material.isRequiredForTomorrow
-                                    ? isStockout
-                                      ? 'bg-red-500/10 border-red-500/40'
-                                      : isLowStock
-                                      ? 'bg-amber-500/10 border-amber-500/40'
-                                      : 'bg-primary/5 border-primary/30'
-                                    : 'bg-white/5 border-white/10 opacity-70'
-                                }`}
-                              >
-                                <div className="flex items-start justify-between gap-2">
-                                  <div>
-                                    <p className="font-semibold text-sm text-foreground">{material.name}</p>
-                                    <p className="text-xs text-muted-foreground capitalize">{material.category} • {material.site_name}</p>
-                                  </div>
-                                  {isStockout ? (
-                                    <Badge variant="destructive" className="text-[10px] font-bold">
-                                      Out of Stock
-                                    </Badge>
-                                  ) : isLowStock ? (
-                                    <Badge className="bg-amber-500 text-white text-[10px] font-bold">
-                                      Low Stock
-                                    </Badge>
-                                  ) : (
-                                    <Badge className="bg-emerald-500 text-white text-[10px] font-bold">
-                                      In Stock
-                                    </Badge>
-                                  )}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                        {materialsAuditList.map(material => {
+                          return (
+                            <div
+                              key={material.id}
+                              className={`p-4 rounded-xl border space-y-3 ${
+                                material.isDeficit
+                                  ? 'bg-red-500/10 border-red-500/40 shadow-sm'
+                                  : material.isLowBuffer
+                                  ? 'bg-amber-500/10 border-amber-500/40 shadow-sm'
+                                  : 'bg-primary/5 border-primary/30 shadow-sm'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-xs sm:text-sm text-foreground truncate">{material.name}</p>
+                                  <p className="text-[11px] text-muted-foreground capitalize truncate">{material.category}</p>
                                 </div>
+                                {material.isDeficit ? (
+                                  <Badge variant="destructive" className="text-[9px] font-bold shrink-0">
+                                    Shortage
+                                  </Badge>
+                                ) : material.isLowBuffer ? (
+                                  <Badge className="bg-amber-500 text-white text-[9px] font-bold shrink-0">
+                                    Low Stock
+                                  </Badge>
+                                ) : (
+                                  <Badge className="bg-emerald-500 text-white text-[9px] font-bold shrink-0">
+                                    In Stock
+                                  </Badge>
+                                )}
+                              </div>
 
-                                {material.isRequiredForTomorrow && (
-                                  <div className="text-[11px] bg-white/5 p-2 rounded border border-white/5 text-primary flex items-center gap-1.5">
-                                    <Sparkles className="h-3 w-3 shrink-0" />
-                                    <span className="truncate">Matches: {material.matchedTaskTitle}</span>
+                              <div className="space-y-1.5 text-xs pt-1 border-t border-white/5">
+                                <div className="flex justify-between text-muted-foreground">
+                                  <span>Required Qty:</span>
+                                  <span className="font-bold text-foreground">{material.requiredQty} {material.unit_of_measurement}</span>
+                                </div>
+                                <div className="flex justify-between text-muted-foreground">
+                                  <span>Current Stock:</span>
+                                  <span className="font-bold text-foreground">{material.current_stock} {material.unit_of_measurement}</span>
+                                </div>
+                                {material.isDeficit && (
+                                  <div className="flex justify-between text-red-400 font-semibold pt-1 border-t border-white/5">
+                                    <span>Stock Deficit:</span>
+                                    <span>Short by {material.deficitQty} {material.unit_of_measurement}</span>
                                   </div>
                                 )}
-
-                                <div className="flex items-center justify-between text-xs pt-1 border-t border-white/5">
-                                  <span className="text-muted-foreground">Current Stock:</span>
-                                  <span className="font-bold text-foreground text-sm">
-                                    {material.current_stock} {material.unit_of_measurement}
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                                  <span>Min Threshold:</span>
-                                  <span>{material.minimum_stock_level} {material.unit_of_measurement}</span>
-                                </div>
                               </div>
-                            );
-                          })}
-                        </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
 
-                    <div className="flex justify-between pt-6 mt-6 border-t border-white/5">
-                      <Button variant="outline" onClick={() => setCurrentStep(2)}>
+                    <div className="flex flex-col sm:flex-row justify-between gap-3 pt-4 sm:pt-6 mt-4 border-t border-white/5">
+                      <Button variant="outline" onClick={() => setCurrentStep(2)} className="w-full sm:w-auto">
                         <ArrowLeft className="h-4 w-4 mr-2" /> Back to Step 2
                       </Button>
-                      <Button onClick={() => setCurrentStep(4)}>
-                        Step 4: Finalize & Process Work Prep
-                        <ArrowRight className="h-4 w-4 ml-2" />
+                      <Button onClick={() => setCurrentStep(4)} className="w-full sm:w-auto gap-2">
+                        Step 4: Finalize & Dispatch Prep
+                        <ArrowRight className="h-4 w-4" />
                       </Button>
                     </div>
                   </CardContent>
@@ -1310,30 +1495,26 @@ export default function WorkPrepPage() {
             )}
 
             {/* ========================================================================= */}
-            {/* STEP 4: PROCESS & FINALIZE WORK PREP */}
+            {/* STEP 4: FINALIZE & DISPATCH WORK PREP */}
             {/* ========================================================================= */}
             {currentStep === 4 && (
-              <div className="space-y-6">
-                {/* Readiness Score Card */}
-                <Card className="glass-card overflow-hidden border-primary/30 bg-gradient-to-r from-primary/10 via-transparent to-transparent">
-                  <CardContent className="p-6">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="space-y-4 sm:space-y-6">
+                <Card className="glass-card border-primary/30 bg-gradient-to-r from-primary/10 via-transparent to-transparent">
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6">
                       <div className="space-y-2 flex-1">
                         <div className="flex items-center gap-2">
-                          <Badge className="bg-primary text-primary-foreground font-bold">
-                            Work Prep Summary Manifest
+                          <Badge className="bg-primary text-primary-foreground font-bold text-xs">
+                            Tomorrow's Prep Manifest
                           </Badge>
-                          <span className="text-xs text-muted-foreground font-medium">{formattedTomorrowHeader}</span>
+                          <span className="text-xs text-muted-foreground">{formattedTomorrowHeader}</span>
                         </div>
-                        <h2 className="text-xl font-bold text-foreground">Tomorrow's Readiness Index</h2>
-                        <p className="text-sm text-muted-foreground max-w-lg">
-                          Comprehensive evaluation based on confirmed tasks, worker readiness, and material stock levels.
-                        </p>
+                        <h2 className="text-lg sm:text-xl font-bold text-foreground">Tomorrow's Site Readiness Index</h2>
 
-                        <div className="space-y-1.5 pt-2">
+                        <div className="space-y-1.5 pt-2 max-w-md">
                           <div className="flex justify-between text-xs font-semibold">
-                            <span>Site Preparation Score</span>
-                            <span className={readinessIndex >= 80 ? 'text-emerald-500' : readinessIndex >= 50 ? 'text-amber-500' : 'text-red-500'}>
+                            <span>Readiness Score</span>
+                            <span className={readinessIndex >= 80 ? 'text-emerald-400' : readinessIndex >= 50 ? 'text-amber-400' : 'text-red-400'}>
                               {readinessIndex}% Ready
                             </span>
                           </div>
@@ -1341,16 +1522,16 @@ export default function WorkPrepPage() {
                         </div>
                       </div>
 
-                      <div className="flex flex-col sm:flex-row gap-3 shrink-0">
-                        <Button variant="outline" onClick={handleCopySummary} className="gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2.5 shrink-0 w-full lg:w-auto">
+                        <Button variant="outline" onClick={handleCopySummary} className="gap-2 text-xs sm:text-sm w-full sm:w-auto">
                           <Share2 className="h-4 w-4" /> Share Summary
                         </Button>
-                        <Button variant="outline" onClick={handlePrintManifest} className="gap-2">
+                        <Button variant="outline" onClick={handlePrintManifest} className="gap-2 text-xs sm:text-sm w-full sm:w-auto">
                           <Printer className="h-4 w-4" /> Print Sheet
                         </Button>
-                        <Button onClick={handleProcessPrep} disabled={isDispatched} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+                        <Button onClick={handleProcessPrep} disabled={isDispatched} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm w-full sm:w-auto">
                           <Send className="h-4 w-4" />
-                          {isDispatched ? 'Prep Processed!' : 'Process & Dispatch Prep'}
+                          {isDispatched ? 'Prep Dispatched!' : 'Process & Dispatch Prep'}
                         </Button>
                       </div>
                     </div>
@@ -1359,101 +1540,104 @@ export default function WorkPrepPage() {
 
                 {isDispatched && (
                   <Alert className="bg-emerald-500/10 border-emerald-500/30 text-emerald-400">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                    <AlertTitle className="font-bold">Work Prep Finalized & Dispatched</AlertTitle>
-                    <AlertDescription className="text-xs mt-1">
-                      This prep manifest was processed at {dispatchedAt || 'today'} and saved for tomorrow's site operations.
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                    <AlertTitle className="font-bold text-xs sm:text-sm">Prep Plan Finalized & Dispatched</AlertTitle>
+                    <AlertDescription className="text-[11px] sm:text-xs mt-1">
+                      Saved at {dispatchedAt || 'today'} for tomorrow's site team.
                     </AlertDescription>
                   </Alert>
                 )}
 
-                {/* Summary Breakdown Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Confirmed Tasks */}
+                {/* Summary Manifest Breakdown */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                  {/* Confirmed Tasks & Contractors */}
                   <Card className="glass-card">
-                    <CardHeader className="pb-3 border-b border-white/5">
+                    <CardHeader className="pb-3 border-b border-white/5 p-4 sm:p-6">
                       <CardTitle className="text-base flex items-center justify-between">
                         <span className="flex items-center gap-2">
-                          <ClipboardList className="h-4 w-4 text-primary" /> Confirmed Work Items
+                          <ClipboardList className="h-4 w-4 text-primary shrink-0" /> Tasks & Contractors
                         </span>
                         <Badge variant="outline">{selectedTasksList.length}</Badge>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-4">
-                      <ScrollArea className="h-[250px]">
+                    <CardContent className="p-3 sm:p-4">
+                      <ScrollArea className="h-[220px] sm:h-[250px]">
                         <div className="space-y-2">
-                          {selectedTasksList.map((t, idx) => (
-                            <div key={t.id} className="p-2.5 rounded-lg bg-white/5 border border-white/5 space-y-1 text-xs">
-                              <p className="font-semibold text-foreground">{idx + 1}. {t.title}</p>
-                              <p className="text-[11px] text-muted-foreground">{t.project_name}</p>
-                            </div>
-                          ))}
+                          {selectedTasksList.map((t, idx) => {
+                            const contractor = contractors.find(c => c.id === taskContractors[t.id]);
+                            return (
+                              <div key={t.id} className="p-2.5 rounded-lg bg-white/5 border border-white/5 space-y-1 text-xs">
+                                <p className="font-semibold text-foreground">{idx + 1}. {t.title}</p>
+                                <p className="text-[11px] text-primary">Contractor: {contractor?.name || 'In-House / Unassigned'}</p>
+                              </div>
+                            );
+                          })}
                         </div>
                       </ScrollArea>
                     </CardContent>
                   </Card>
 
-                  {/* Confirmed Workforce */}
+                  {/* Confirmed Workforce Calls */}
                   <Card className="glass-card">
-                    <CardHeader className="pb-3 border-b border-white/5">
+                    <CardHeader className="pb-3 border-b border-white/5 p-4 sm:p-6">
                       <CardTitle className="text-base flex items-center justify-between">
                         <span className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-primary" /> Confirmed Workforce
+                          <Users className="h-4 w-4 text-primary shrink-0" /> Confirmed Workforce
                         </span>
-                        <Badge variant="outline">{confirmedContactsCount} Confirmed</Badge>
+                        <Badge variant="outline">{confirmedContactsCount} / {totalContactsToCall.length}</Badge>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-4">
-                      <ScrollArea className="h-[250px]">
+                    <CardContent className="p-3 sm:p-4">
+                      <ScrollArea className="h-[220px] sm:h-[250px]">
                         <div className="space-y-2">
-                          {selectedAssignedEmployees.map(e => (
-                            <div key={e.id} className="p-2.5 rounded-lg bg-white/5 border border-white/5 flex items-center justify-between text-xs">
-                              <div>
-                                <p className="font-semibold text-foreground">{e.display_name}</p>
-                                <p className="text-[11px] text-muted-foreground capitalize">{e.role}</p>
-                              </div>
-                              {renderStatusBadge(e.id)}
-                            </div>
-                          ))}
-                          {prioritizedContractors.filter(c => c.isRecommended).map(c => (
+                          {assignedContractorsForTomorrow.map(c => (
                             <div key={c.id} className="p-2.5 rounded-lg bg-white/5 border border-white/5 flex items-center justify-between text-xs">
-                              <div>
-                                <p className="font-semibold text-foreground">{c.name}</p>
-                                <p className="text-[11px] text-muted-foreground capitalize">{c.category || 'Contractor'}</p>
+                              <div className="min-w-0 pr-2">
+                                <p className="font-semibold text-foreground truncate">{c.name}</p>
+                                <p className="text-[11px] text-muted-foreground">Contractor</p>
                               </div>
                               {renderStatusBadge(c.id)}
                             </div>
                           ))}
+                          {assignedEmployeesForTomorrow.map(e => (
+                            <div key={e.id} className="p-2.5 rounded-lg bg-white/5 border border-white/5 flex items-center justify-between text-xs">
+                              <div className="min-w-0 pr-2">
+                                <p className="font-semibold text-foreground truncate">{e.display_name}</p>
+                                <p className="text-[11px] text-muted-foreground">{e.role}</p>
+                              </div>
+                              {renderStatusBadge(e.id)}
+                            </div>
+                          ))}
                         </div>
                       </ScrollArea>
                     </CardContent>
                   </Card>
 
-                  {/* Materials Audit Summary */}
+                  {/* Material Deficit Audit */}
                   <Card className="glass-card">
-                    <CardHeader className="pb-3 border-b border-white/5">
+                    <CardHeader className="pb-3 border-b border-white/5 p-4 sm:p-6">
                       <CardTitle className="text-base flex items-center justify-between">
                         <span className="flex items-center gap-2">
-                          <Boxes className="h-4 w-4 text-primary" /> Material Readiness
+                          <Boxes className="h-4 w-4 text-primary shrink-0" /> Required Materials
                         </span>
                         <Badge variant={criticalMaterialCount > 0 ? "destructive" : "outline"}>
-                          {criticalMaterialCount > 0 ? `${criticalMaterialCount} Deficits` : 'Verified'}
+                          {criticalMaterialCount > 0 ? `${criticalMaterialCount} Deficits` : 'OK'}
                         </Badge>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-4">
-                      <ScrollArea className="h-[250px]">
+                    <CardContent className="p-3 sm:p-4">
+                      <ScrollArea className="h-[220px] sm:h-[250px]">
                         <div className="space-y-2">
-                          {relevantMaterials.filter(m => m.isRequiredForTomorrow).map(m => (
+                          {materialsAuditList.map(m => (
                             <div key={m.id} className="p-2.5 rounded-lg bg-white/5 border border-white/5 flex items-center justify-between text-xs">
-                              <div>
-                                <p className="font-semibold text-foreground">{m.name}</p>
-                                <p className="text-[11px] text-muted-foreground">{m.current_stock} {m.unit_of_measurement} in stock</p>
+                              <div className="min-w-0 pr-2">
+                                <p className="font-semibold text-foreground truncate">{m.name}</p>
+                                <p className="text-[11px] text-muted-foreground">Req: {m.requiredQty} | Stock: {m.current_stock} {m.unit_of_measurement}</p>
                               </div>
-                              {m.current_stock === 0 ? (
-                                <Badge variant="destructive" className="text-[10px]">Stockout</Badge>
+                              {m.isDeficit ? (
+                                <Badge variant="destructive" className="text-[10px] shrink-0">Short</Badge>
                               ) : (
-                                <Badge className="bg-emerald-500 text-white text-[10px]">OK</Badge>
+                                <Badge className="bg-emerald-500 text-white text-[10px] shrink-0">OK</Badge>
                               )}
                             </div>
                           ))}
@@ -1463,8 +1647,8 @@ export default function WorkPrepPage() {
                   </Card>
                 </div>
 
-                <div className="flex justify-between pt-4">
-                  <Button variant="outline" onClick={() => setCurrentStep(3)}>
+                <div className="flex justify-between pt-2 sm:pt-4">
+                  <Button variant="outline" onClick={() => setCurrentStep(3)} className="w-full sm:w-auto">
                     <ArrowLeft className="h-4 w-4 mr-2" /> Back to Step 3
                   </Button>
                 </div>
