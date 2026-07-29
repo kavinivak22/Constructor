@@ -354,26 +354,27 @@ export default function ExpensesPage() {
                         </span>
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="end">
-                      <div className="flex">
-                        <div className="p-2 border-r">
-                          <div className="flex flex-col items-start">
-                            <Button variant="ghost" className="w-full justify-start text-xs h-8" onClick={() => setDateRange({ from: startOfDay(new Date()), to: endOfDay(new Date()) })}>Today</Button>
-                            <Button variant="ghost" className="w-full justify-start text-xs h-8" onClick={() => setDateRange({ from: startOfDay(subDays(new Date(), 1)), to: endOfDay(subDays(new Date(), 1)) })}>Yesterday</Button>
-                            <Button variant="ghost" className="w-full justify-start text-xs h-8" onClick={() => setDateRange({ from: startOfDay(subDays(new Date(), 6)), to: endOfDay(new Date()) })}>Last 7 days</Button>
-                            <Button variant="ghost" className="w-full justify-start text-xs h-8" onClick={() => setDateRange({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) })}>This Month</Button>
-                            <Button variant="ghost" className="w-full justify-start text-xs h-8" onClick={() => setDateRange({ from: startOfMonth(subDays(new Date(), 30)), to: endOfMonth(subDays(new Date(), 30)) })}>Last Month</Button>
-                            <Button variant="ghost" className="w-full justify-start text-xs h-8 text-red-500" onClick={() => setDateRange(undefined)}>Clear</Button>
-                          </div>
+                    <PopoverContent className="w-[92vw] sm:w-auto p-0 max-h-[85vh] overflow-y-auto border-white/10 glass-card z-50" align="start" side="bottom" sideOffset={4}>
+                      <div className="flex flex-col sm:flex-row">
+                        <div className="p-2 border-b sm:border-b-0 sm:border-r border-white/10 flex flex-row sm:flex-col flex-wrap gap-1 items-center sm:items-start overflow-x-auto shrink-0">
+                          <Button variant="ghost" size="sm" className="text-xs h-7 sm:h-8 px-2 sm:w-full justify-start" onClick={() => setDateRange({ from: startOfDay(new Date()), to: endOfDay(new Date()) })}>Today</Button>
+                          <Button variant="ghost" size="sm" className="text-xs h-7 sm:h-8 px-2 sm:w-full justify-start" onClick={() => setDateRange({ from: startOfDay(subDays(new Date(), 1)), to: endOfDay(subDays(new Date(), 1)) })}>Yesterday</Button>
+                          <Button variant="ghost" size="sm" className="text-xs h-7 sm:h-8 px-2 sm:w-full justify-start" onClick={() => setDateRange({ from: startOfDay(subDays(new Date(), 6)), to: endOfDay(new Date()) })}>Last 7 days</Button>
+                          <Button variant="ghost" size="sm" className="text-xs h-7 sm:h-8 px-2 sm:w-full justify-start" onClick={() => setDateRange({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) })}>This Month</Button>
+                          <Button variant="ghost" size="sm" className="text-xs h-7 sm:h-8 px-2 sm:w-full justify-start" onClick={() => setDateRange({ from: startOfMonth(subDays(new Date(), 30)), to: endOfMonth(subDays(new Date(), 30)) })}>Last Month</Button>
+                          <Button variant="ghost" size="sm" className="text-xs h-7 sm:h-8 px-2 sm:w-full justify-start text-red-400 hover:text-red-300" onClick={() => setDateRange(undefined)}>Clear</Button>
                         </div>
-                        <Calendar
-                          initialFocus
-                          mode="range"
-                          defaultMonth={dateRange?.from}
-                          selected={dateRange}
-                          onSelect={setDateRange}
-                          numberOfMonths={1}
-                        />
+                        <div className="p-1 sm:p-2 flex justify-center">
+                          <Calendar
+                            initialFocus
+                            mode="range"
+                            defaultMonth={dateRange?.from}
+                            selected={dateRange}
+                            onSelect={setDateRange}
+                            numberOfMonths={1}
+                            className="p-1 text-xs"
+                          />
+                        </div>
                       </div>
                     </PopoverContent>
                   </Popover>
