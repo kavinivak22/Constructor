@@ -378,164 +378,104 @@ export default function ProjectDetailsPage() {
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <Card className="glass-card">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <CheckCircle className="text-primary h-5 w-5" />
-                                Project Tasks
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {isLoadingTasks ? (
-                                <div className="space-y-3">
-                                    {[...Array(3)].map((_, i) => (
-                                        <div key={i} className="flex items-start gap-3">
-                                            <Skeleton className="h-4 w-4 rounded mt-1" />
-                                            <div className="space-y-1 flex-1">
-                                                <Skeleton className="h-4 w-3/4" />
-                                                <Skeleton className="h-3 w-1/4" />
-                                            </div>
+                <Card className="glass-card">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <CheckCircle className="text-primary h-5 w-5" />
+                            Project Tasks
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {isLoadingTasks ? (
+                            <div className="space-y-3">
+                                {[...Array(3)].map((_, i) => (
+                                    <div key={i} className="flex items-start gap-3">
+                                        <Skeleton className="h-4 w-4 rounded mt-1" />
+                                        <div className="space-y-1 flex-1">
+                                            <Skeleton className="h-4 w-3/4" />
+                                            <Skeleton className="h-3 w-1/4" />
                                         </div>
-                                    ))}
-                                </div>
-                            ) : tasks.length > 0 ? (
-                                <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
-                                    {tasks.map(task => {
-                                        const isCheckboxDisabled = !isAdminOrManager && task.assigned_to !== user?.id;
-                                        return (
-                                            <div key={task.id} className="flex items-start justify-between py-1 group">
-                                                <div className="flex items-start gap-3 flex-1">
-                                                    <Checkbox
-                                                        id={task.id}
-                                                        checked={task.status === 'completed'}
-                                                        onCheckedChange={() => handleToggleTask(task.id, task.status)}
-                                                        disabled={isCheckboxDisabled}
-                                                        className="mt-1"
-                                                    />
-                                                    <div className="flex-1">
-                                                        <label
-                                                            htmlFor={task.id}
-                                                            className={`font-medium cursor-pointer select-none transition-all ${
-                                                                task.status === 'completed' ? 'line-through text-muted-foreground/60' : 'text-foreground/90'
-                                                            }`}
-                                                        >
-                                                            {task.title}
-                                                        </label>
-                                                        <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1 mt-1">
-                                                            {task.due_date && (
-                                                                <span className="flex items-center gap-1">
-                                                                    <Clock className="h-3 w-3" /> {getFormattedDate(task.due_date)}
-                                                                </span>
-                                                            )}
-                                                            {task.assigned_user && (
-                                                                <span className="font-semibold text-primary/80">
-                                                                    Assignee: {task.assigned_user.display_name}
-                                                                </span>
-                                                            )}
-                                                            {task.priority && (
-                                                                <span className={`capitalize font-bold ${
-                                                                    task.priority === 'high' ? 'text-red-500' : task.priority === 'medium' ? 'text-amber-500' : 'text-slate-400'
-                                                                }`}>
-                                                                    {task.priority}
-                                                                </span>
-                                                            )}
-                                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : tasks.length > 0 ? (
+                            <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
+                                {tasks.map(task => {
+                                    const isCheckboxDisabled = !isAdminOrManager && task.assigned_to !== user?.id;
+                                    return (
+                                        <div key={task.id} className="flex items-start justify-between py-1 group">
+                                            <div className="flex items-start gap-3 flex-1">
+                                                <Checkbox
+                                                    id={task.id}
+                                                    checked={task.status === 'completed'}
+                                                    onCheckedChange={() => handleToggleTask(task.id, task.status)}
+                                                    disabled={isCheckboxDisabled}
+                                                    className="mt-1"
+                                                />
+                                                <div className="flex-1">
+                                                    <label
+                                                        htmlFor={task.id}
+                                                        className={`font-medium cursor-pointer select-none transition-all ${
+                                                            task.status === 'completed' ? 'line-through text-muted-foreground/60' : 'text-foreground/90'
+                                                        }`}
+                                                    >
+                                                        {task.title}
+                                                    </label>
+                                                    <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                                                        {task.due_date && (
+                                                            <span className="flex items-center gap-1">
+                                                                <Clock className="h-3 w-3" /> {getFormattedDate(task.due_date)}
+                                                            </span>
+                                                        )}
+                                                        {task.assigned_user && (
+                                                            <span className="font-semibold text-primary/80">
+                                                                Assignee: {task.assigned_user.display_name}
+                                                            </span>
+                                                        )}
+                                                        {task.priority && (
+                                                            <span className={`capitalize font-bold ${
+                                                                task.priority === 'high' ? 'text-red-500' : task.priority === 'medium' ? 'text-amber-500' : 'text-slate-400'
+                                                            }`}>
+                                                                {task.priority}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
-                                                {isAdminOrManager && (
-                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 shrink-0 ml-2">
-                                                        <EditTaskDialog
-                                                            task={task}
-                                                            employees={employees}
-                                                            onSuccess={() => setRefreshTasksTrigger(prev => prev + 1)}
-                                                        />
-                                                        <Button
-                                                            size="icon"
-                                                            variant="ghost"
-                                                            className="h-7 w-7 p-0 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/20"
-                                                            onClick={() => handleDeleteTask(task.id)}
-                                                        >
-                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                    </div>
-                                                )}
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <p className="text-sm text-muted-foreground text-center py-6">No project tasks. Create one below!</p>
-                            )}
-
-                            {isAdminOrManager && (
-                                <CreateTaskDialog
-                                    projectId={projectIdString}
-                                    employees={employees}
-                                    onSuccess={() => setRefreshTasksTrigger(prev => prev + 1)}
-                                />
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    <Card className="glass-card">
-                        <CardHeader>
-                            <CardTitle>Upcoming Works</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {isLoadingUpcoming ? (
-                                <div className="space-y-3">
-                                    {[...Array(3)].map((_, i) => (
-                                        <div key={i} className="flex justify-between items-start">
-                                            <div className="space-y-1 flex-1">
-                                                <Skeleton className="h-4 w-1/2" />
-                                                <Skeleton className="h-3 w-1/3" />
-                                            </div>
-                                            <Skeleton className="h-5 w-16" />
+                                            {isAdminOrManager && (
+                                                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 shrink-0 ml-2">
+                                                    <EditTaskDialog
+                                                        task={task}
+                                                        employees={employees}
+                                                        onSuccess={() => setRefreshTasksTrigger(prev => prev + 1)}
+                                                    />
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="h-7 w-7 p-0 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/20"
+                                                        onClick={() => handleDeleteTask(task.id)}
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </div>
+                                            )}
                                         </div>
-                                    ))}
-                                </div>
-                            ) : upcomingWorks.length > 0 ? (
-                                <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
-                                    {upcomingWorks.map(work => (
-                                        <div key={work.id} className="flex items-start justify-between py-1">
-                                            <div>
-                                                <p className="font-semibold text-foreground/90">{work.title}</p>
-                                                <p className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
-                                                    <span className="flex items-center gap-1">
-                                                        <Calendar className="h-3.5 w-3.5" />
-                                                        {getFormattedDate(work.due_date)}
-                                                    </span>
-                                                    {work.duration && (
-                                                        <span className="flex items-center gap-1">
-                                                            <Clock className="h-3.5 w-3.5" />
-                                                            {work.duration}
-                                                        </span>
-                                                    )}
-                                                </p>
-                                            </div>
-                                            <Badge
-                                                variant={work.priority === 'high' ? 'destructive' : 'secondary'}
-                                                className={`capitalize ${work.priority === 'medium' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-transparent' : ''}`}
-                                            >
-                                                {work.priority}
-                                            </Badge>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-sm text-muted-foreground text-center py-6">No upcoming work plans. Create one below!</p>
-                            )}
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-muted-foreground text-center py-6">No project tasks. Create one below!</p>
+                        )}
 
-                            {isAdminOrManager && (
-                                <CreateUpcomingDialog
-                                    projectId={projectIdString}
-                                    onSuccess={() => setRefreshTasksTrigger(prev => prev + 1)}
-                                />
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
+                        {isAdminOrManager && (
+                            <CreateTaskDialog
+                                projectId={projectIdString}
+                                employees={employees}
+                                onSuccess={() => setRefreshTasksTrigger(prev => prev + 1)}
+                            />
+                        )}
+                    </CardContent>
+                </Card>
 
                 <Card className="glass-card">
                     <CardHeader>

@@ -1,7 +1,6 @@
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export type QualityCheckItem = {
   id: string;
@@ -33,6 +32,32 @@ export type HabitProfile = {
   created_at: string;
   updated_at: string;
 };
+
+// Helper function to call Gemini REST API via native fetch (Zero external SDK dependencies)
+async function callGeminiRestApi(prompt: string, apiKey: string): Promise<string> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [{ text: prompt }]
+        }
+      ]
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini API HTTP Error ${response.status}: ${errorText}`);
+  }
+
+  const data = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('Empty response from Gemini API');
+  return text;
+}
 
 // ----------------------------------------------------
 // 1. HABIT PROFILES (Master Templates) MANAGEMENT
@@ -633,9 +658,6 @@ export async function evaluateWorklogProgressWithGemini(projectId: string, workl
 
     if (pendingTasksList.length === 0) return { success: true };
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeAIModel({ model: 'gemini-1.5-flash' });
-
     const prompt = `
 You are an expert construction site supervisor AI. Analyze today's daily worklog and match executed work to the project's pending tasks and quality checklist items.
 
@@ -654,9 +676,9 @@ Output ONLY a raw JSON object (no markdown, no backticks) with:
 }
 `;
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text().trim().replace(/^```json/, '').replace(/```$/, '').trim();
-    const aiOutput = JSON.parse(responseText);
+    const responseText = await callGeminiRestApi(prompt, apiKey);
+    const cleanedText = responseText.trim().replace(/^```json/, '').replace(/```$/, '').trim();
+    const aiOutput = JSON.parse(cleanedText);
 
     // Apply AI updates to processes array
     let changesMade = false;
@@ -724,9 +746,6 @@ export async function generateTaskChecklistWithGemini(taskTitle: string, buildin
       };
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeAIModel({ model: 'gemini-1.5-flash' });
-
     const prompt = `
 Generates 4 to 6 concise, highly practical engineering quality control checklist items for the construction task: "${taskTitle}" on a ${buildingType} project.
 
@@ -734,9 +753,9 @@ Return ONLY a raw JSON array of strings:
 ["Checklist item 1", "Checklist item 2", "Checklist item 3"]
 `;
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text().trim().replace(/^```json/, '').replace(/```$/, '').trim();
-    const checklists: string[] = JSON.parse(responseText);
+    const responseText = await callGeminiRestApi(prompt, apiKey);
+    const cleanedText = responseText.trim().replace(/^```json/, '').replace(/```$/, '').trim();
+    const checklists: string[] = JSON.parse(cleanedText);
 
     return { success: true, checklists };
   } catch (error: any) {
