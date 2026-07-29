@@ -287,25 +287,25 @@ export function ProcessScopeDialog({ projectId, projectName, onSuccess, trigger 
       </DialogTrigger>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold font-headline flex items-center gap-2">
-            <Layers className="h-5 w-5 text-primary" /> Construction Habit Profiles & Quality Checklists
+          <DialogTitle className="text-lg sm:text-xl font-bold font-headline flex items-center gap-2">
+            <Layers className="h-5 w-5 text-primary" /> Construction Building Plan & Checklists
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            Configure subheading processes, tasks, and site quality checklists for {projectName}.
+            Select or customize construction stages, tasks, and quality checklists for {projectName}.
           </DialogDescription>
         </DialogHeader>
 
         {isLoading ? (
           <div className="py-12 flex justify-center items-center text-muted-foreground">
-            <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading Habit Profiles...
+            <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading construction building plans...
           </div>
         ) : (
-          <div className="space-y-6 py-2">
-            {/* Select Saved Habit Profile */}
-            <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 space-y-3">
+          <div className="space-y-5 py-2">
+            {/* Select Saved Building Template */}
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-primary/5 border border-primary/20 space-y-2.5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <Label htmlFor="profile-select" className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                  <Copy className="h-4 w-4 text-primary" /> Apply a Saved Construction Habit Profile
+                  <Copy className="h-4 w-4 text-primary" /> Choose a Building Plan Template
                 </Label>
                 {selectedProfileObj && (
                   <Badge variant="secondary" className="text-xs bg-primary/10 text-primary font-semibold">
@@ -315,12 +315,12 @@ export function ProcessScopeDialog({ projectId, projectName, onSuccess, trigger 
               </div>
 
               <Select value={selectedProfileId} onValueChange={handleSelectProfile}>
-                <SelectTrigger id="profile-select" className="bg-background">
-                  <SelectValue placeholder="Choose a construction habit profile template..." />
+                <SelectTrigger id="profile-select" className="bg-background h-10 text-xs sm:text-sm">
+                  <SelectValue placeholder="Select building type template..." />
                 </SelectTrigger>
                 <SelectContent>
                   {habitProfiles.map(p => (
-                    <SelectItem key={p.id} value={p.id}>
+                    <SelectItem key={p.id} value={p.id} className="text-xs sm:text-sm">
                       {p.name} {p.building_type ? `(${p.building_type})` : ''}
                     </SelectItem>
                   ))}
@@ -330,56 +330,58 @@ export function ProcessScopeDialog({ projectId, projectName, onSuccess, trigger 
 
             {/* Subheading Processes & Tasks Editor */}
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold text-foreground">Subheading Processes & Task Checklists</h4>
-                <Button size="sm" variant="outline" onClick={handleAddProcess}>
-                  <Plus className="mr-1 h-3.5 w-3.5" /> Add Process Stage
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <h4 className="text-xs sm:text-sm font-bold text-foreground">Construction Stages & Checklists</h4>
+                <Button size="sm" variant="outline" onClick={handleAddProcess} className="w-full sm:w-auto h-8 text-xs">
+                  <Plus className="mr-1 h-3.5 w-3.5" /> Add Stage
                 </Button>
               </div>
 
               {processes.map((proc, pIdx) => (
-                <div key={proc.id} className="p-4 rounded-2xl border border-border/60 bg-muted/20 space-y-3">
-                  <div className="flex items-center gap-3">
+                <div key={proc.id} className="p-3 sm:p-4 rounded-2xl border border-border/60 bg-muted/20 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                     <Input
                       value={proc.title}
                       onChange={(e) => {
                         const updated = processes.map(p => p.id === proc.id ? { ...p, title: e.target.value } : p);
                         setProcesses(updated);
                       }}
-                      placeholder="Process Stage Name (e.g. 1. Foundation)"
-                      className="font-bold text-sm bg-background flex-1"
+                      placeholder="Stage Name (e.g. 1. Foundation Work)"
+                      className="font-bold text-xs sm:text-sm bg-background flex-1 h-9"
                     />
-                    <div className="flex items-center gap-1 w-24 shrink-0">
-                      <Input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={proc.weight}
-                        onChange={(e) => {
-                          const updated = processes.map(p => p.id === proc.id ? { ...p, weight: Number(e.target.value) } : p);
-                          setProcesses(updated);
-                        }}
-                        className="text-xs bg-background"
-                      />
-                      <span className="text-xs font-bold text-muted-foreground">%</span>
+                    <div className="flex items-center justify-between sm:justify-end gap-2">
+                      <div className="flex items-center gap-1 w-24">
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={proc.weight}
+                          onChange={(e) => {
+                            const updated = processes.map(p => p.id === proc.id ? { ...p, weight: Number(e.target.value) } : p);
+                            setProcesses(updated);
+                          }}
+                          className="text-xs bg-background h-8"
+                        />
+                        <span className="text-xs font-bold text-muted-foreground">% Share</span>
+                      </div>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteProcess(proc.id)} className="h-8 w-8 text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteProcess(proc.id)} className="h-8 w-8 text-destructive">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                   </div>
 
                   {/* Tasks under this process */}
-                  <div className="pl-4 space-y-3 border-l-2 border-primary/30">
+                  <div className="pl-2 sm:pl-4 space-y-2.5 border-l-2 border-primary/30">
                     <div className="flex items-center justify-between text-xs font-bold text-muted-foreground">
-                      <span>Tasks & Quality Control Checklists ({proc.tasks?.length || 0})</span>
+                      <span>Tasks & Quality Checklists ({proc.tasks?.length || 0})</span>
                       <Button variant="ghost" size="sm" onClick={() => handleAddTask(proc.id)} className="h-7 text-xs text-primary">
                         <Plus className="mr-1 h-3 w-3" /> Add Task
                       </Button>
                     </div>
 
                     {proc.tasks?.map((task) => (
-                      <div key={task.id} className="p-3 rounded-xl bg-background border border-border/50 space-y-2">
-                        <div className="flex items-center gap-2">
+                      <div key={task.id} className="p-2.5 sm:p-3 rounded-xl bg-background border border-border/50 space-y-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                           <Input
                             value={task.title}
                             onChange={(e) => {
@@ -392,35 +394,37 @@ export function ProcessScopeDialog({ projectId, projectName, onSuccess, trigger 
                               });
                               setProcesses(updated);
                             }}
-                            placeholder="Task Name (e.g. PCC Bed Concreting)"
-                            className="text-xs font-semibold flex-1"
+                            placeholder="Task Name (e.g. Footing Rebar)"
+                            className="text-xs font-semibold flex-1 h-8"
                           />
 
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleGenerateAIChecklist(proc.id, task.id, task.title)}
-                            disabled={generatingChecklistTaskId === task.id}
-                            className="h-8 text-[11px] bg-primary/10 text-primary border-primary/30 hover:bg-primary/20 shrink-0"
-                          >
-                            {generatingChecklistTaskId === task.id ? (
-                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                            ) : (
-                              <Sparkles className="h-3 w-3 mr-1" />
-                            )}
-                            AI Checklist
-                          </Button>
+                          <div className="flex items-center gap-1.5 justify-between sm:justify-end">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleGenerateAIChecklist(proc.id, task.id, task.title)}
+                              disabled={generatingChecklistTaskId === task.id}
+                              className="h-7 text-[11px] bg-primary/10 text-primary border-primary/30 hover:bg-primary/20 shrink-0"
+                            >
+                              {generatingChecklistTaskId === task.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                              ) : (
+                                <Sparkles className="h-3 w-3 mr-1" />
+                              )}
+                              AI Checklist
+                            </Button>
 
-                          <Button variant="ghost" size="icon" onClick={() => handleDeleteTask(proc.id, task.id)} className="h-7 w-7 text-destructive">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteTask(proc.id, task.id)} className="h-7 w-7 text-destructive">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </div>
 
                         {/* Quality Checklist Items */}
-                        <div className="pl-3 space-y-1.5 pt-1">
+                        <div className="pl-2 sm:pl-3 space-y-1.5 pt-1">
                           <div className="flex items-center justify-between text-[11px] text-muted-foreground font-medium">
                             <span className="flex items-center gap-1">
-                              <CheckSquare className="h-3 w-3 text-primary" /> Quality Checkpoints
+                              <CheckSquare className="h-3 w-3 text-primary" /> Site Quality Points
                             </span>
                             <button
                               type="button"
@@ -432,7 +436,7 @@ export function ProcessScopeDialog({ projectId, projectName, onSuccess, trigger 
                           </div>
 
                           {task.checklists?.map((chk) => (
-                            <div key={chk.id} className="flex items-center gap-2">
+                            <div key={chk.id} className="flex items-center gap-1.5">
                               <Input
                                 value={chk.title}
                                 onChange={(e) => {
@@ -473,7 +477,7 @@ export function ProcessScopeDialog({ projectId, projectName, onSuccess, trigger 
                                   });
                                   setProcesses(updated);
                                 }}
-                                className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
                               >
                                 <Trash2 className="h-3 w-3" />
                               </Button>
@@ -497,39 +501,39 @@ export function ProcessScopeDialog({ projectId, projectName, onSuccess, trigger 
                   className="mt-0.5"
                 />
                 <label htmlFor="sync-master" className="text-xs font-semibold text-foreground cursor-pointer select-none">
-                  Make changes in '{selectedProfileObj.name}' Profile too
+                  Save to '{selectedProfileObj.name}' template for future projects too
                   <p className="text-[11px] font-normal text-muted-foreground mt-0.5">
-                    Check this box to update your master Habit Profile so future projects automatically get these task & checklist improvements!
+                    Check this box so future projects using this plan automatically get these updated tasks & checklists!
                   </p>
                 </label>
               </div>
             )}
 
-            {/* Save as New Habit Profile Section */}
-            <div className="p-3.5 rounded-xl border border-border/50 bg-background space-y-2">
-              <Label className="text-xs font-bold text-foreground">Save Setup as a New Habit Profile Template</Label>
-              <div className="flex items-center gap-2">
+            {/* Save as New Template Section */}
+            <div className="p-3 sm:p-3.5 rounded-xl border border-border/50 bg-background space-y-2">
+              <Label className="text-xs font-bold text-foreground">Save as a New Reusable Building Template</Label>
+              <div className="flex flex-col sm:flex-row items-center gap-2">
                 <Input
                   value={newProfileName}
                   onChange={(e) => setNewProfileName(e.target.value)}
-                  placeholder="e.g. Residential Villa (Unframed Structure)"
-                  className="text-xs flex-1"
+                  placeholder="Template Name (e.g. 3-BHK Villa Plan)"
+                  className="text-xs flex-1 h-9 w-full"
                 />
-                <Button size="sm" variant="outline" onClick={handleSaveAsNewProfile} disabled={isSubmitting}>
-                  <Save className="mr-1.5 h-3.5 w-3.5" /> Save Profile
+                <Button size="sm" variant="outline" onClick={handleSaveAsNewProfile} disabled={isSubmitting} className="w-full sm:w-auto h-9 text-xs">
+                  <Save className="mr-1.5 h-3.5 w-3.5" /> Save Template
                 </Button>
               </div>
             </div>
           </div>
         )}
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={() => setIsOpen(false)}>
+        <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+          <Button variant="outline" onClick={() => setIsOpen(false)} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isSubmitting}>
+          <Button onClick={handleSave} disabled={isSubmitting} className="w-full sm:w-auto">
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save & Apply Scope to Project
+            Save & Apply Plan to Project
           </Button>
         </DialogFooter>
       </DialogContent>

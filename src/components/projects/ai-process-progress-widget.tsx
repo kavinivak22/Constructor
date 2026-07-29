@@ -140,35 +140,41 @@ export function AIProcessProgressWidget({ projectId, projectName, onProgressUpda
 
   if (processes.length === 0) {
     return (
-      <Card className="glass-card border-dashed border-primary/30 p-6 text-center">
-        <Layers className="h-10 w-10 text-primary mx-auto mb-2 opacity-70" />
-        <h3 className="font-bold text-lg text-foreground">No Construction Scope Configured</h3>
-        <p className="text-xs text-muted-foreground mb-4">
-          Select or apply a Habit Profile (e.g. Residential Villa, Commercial Plaza) to track process-by-process progress & quality checklists.
-        </p>
-        <ProcessScopeDialog
-          projectId={projectId}
-          projectName={projectName}
-          onSuccess={() => fetchScope()}
-          trigger={
-            <Button size="sm" className="bg-primary text-primary-foreground font-semibold">
-              <Settings2 className="mr-2 h-4 w-4" /> Setup Construction Processes & Habit Profiles
-            </Button>
-          }
-        />
+      <Card className="glass-card border-dashed border-primary/40 p-5 sm:p-6 text-center space-y-3">
+        <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
+          <Layers className="h-6 w-6" />
+        </div>
+        <div className="space-y-1 max-w-md mx-auto">
+          <h3 className="font-bold text-base sm:text-lg text-foreground">Select a Building Construction Plan</h3>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Choose your project type (e.g. Framed Villa, Load-Bearing House, Commercial Building) to start tracking stage-by-stage site progress and quality checklists.
+          </p>
+        </div>
+        <div className="pt-2">
+          <ProcessScopeDialog
+            projectId={projectId}
+            projectName={projectName}
+            onSuccess={() => fetchScope()}
+            trigger={
+              <Button size="default" className="w-full sm:w-auto bg-primary text-primary-foreground font-semibold px-6 py-2.5 rounded-xl shadow-md">
+                <Settings2 className="mr-2 h-4 w-4" /> Choose Building Construction Plan
+              </Button>
+            }
+          />
+        </div>
       </Card>
     );
   }
 
   return (
     <Card className="glass-card border-border/60">
-      <CardHeader className="p-4 sm:p-6 pb-3 flex flex-row items-center justify-between gap-4">
+      <CardHeader className="p-4 sm:p-6 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <CardTitle className="text-lg font-bold font-headline text-foreground flex items-center gap-2">
-            <Layers className="h-5 w-5 text-primary" /> Construction Processes & Quality Checklists
+          <CardTitle className="text-base sm:text-lg font-bold font-headline text-foreground flex items-center gap-2">
+            <Layers className="h-5 w-5 text-primary" /> Construction Stages & Quality Checklists
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground">
-            Stage-by-stage process breakdown with nested quality checklists.
+            Stage-by-stage progress breakdown with quality control checklists.
           </CardDescription>
         </div>
 
@@ -177,8 +183,8 @@ export function AIProcessProgressWidget({ projectId, projectName, onProgressUpda
           projectName={projectName}
           onSuccess={() => fetchScope()}
           trigger={
-            <Button variant="outline" size="sm" className="shrink-0">
-              <Settings2 className="mr-1.5 h-3.5 w-3.5 text-primary" /> Manage Habit Profiles
+            <Button variant="outline" size="sm" className="w-full sm:w-auto shrink-0 font-medium">
+              <Settings2 className="mr-1.5 h-3.5 w-3.5 text-primary" /> Change Building Plan
             </Button>
           }
         />
