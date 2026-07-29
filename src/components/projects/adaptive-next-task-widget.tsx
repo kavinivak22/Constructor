@@ -129,58 +129,58 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
   return (
     <Card className="glass-card border-primary/30 bg-gradient-to-r from-primary/10 via-background/80 to-primary/5 shadow-xl relative overflow-hidden">
       <CardHeader className="p-4 sm:p-5 pb-2 space-y-2">
-        {/* Top Badges Row */}
+        {/* Top Row: NEXT TASK badge + Clean Manual Navigation Pill */}
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-primary/15 text-primary border-primary/30 text-xs px-2.5 py-0.5 font-bold uppercase tracking-wider">
-              <Zap className="h-3 w-3 mr-1" /> Next Task
-            </Badge>
-            <span className="text-xs text-muted-foreground font-medium truncate max-w-[180px] sm:max-w-[240px]">
-              {activeProcessTitle}
-            </span>
-          </div>
+          <Badge variant="outline" className="bg-primary/15 text-primary border-primary/30 text-xs px-2.5 py-0.5 font-bold uppercase tracking-wider shrink-0">
+            <Zap className="h-3 w-3 mr-1" /> Next Task
+          </Badge>
 
-          {/* Manual Task Navigation Buttons */}
-          <div className="flex items-center gap-1">
+          {/* Clean Manual Task Navigation Controls (never cut off) */}
+          <div className="flex items-center gap-1 bg-background/80 px-2 py-0.5 rounded-xl border border-border/50 shadow-sm shrink-0">
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
               disabled={currentTaskIndex === 0}
               onClick={() => setCurrentTaskIndex(prev => Math.max(0, prev - 1))}
-              className="h-7 w-7 rounded-lg"
+              className="h-6 w-6 rounded-lg p-0 hover:bg-muted"
               title="Previous Task Checklist"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
-            <span className="text-[11px] text-muted-foreground font-semibold px-1">
-              {currentTaskIndex + 1}/{flatTaskList.length}
+            <span className="text-[11px] font-bold text-foreground tracking-tight whitespace-nowrap px-1">
+              {currentTaskIndex + 1} / {flatTaskList.length}
             </span>
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
               disabled={currentTaskIndex === flatTaskList.length - 1}
               onClick={() => setCurrentTaskIndex(prev => Math.min(flatTaskList.length - 1, prev + 1))}
-              className="h-7 w-7 rounded-lg"
+              className="h-6 w-6 rounded-lg p-0 hover:bg-muted"
               title="Next Task Checklist"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
 
-        {/* Quality Checks Done Badge moved right under top row as requested in markup */}
+        {/* Stage Title */}
+        <p className="text-xs font-semibold text-muted-foreground/80 tracking-wide">
+          {activeProcessTitle}
+        </p>
+
+        {/* Task Title */}
+        <CardTitle className="text-lg sm:text-xl font-bold font-headline text-foreground leading-snug">
+          {activeTask.title}
+        </CardTitle>
+
+        {/* Quality Checks Done Badge placed directly above the checklist items (arrow 2 in markup) */}
         {totalChecks > 0 && (
-          <div>
-            <Badge variant="secondary" className="text-xs font-semibold bg-primary/10 text-primary px-2.5 py-0.5">
+          <div className="pt-0.5">
+            <Badge variant="secondary" className="text-xs font-semibold bg-primary/10 text-primary border border-primary/20 px-2.5 py-0.5">
               {completedChecks} / {totalChecks} Quality Checks Done ({checkProgressPct}%)
             </Badge>
           </div>
         )}
-
-        {/* Task Title */}
-        <CardTitle className="text-lg sm:text-xl font-bold font-headline text-foreground pt-1">
-          {activeTask.title}
-        </CardTitle>
       </CardHeader>
 
       <CardContent className="p-4 sm:p-5 pt-2 space-y-4">
