@@ -52,7 +52,7 @@ import {
 } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { getProjectScope } from '@/app/actions/ai-progress';
+import { getProjectScope, getBatchProjectScopes } from '@/app/actions/ai-progress';
 
 type SuggestedTask = {
   projectId: string;
@@ -312,31 +312,28 @@ export default function WorkPrepPage() {
             .map(t => t.id);
           setSelectedTaskIds(new Set(tomorrowIds));
 
-          // Auto-suggest next uncompleted task from each project's Building Plan
+          // Auto-suggest next uncompleted task from each project's Building Plan (Fast Single-Query Batch)
+          const scopeMap = await getBatchProjectScopes(projectIds);
           const suggestions: SuggestedTask[] = [];
           for (const p of projectsData || []) {
-            try {
-              const scopeRes = await getProjectScope(p.id);
-              if (scopeRes.success && scopeRes.processes) {
-                for (const proc of scopeRes.processes) {
-                  const nextTask = proc.tasks?.find(t => t.status !== 'completed');
-                  if (nextTask) {
-                    const alreadyScheduled = mappedTasks.some(mt => mt.project_id === p.id && mt.title.toLowerCase() === nextTask.title.toLowerCase());
-                    if (!alreadyScheduled) {
-                      suggestions.push({
-                        projectId: p.id,
-                        projectName: p.name,
-                        taskTitle: nextTask.title,
-                        processTitle: proc.title,
-                        checklistsCount: nextTask.checklists?.length || 0
-                      });
-                    }
-                    break;
+            const scope = scopeMap[p.id];
+            if (scope && scope.processes) {
+              for (const proc of scope.processes) {
+                const nextTask = proc.tasks?.find(t => t.status !== 'completed');
+                if (nextTask) {
+                  const alreadyScheduled = mappedTasks.some(mt => mt.project_id === p.id && mt.title.toLowerCase() === nextTask.title.toLowerCase());
+                  if (!alreadyScheduled) {
+                    suggestions.push({
+                      projectId: p.id,
+                      projectName: p.name,
+                      taskTitle: nextTask.title,
+                      processTitle: proc.title,
+                      checklistsCount: nextTask.checklists?.length || 0
+                    });
                   }
+                  break;
                 }
               }
-            } catch (scErr) {
-              console.warn('Scope query error for project:', p.id, scErr);
             }
           }
           setSuggestedTasks(suggestions);

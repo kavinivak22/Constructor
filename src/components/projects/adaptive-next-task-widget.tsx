@@ -13,6 +13,7 @@ import {
   Zap,
   Loader2
 } from 'lucide-react';
+import { useSupabase } from '@/supabase/provider';
 import { getProjectScope, saveProjectScope, type SubheadingProcess, type ProcessTask } from '@/app/actions/ai-progress';
 import { CreateWorklogDialog } from '@/components/worklog/create-worklog-dialog';
 
@@ -23,6 +24,7 @@ interface AdaptiveNextTaskWidgetProps {
 }
 
 export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdated }: AdaptiveNextTaskWidgetProps) {
+  const { supabase } = useSupabase();
   const [processes, setProcesses] = useState<SubheadingProcess[]>([]);
   const [appliedProfileId, setAppliedProfileId] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,12 +32,37 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
 
   const fetchScope = async () => {
     setIsLoading(true);
+    // 1. Ultra-fast direct client query
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('scope_data')
+        .eq('id', projectId)
+        .single();
+
+      if (!error && data?.scope_data) {
+        const scope = typeof data.scope_data === 'string' ? JSON.parse(data.scope_data) : data.scope_data;
+        const procs = scope.processes || [];
+        setProcesses(procs);
+        setAppliedProfileId(scope.appliedProfileId);
+        const flatList = procs.flatMap((p: any) => p.tasks || []);
+        const firstUncompleted = flatList.findIndex((t: any) => t.status !== 'completed');
+        if (firstUncompleted !== -1) {
+          setCurrentTaskIndex(firstUncompleted);
+        }
+        setIsLoading(false);
+        return;
+      }
+    } catch (e) {
+      console.warn('Direct client query fallback to Server Action');
+    }
+
+    // 2. Server Action Fallback
     const res = await getProjectScope(projectId);
     if (res.success && res.processes) {
       setProcesses(res.processes);
       setAppliedProfileId(res.appliedProfileId);
 
-      // Find first uncompleted task index as initial default
       const flatList = res.processes.flatMap(p => p.tasks || []);
       const firstUncompleted = flatList.findIndex(t => t.status !== 'completed');
       if (firstUncompleted !== -1) {

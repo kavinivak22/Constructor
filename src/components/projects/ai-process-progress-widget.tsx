@@ -34,12 +34,33 @@ interface AIProcessProgressWidgetProps {
 
 export function AIProcessProgressWidget({ projectId, projectName, onProgressUpdated }: AIProcessProgressWidgetProps) {
   const { toast } = useToast();
+  const { supabase } = useSupabase();
   const [processes, setProcesses] = useState<SubheadingProcess[]>([]);
   const [appliedProfileId, setAppliedProfileId] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchScope = async () => {
     setIsLoading(true);
+    // 1. Ultra-fast direct client query
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('scope_data')
+        .eq('id', projectId)
+        .single();
+
+      if (!error && data?.scope_data) {
+        const scope = typeof data.scope_data === 'string' ? JSON.parse(data.scope_data) : data.scope_data;
+        setProcesses(scope.processes || []);
+        setAppliedProfileId(scope.appliedProfileId);
+        setIsLoading(false);
+        return;
+      }
+    } catch (e) {
+      console.warn('Direct client query fallback to Server Action');
+    }
+
+    // 2. Server Action Fallback
     const res = await getProjectScope(projectId);
     if (res.success && res.processes) {
       setProcesses(res.processes);

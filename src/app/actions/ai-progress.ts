@@ -500,6 +500,34 @@ export async function getProjectScope(projectId: string): Promise<{
   }
 }
 
+export async function getBatchProjectScopes(projectIds: string[]): Promise<Record<string, { processes: SubheadingProcess[]; appliedProfileId?: string }>> {
+  if (!projectIds || projectIds.length === 0) return {};
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from('projects')
+      .select('id, scope_data')
+      .in('id', projectIds);
+
+    const resultMap: Record<string, { processes: SubheadingProcess[]; appliedProfileId?: string }> = {};
+
+    (data || []).forEach(row => {
+      if (row.scope_data) {
+        const scope = typeof row.scope_data === 'string' ? JSON.parse(row.scope_data) : row.scope_data;
+        resultMap[row.id] = {
+          processes: scope.processes || [],
+          appliedProfileId: scope.appliedProfileId
+        };
+      }
+    });
+
+    return resultMap;
+  } catch (err) {
+    console.error('Error fetching batch project scopes:', err);
+    return {};
+  }
+}
+
 export async function saveProjectScope(
   projectId: string,
   processes: SubheadingProcess[],
