@@ -49,7 +49,7 @@ import type { User as AppUser } from '@/lib/data';
 const links = [
   { href: '/', key: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
   { href: '/projects', key: 'projects', label: 'Projects', icon: FolderKanban },
-  { href: '/inventory', key: 'inventory', label: 'Inventory', icon: Package },
+  { href: '/inventory', key: 'inventory', label: 'Warehouse', icon: Package },
   { href: '/purchase-orders', key: 'purchaseOrders', label: 'Purchase Orders', icon: ShoppingCart },
   { href: '/worklog', key: 'dailyWorklog', label: 'Daily Worklog', icon: ClipboardPen },
   { href: '/work-prep', key: 'workPrep', label: 'Work Prep', icon: PhoneCall },

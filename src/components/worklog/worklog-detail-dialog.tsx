@@ -162,6 +162,26 @@ export function WorklogDetailDialog({ worklog, isOpen, onClose }: WorklogDetailD
               </p>
             </div>
 
+            {/* Job-Costing Cost of Work Banner */}
+            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-500 flex items-center justify-center font-bold text-xs shrink-0">
+                  ₹
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider leading-none">Estimated Job Cost of Work</p>
+                  <p className="text-base font-bold text-emerald-600 dark:text-emerald-400 leading-tight mt-0.5">
+                    ₹{((totalWorkers * 750) + (totalMaterials * 1200)).toLocaleString('en-IN')}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground self-end sm:self-auto">
+                <span className="bg-background/80 px-2 py-0.5 rounded-md border border-border">Labour: ₹{(totalWorkers * 750).toLocaleString('en-IN')}</span>
+                <span>•</span>
+                <span className="bg-background/80 px-2 py-0.5 rounded-md border border-border">Materials: ₹{(totalMaterials * 1200).toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+
             {/* Labor Section */}
             {laborEntries.length > 0 && (
               <div className="space-y-3 pt-3 border-t border-border/40">

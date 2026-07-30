@@ -63,6 +63,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { CreateContractorDialog } from '@/components/contractors/create-contractor-dialog';
+import { MixRatioHelperWidget } from '@/components/worklog/mix-ratio-helper-widget';
 import { compressImage } from '@/lib/compression';
 
 // --- Schemas (Matching Server Action) ---
@@ -517,16 +518,24 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
                                              <div className="flex justify-end pt-6"><Button type="button" size="lg" onClick={() => nextTab("labor")} className="px-8 glass border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5 text-foreground">Continue to Materials</Button></div>
                                         </TabsContent>
 
-                                        <TabsContent value="materials" className="mt-0 space-y-6 animate-in fade-in-50 slide-in-from-right-2 duration-300">
+                                         <TabsContent value="materials" className="mt-0 space-y-6 animate-in fade-in-50 slide-in-from-right-2 duration-300">
                                              <div className="flex justify-between items-center glass p-4 rounded-2xl border border-white/10 dark:border-white/5 shadow-sm bg-transparent">
                                                  <div><h3 className="text-lg font-semibold text-foreground">Materials</h3><p className="text-sm text-muted-foreground">What was consumed from inventory?</p></div>
-                                                 <Button type="button" onClick={() => appendMaterial({ materialName: "", quantityConsumed: 0, unit: "" })} className="shadow-sm glass border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5"><Plus className="mr-2 h-4 w-4" />Add Log</Button>
+                                                 <Button type="button" onClick={() => appendMaterial({ materialName: "", quantityConsumed: 0, unit: "" })} className="shadow-sm glass border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5"><Plus className="mr-2 h-4 w-4" />Add Manual Log</Button>
                                              </div>
-                                             {materialFields.length === 0 ? <div className="text-center py-12 border border-white/10 dark:border-white/5 rounded-2xl glass bg-transparent text-muted-foreground">No materials logged today</div> :
+
+                                             {/* Auto-Calc Mix Ratio & Recent Memory Helper Widget */}
+                                             <MixRatioHelperWidget
+                                               onAddMaterials={(items) => {
+                                                 items.forEach(item => appendMaterial(item));
+                                               }}
+                                             />
+
+                                             {materialFields.length === 0 ? <div className="text-center py-8 border border-white/10 dark:border-white/5 rounded-2xl glass bg-transparent text-muted-foreground">No materials logged today</div> :
                                                  <div className="space-y-4">{materialFields.map((field, index) => <MaterialEntryForm key={field.id} index={index} form={form} remove={() => removeMaterial(index)} materials={projectMaterials} />)}</div>
                                              }
                                              <div className="flex justify-end pt-6"><Button type="button" size="lg" onClick={() => nextTab("materials")} className="px-8 glass border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5 text-foreground">Continue to Photos</Button></div>
-                                        </TabsContent>
+                                         </TabsContent>
 
                                         <TabsContent value="photos" className="mt-0 space-y-6 animate-in fade-in-50 slide-in-from-right-2 duration-300">
                                              <div className="flex justify-between items-center glass p-4 rounded-2xl border border-white/10 dark:border-white/5 shadow-sm bg-transparent">

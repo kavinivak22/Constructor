@@ -304,23 +304,45 @@ export default function ExpensesPage() {
         <main className="flex-1 p-4 overflow-y-auto md:p-6">
           <div className='max-w-4xl mx-auto'>
             <div className="mb-4 space-y-3">
-              {/* Stat Card: Compact on mobile, rich on desktop */}
-              <Card className="glass-card w-full">
-                <CardContent className="p-3 sm:p-4 flex items-center justify-between sm:justify-start gap-3 sm:gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-9 h-9 sm:w-12 sm:h-12 rounded-xl bg-primary/10 shrink-0">
-                      <IndianRupee className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+              {/* Option 2: 3-Stat Financial Header Banner */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Card className="glass-card">
+                  <CardContent className="p-3.5 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 text-primary shrink-0">
+                        <IndianRupee className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground font-medium">Cash Spent (Outflows)</p>
+                        <p className="text-lg font-bold tracking-tight text-foreground">{formatCurrency(totalExpenses)}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs sm:text-sm text-muted-foreground font-medium">Total Filtered Expenses</p>
-                      <p className="text-lg sm:text-2xl font-bold tracking-tight text-foreground">{formatCurrency(totalExpenses)}</p>
+                  </CardContent>
+                </Card>
+
+                <Card 
+                  onClick={() => router.push(`/projects/${projectId}/expenses/consumption`)} 
+                  className="glass-card cursor-pointer hover:border-amber-500/40 transition-all group"
+                >
+                  <CardContent className="p-3.5 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 shrink-0">
+                        <Package className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+                          <span>Materials Consumed</span>
+                          <span className="text-[10px] text-amber-500 font-bold group-hover:translate-x-0.5 transition-transform">➔</span>
+                        </p>
+                        <p className="text-xs text-amber-500 font-semibold mt-0.5">View Site Consumption Log →</p>
+                      </div>
                     </div>
-                  </div>
-                  <Badge variant="secondary" className="sm:hidden text-xs font-semibold px-2.5 py-1 shrink-0">
-                    {filteredExpenses.length} Items
-                  </Badge>
-                </CardContent>
-              </Card>
+                    <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/20 text-[10px] font-bold px-2 py-0.5">
+                      Log Analytics
+                    </Badge>
+                  </CardContent>
+                </Card>
+              </div>
 
               {/* Responsive Compact Filter Controls */}
               <div className="space-y-2.5 sm:space-y-4">
