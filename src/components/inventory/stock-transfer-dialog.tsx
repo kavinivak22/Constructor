@@ -205,8 +205,8 @@ export function StockTransferDialog({ trigger, defaultSourceType = 'warehouse', 
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="w-[94vw] max-w-[500px] glass-card border-white/10 max-h-[85vh] overflow-y-auto p-4 sm:p-6 rounded-2xl">
-        <DialogHeader className="pb-1">
+      <DialogContent className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-[500px] glass-card border-white/10 max-h-[85vh] overflow-y-auto p-4 sm:p-6 rounded-2xl flex flex-col z-50">
+        <DialogHeader className="pb-1 shrink-0">
           <DialogTitle className="text-base sm:text-lg font-bold font-headline flex items-center gap-2">
             <Truck className="h-5 w-5 text-primary" /> Stock & Equipment Transfer
           </DialogTitle>
@@ -215,15 +215,15 @@ export function StockTransferDialog({ trigger, defaultSourceType = 'warehouse', 
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleTransfer} className="space-y-3.5 py-1">
+        <form onSubmit={handleTransfer} className="space-y-3.5 py-1 flex-1">
           {/* Direction Selector */}
           <div className="space-y-1">
             <Label className="text-xs font-semibold">Transfer Route</Label>
             <Select value={direction} onValueChange={(v: any) => setDirection(v)}>
-              <SelectTrigger className="h-9 text-xs">
+              <SelectTrigger className="w-full h-9 text-xs">
                 <SelectValue placeholder="Select transfer route" />
               </SelectTrigger>
-              <SelectContent position="popper" className="max-w-[90vw]">
+              <SelectContent className="w-full min-w-[var(--radix-select-trigger-width)]">
                 <SelectItem value="wh_to_proj">🏢 Central Warehouse ➔ 🏗️ Project Site</SelectItem>
                 <SelectItem value="proj_to_wh">🏗️ Project Site ➔ 🏢 Central Warehouse</SelectItem>
                 <SelectItem value="proj_to_proj">🏗️ Project Site A ➔ 🏗️ Project Site B</SelectItem>
@@ -236,10 +236,10 @@ export function StockTransferDialog({ trigger, defaultSourceType = 'warehouse', 
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Source Project Site</Label>
               <Select value={sourceProjectId} onValueChange={setSourceProjectId}>
-                <SelectTrigger className="h-9 text-xs">
+                <SelectTrigger className="w-full h-9 text-xs">
                   <SelectValue placeholder="Select source project" />
                 </SelectTrigger>
-                <SelectContent position="popper">
+                <SelectContent className="w-full min-w-[var(--radix-select-trigger-width)]">
                   {projects.map((p) => (
                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                   ))}
@@ -252,10 +252,10 @@ export function StockTransferDialog({ trigger, defaultSourceType = 'warehouse', 
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Destination Project Site</Label>
               <Select value={destProjectId} onValueChange={setDestProjectId}>
-                <SelectTrigger className="h-9 text-xs">
+                <SelectTrigger className="w-full h-9 text-xs">
                   <SelectValue placeholder="Select destination project" />
                 </SelectTrigger>
-                <SelectContent position="popper">
+                <SelectContent className="w-full min-w-[var(--radix-select-trigger-width)]">
                   {projects.filter(p => p.id !== sourceProjectId).map((p) => (
                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                   ))}
@@ -302,10 +302,10 @@ export function StockTransferDialog({ trigger, defaultSourceType = 'warehouse', 
           <div className="space-y-1">
             <Label className="text-xs font-semibold">Select {category === 'material' ? 'Material' : category === 'tool' ? 'Tool' : 'Machinery'} to Transfer</Label>
             <Select value={selectedItemId} onValueChange={handleItemSelect}>
-              <SelectTrigger className="h-9 text-xs">
+              <SelectTrigger className="w-full h-9 text-xs">
                 <SelectValue placeholder={isLoadingItems ? "Loading source inventory..." : "Choose item from source stock"} />
               </SelectTrigger>
-              <SelectContent position="popper" className="max-w-[90vw]">
+              <SelectContent className="w-full min-w-[var(--radix-select-trigger-width)]">
                 {categoryFilteredItems.map((item) => (
                   <SelectItem key={item.id} value={item.id}>
                     {item.name} (Stock: {item.current_stock} {item.unit_of_measurement || 'Units'})
