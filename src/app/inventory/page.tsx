@@ -101,59 +101,59 @@ export default function InventoryPage() {
 
   return (
     <div className="flex flex-col h-full bg-transparent">
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 md:px-6 shrink-0 bg-transparent sticky top-0 z-10 glass border-b border-white/10">
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 md:px-6 shrink-0 bg-transparent sticky top-0 z-10 glass border-b border-white/10">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-8 w-8">
-            <ArrowLeft className="h-5 w-5" />
+          <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-8 w-8 shrink-0">
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold tracking-tight font-headline">
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-2xl font-bold tracking-tight font-headline truncate">
               Central Warehouse
             </h1>
-            <p className="text-xs text-muted-foreground">Central company yard, tool shed & machinery fleet stock.</p>
+            <p className="text-[11px] sm:text-xs text-muted-foreground truncate">Company yard, tool shed & machinery fleet.</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
           <StockTransferDialog onSuccess={() => loadMaterials()} />
 
           {isAdminOrManager && (
-            <Link href="/inventory/add">
-              <Button size="sm" variant="outline" className="gap-1.5">
+            <Link href="/inventory/add" className="w-full sm:w-auto">
+              <Button size="sm" variant="outline" className="w-full sm:w-auto h-9 text-xs font-semibold gap-1.5 rounded-xl">
                 <Plus className="h-4 w-4" />
-                Add Asset
+                <span>Add Asset</span>
               </Button>
             </Link>
           )}
         </div>
       </header>
       
-      <div className="p-4 md:px-6 bg-transparent space-y-3">
-        {/* 3 Asset Classification Tabs */}
-        <div className="flex items-center gap-2 border-b border-border/40 pb-2">
+      <div className="p-3.5 sm:p-4 md:px-6 bg-transparent space-y-3">
+        {/* 3 Asset Classification Tabs: Scrollable horizontal on mobile */}
+        <div className="overflow-x-auto whitespace-nowrap scrollbar-none flex items-center gap-1.5 pb-1 border-b border-border/40">
           <Button
             variant={activeAssetTab === 'material' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setActiveAssetTab('material')}
-            className="text-xs font-semibold gap-1.5 rounded-xl"
+            className="text-xs font-semibold gap-1.5 rounded-xl shrink-0 h-8 px-3"
           >
-            <Package className="h-4 w-4" /> Materials Stock
+            <Package className="h-3.5 w-3.5" /> Materials Stock
           </Button>
           <Button
             variant={activeAssetTab === 'tool' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setActiveAssetTab('tool')}
-            className="text-xs font-semibold gap-1.5 rounded-xl"
+            className="text-xs font-semibold gap-1.5 rounded-xl shrink-0 h-8 px-3"
           >
-            <Wrench className="h-4 w-4" /> Tools & Equipment
+            <Wrench className="h-3.5 w-3.5" /> Tools & Equipment
           </Button>
           <Button
             variant={activeAssetTab === 'machinery' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setActiveAssetTab('machinery')}
-            className="text-xs font-semibold gap-1.5 rounded-xl"
+            className="text-xs font-semibold gap-1.5 rounded-xl shrink-0 h-8 px-3"
           >
-            <Tractor className="h-4 w-4" /> Heavy Machinery
+            <Tractor className="h-3.5 w-3.5" /> Heavy Machinery
           </Button>
         </div>
 

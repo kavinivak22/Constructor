@@ -192,12 +192,17 @@ export default function AddInventoryItemPage() {
                                       </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                      <SelectItem value="cement">Cement</SelectItem>
-                                      <SelectItem value="steel">Steel</SelectItem>
-                                      <SelectItem value="bricks">Bricks</SelectItem>
-                                      <SelectItem value="sand">Sand</SelectItem>
-                                      <SelectItem value="aggregates">Aggregates</SelectItem>
-                                  </SelectContent>
+                                       <SelectItem value="tool">🛠️ Tool / Power Equipment</SelectItem>
+                                       <SelectItem value="machinery">🚜 Heavy Machinery / Vehicle</SelectItem>
+                                       <SelectItem value="cement">Cement</SelectItem>
+                                       <SelectItem value="steel">Steel</SelectItem>
+                                       <SelectItem value="bricks">Bricks</SelectItem>
+                                       <SelectItem value="sand">Sand</SelectItem>
+                                       <SelectItem value="aggregates">Aggregates</SelectItem>
+                                       <SelectItem value="electrical">Electrical</SelectItem>
+                                       <SelectItem value="plumbing">Plumbing</SelectItem>
+                                       <SelectItem value="other">Other Asset</SelectItem>
+                                   </SelectContent>
                                   </Select>
                                   <FormMessage />
                               </FormItem>

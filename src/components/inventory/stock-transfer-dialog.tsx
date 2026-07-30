@@ -25,6 +25,7 @@ import { Truck, ArrowRight, Loader2, Package, Wrench, Tractor } from 'lucide-rea
 import { useToast } from '@/hooks/use-toast';
 import { executeStockTransfer } from '@/app/actions/transfers';
 import { useProjects } from '@/hooks/queries';
+import { useSupabase } from '@/supabase/provider';
 
 interface StockTransferDialogProps {
   trigger?: React.ReactNode;
@@ -37,6 +38,7 @@ export function StockTransferDialog({ trigger, defaultSourceType = 'warehouse', 
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { supabase } = useSupabase();
   const { data: projects = [] } = useProjects();
 
   const [direction, setDirection] = useState<'wh_to_proj' | 'proj_to_wh' | 'proj_to_proj'>('wh_to_proj');
@@ -44,10 +46,79 @@ export function StockTransferDialog({ trigger, defaultSourceType = 'warehouse', 
   const [destProjectId, setDestProjectId] = useState<string>('');
 
   const [category, setCategory] = useState<'material' | 'tool' | 'machinery'>('material');
+  const [availableItems, setAvailableItems] = useState<{ id: string; name: string; current_stock: number; unit_of_measurement: string }[]>([]);
+  const [selectedItemId, setSelectedItemId] = useState<string>('');
   const [itemName, setItemName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState('Bags');
   const [notes, setNotes] = useState('');
+  const [isLoadingItems, setIsLoadingItems] = useState(false);
+  const [isCustomName, setIsCustomName] = useState(false);
+
+  // Fetch available items from source inventory whenever source or direction changes
+  useEffect(() => {
+    const fetchSourceInventory = async () => {
+      setIsLoadingItems(true);
+      try {
+        let query = supabase.from('materials').select('id, name, current_stock, unit_of_measurement, category');
+
+        if (direction === 'wh_to_proj') {
+          query = query.is('site_id', null);
+        } else if ((direction === 'proj_to_wh' || direction === 'proj_to_proj') && sourceProjectId) {
+          const { data: proj } = await supabase.from('projects').select('site_id').eq('id', sourceProjectId).single();
+          if (proj?.site_id) {
+            query = query.eq('site_id', proj.site_id);
+          } else {
+            setAvailableItems([]);
+            setIsLoadingItems(false);
+            return;
+          }
+        } else {
+          setAvailableItems([]);
+          setIsLoadingItems(false);
+          return;
+        }
+
+        const { data, error } = await query.order('name', { ascending: true });
+        if (!error && data) {
+          setAvailableItems(data as any[]);
+        }
+      } catch (err) {
+        console.error('Error fetching source inventory:', err);
+      } finally {
+        setIsLoadingItems(false);
+      }
+    };
+
+    if (open) {
+      fetchSourceInventory();
+    }
+  }, [open, direction, sourceProjectId, supabase]);
+
+  // Handle item selection from dropdown
+  const handleItemSelect = (itemId: string) => {
+    setSelectedItemId(itemId);
+    if (itemId === 'custom') {
+      setIsCustomName(true);
+      setItemName('');
+    } else {
+      setIsCustomName(false);
+      const selected = availableItems.find(i => i.id === itemId);
+      if (selected) {
+        setItemName(selected.name);
+        setUnit(selected.unit_of_measurement || 'Units');
+      }
+    }
+  };
+
+  // Filter items matching the chosen asset category tab
+  const categoryFilteredItems = availableItems.filter(item => {
+    const itemCat = (item.category || '').toLowerCase();
+    if (category === 'material') {
+      return itemCat !== 'tool' && itemCat !== 'machinery';
+    }
+    return itemCat === category;
+  });
 
   // Handle submit
   const handleTransfer = async (e: React.FormEvent) => {
@@ -55,7 +126,7 @@ export function StockTransferDialog({ trigger, defaultSourceType = 'warehouse', 
     if (!itemName.trim() || !quantity || Number(quantity) <= 0) {
       toast({
         title: 'Invalid Input',
-        description: 'Please specify item name and a valid quantity.',
+        description: 'Please select a valid item and quantity.',
         variant: 'destructive',
       });
       return;
@@ -107,12 +178,13 @@ export function StockTransferDialog({ trigger, defaultSourceType = 'warehouse', 
     if (res.success) {
       toast({
         title: 'Transfer Dispatched!',
-        description: `Voucher ${res.transferNumber}: Moved ${quantity} ${unit} of ${itemName}.`,
+        description: `Voucher ${res.transferNumber}: Shifted ${quantity} ${unit} of ${itemName}.`,
       });
       setOpen(false);
       setItemName('');
       setQuantity('');
       setNotes('');
+      setSelectedItemId('');
       if (onSuccess) onSuccess();
     } else {
       toast({
@@ -127,15 +199,15 @@ export function StockTransferDialog({ trigger, defaultSourceType = 'warehouse', 
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl gap-2">
+          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl gap-2 w-full sm:w-auto h-9 text-xs">
             <Truck className="h-4 w-4" />
             <span>Transfer Stock / Asset</span>
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px] glass-card border-white/10">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-bold font-headline flex items-center gap-2">
+      <DialogContent className="w-[94vw] max-w-[500px] glass-card border-white/10 max-h-[85vh] overflow-y-auto p-4 sm:p-6 rounded-2xl">
+        <DialogHeader className="pb-1">
+          <DialogTitle className="text-base sm:text-lg font-bold font-headline flex items-center gap-2">
             <Truck className="h-5 w-5 text-primary" /> Stock & Equipment Transfer
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
@@ -143,15 +215,15 @@ export function StockTransferDialog({ trigger, defaultSourceType = 'warehouse', 
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleTransfer} className="space-y-4 py-2">
+        <form onSubmit={handleTransfer} className="space-y-3.5 py-1">
           {/* Direction Selector */}
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <Label className="text-xs font-semibold">Transfer Route</Label>
             <Select value={direction} onValueChange={(v: any) => setDirection(v)}>
               <SelectTrigger className="h-9 text-xs">
                 <SelectValue placeholder="Select transfer route" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent position="popper" className="max-w-[90vw]">
                 <SelectItem value="wh_to_proj">🏢 Central Warehouse ➔ 🏗️ Project Site</SelectItem>
                 <SelectItem value="proj_to_wh">🏗️ Project Site ➔ 🏢 Central Warehouse</SelectItem>
                 <SelectItem value="proj_to_proj">🏗️ Project Site A ➔ 🏗️ Project Site B</SelectItem>
@@ -161,13 +233,13 @@ export function StockTransferDialog({ trigger, defaultSourceType = 'warehouse', 
 
           {/* Project Source / Destination Dropdowns */}
           {(direction === 'proj_to_wh' || direction === 'proj_to_proj') && (
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <Label className="text-xs font-semibold">Source Project Site</Label>
               <Select value={sourceProjectId} onValueChange={setSourceProjectId}>
                 <SelectTrigger className="h-9 text-xs">
                   <SelectValue placeholder="Select source project" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper">
                   {projects.map((p) => (
                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                   ))}
@@ -177,13 +249,13 @@ export function StockTransferDialog({ trigger, defaultSourceType = 'warehouse', 
           )}
 
           {(direction === 'wh_to_proj' || direction === 'proj_to_proj') && (
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <Label className="text-xs font-semibold">Destination Project Site</Label>
               <Select value={destProjectId} onValueChange={setDestProjectId}>
                 <SelectTrigger className="h-9 text-xs">
                   <SelectValue placeholder="Select destination project" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper">
                   {projects.filter(p => p.id !== sourceProjectId).map((p) => (
                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                   ))}
@@ -193,14 +265,14 @@ export function StockTransferDialog({ trigger, defaultSourceType = 'warehouse', 
           )}
 
           {/* Asset Category Selector */}
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <Label className="text-xs font-semibold">Asset Type</Label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-1.5">
               <Button
                 type="button"
                 variant={category === 'material' ? 'default' : 'outline'}
                 size="sm"
-                className="text-xs gap-1.5 h-8"
+                className="text-xs gap-1 h-8 px-2"
                 onClick={() => { setCategory('material'); setUnit('Bags'); }}
               >
                 <Package className="h-3.5 w-3.5" /> Material
@@ -209,7 +281,7 @@ export function StockTransferDialog({ trigger, defaultSourceType = 'warehouse', 
                 type="button"
                 variant={category === 'tool' ? 'default' : 'outline'}
                 size="sm"
-                className="text-xs gap-1.5 h-8"
+                className="text-xs gap-1 h-8 px-2"
                 onClick={() => { setCategory('tool'); setUnit('Nos'); }}
               >
                 <Wrench className="h-3.5 w-3.5" /> Tool
@@ -218,7 +290,7 @@ export function StockTransferDialog({ trigger, defaultSourceType = 'warehouse', 
                 type="button"
                 variant={category === 'machinery' ? 'default' : 'outline'}
                 size="sm"
-                className="text-xs gap-1.5 h-8"
+                className="text-xs gap-1 h-8 px-2"
                 onClick={() => { setCategory('machinery'); setUnit('Units'); }}
               >
                 <Tractor className="h-3.5 w-3.5" /> Machinery
@@ -226,20 +298,36 @@ export function StockTransferDialog({ trigger, defaultSourceType = 'warehouse', 
             </div>
           </div>
 
-          {/* Item Details */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Item Name</Label>
-            <Input
-              placeholder={category === 'material' ? 'e.g. 53 Grade Cement' : category === 'tool' ? 'e.g. Angle Grinder / Scaffolding' : 'e.g. Concrete Mixer 10/7'}
-              value={itemName}
-              onChange={(e) => setItemName(e.target.value)}
-              className="h-9 text-xs"
-              required
-            />
+          {/* Item Dropdown Selector */}
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">Select {category === 'material' ? 'Material' : category === 'tool' ? 'Tool' : 'Machinery'} to Transfer</Label>
+            <Select value={selectedItemId} onValueChange={handleItemSelect}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder={isLoadingItems ? "Loading source inventory..." : "Choose item from source stock"} />
+              </SelectTrigger>
+              <SelectContent position="popper" className="max-w-[90vw]">
+                {categoryFilteredItems.map((item) => (
+                  <SelectItem key={item.id} value={item.id}>
+                    {item.name} (Stock: {item.current_stock} {item.unit_of_measurement || 'Units'})
+                  </SelectItem>
+                ))}
+                <SelectItem value="custom">✍️ + Enter custom / unlisted asset name</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {isCustomName && (
+              <Input
+                placeholder="Enter custom item name..."
+                value={itemName}
+                onChange={(e) => setItemName(e.target.value)}
+                className="h-9 text-xs mt-1.5"
+                required
+              />
+            )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="space-y-1">
               <Label className="text-xs font-semibold">Quantity</Label>
               <Input
                 type="number"
@@ -250,10 +338,10 @@ export function StockTransferDialog({ trigger, defaultSourceType = 'warehouse', 
                 required
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <Label className="text-xs font-semibold">Unit of Measure</Label>
               <Input
-                placeholder="e.g. Bags, CFT, Nos, Tons"
+                placeholder="e.g. Bags, CFT, Nos"
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
                 className="h-9 text-xs"
@@ -261,22 +349,22 @@ export function StockTransferDialog({ trigger, defaultSourceType = 'warehouse', 
             </div>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <Label className="text-xs font-semibold">Transfer Notes / Reason (Optional)</Label>
             <Textarea
               placeholder="e.g. Shifted for Column Casting at Block B"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="text-xs min-h-[60px]"
+              className="text-xs min-h-[55px]"
             />
           </div>
 
-          <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
+          <DialogFooter className="pt-2 flex-col sm:flex-row gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)} className="w-full sm:w-auto h-8 text-xs">
               Cancel
             </Button>
-            <Button type="submit" size="sm" disabled={isSubmitting} className="gap-1.5">
-              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}
+            <Button type="submit" size="sm" disabled={isSubmitting} className="w-full sm:w-auto h-8 text-xs gap-1.5">
+              {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Truck className="h-3.5 w-3.5" />}
               <span>Confirm & Dispatch Transfer</span>
             </Button>
           </DialogFooter>
