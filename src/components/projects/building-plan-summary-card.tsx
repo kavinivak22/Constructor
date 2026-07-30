@@ -78,31 +78,33 @@ export function BuildingPlanSummaryCard({ projectId, projectName }: BuildingPlan
   const overallProgress = totalQualityChecks > 0 ? Math.round((verifiedQualityChecks / totalQualityChecks) * 100) : 0;
 
   return (
-    <Card className="glass-card border-white/10 rounded-2xl hover:border-white/20 transition-all">
-      <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-start gap-3 flex-1 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0 mt-0.5">
-            <Layers className="h-5 w-5" />
+    <Card className="glass-card border-white/10 rounded-2xl hover:border-white/20 transition-all overflow-hidden w-full">
+      <CardContent className="p-3.5 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 w-full flex-1">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0 mt-0.5">
+            <Layers className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
           <div className="space-y-1 min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-bold text-sm sm:text-base text-foreground font-headline truncate">
-                Construction Stages & Quality Checks
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              <h3 className="font-bold text-xs sm:text-base text-foreground font-headline leading-tight">
+                Building Plan & Quality Checks
               </h3>
               {totalStages > 0 && (
-                <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/20 font-semibold px-2 py-0">
+                <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/20 font-semibold px-2 py-0 shrink-0">
                   Stage {activeStageIndex || 1} of {totalStages}
                 </Badge>
               )}
             </div>
 
             {totalStages === 0 ? (
-              <p className="text-xs text-muted-foreground">No building plan template selected for this project site.</p>
+              <p className="text-xs text-muted-foreground leading-snug">
+                No building plan template selected yet.
+              </p>
             ) : (
               <div className="space-y-1.5 pt-0.5 max-w-md">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <div className="flex items-center justify-between text-[11px] sm:text-xs text-muted-foreground gap-2">
                   <span className="truncate">Active: <strong className="text-foreground font-semibold">{activeStageTitle}</strong></span>
-                  <span className="font-bold text-primary shrink-0 ml-2">{verifiedQualityChecks}/{totalQualityChecks} Quality Checks</span>
+                  <span className="font-bold text-primary shrink-0">{verifiedQualityChecks}/{totalQualityChecks} Verified</span>
                 </div>
                 <Progress value={overallProgress} className="h-2 bg-white/10" />
               </div>
@@ -110,8 +112,8 @@ export function BuildingPlanSummaryCard({ projectId, projectName }: BuildingPlan
           </div>
         </div>
 
-        <Link href={`/projects/${projectId}/building-plan`} className="w-full sm:w-auto shrink-0">
-          <Button size="sm" className="w-full sm:w-auto text-xs font-semibold h-9 px-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-md gap-1.5">
+        <Link href={`/projects/${projectId}/building-plan`} className="w-full sm:w-auto shrink-0 pt-0.5 sm:pt-0">
+          <Button size="sm" className="w-full sm:w-auto text-xs font-semibold h-8 sm:h-9 px-3.5 sm:px-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-md gap-1.5 justify-center">
             <span>View Building Plan</span>
             <ArrowRight className="h-3.5 w-3.5" />
           </Button>
