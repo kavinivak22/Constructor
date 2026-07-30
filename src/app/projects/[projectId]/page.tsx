@@ -278,7 +278,7 @@ export default function ProjectDetailsPage() {
                     </CardContent>
                 </Card>
 
-                <div className='flex flex-wrap gap-2'>
+                <div className='flex flex-wrap items-center justify-center sm:justify-start gap-2'>
                     <Button asChild>
                         <Link href={`/projects/${projectId}/materials`}>View Materials</Link>
                     </Button>
