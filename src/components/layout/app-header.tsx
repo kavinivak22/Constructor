@@ -74,7 +74,7 @@ export function AppHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-50 flex items-center justify-between h-11 sm:h-14 px-3 glass md:px-6 border-b border-white/10">
+    <header className="sticky top-0 z-50 hidden md:flex items-center justify-between h-14 px-6 glass border-b border-white/10">
       <div className="flex items-center gap-3 flex-1">
         {project?.thumbnail_url && (
           <div className="relative w-7 h-7 rounded-full overflow-hidden shrink-0 border border-border/50">

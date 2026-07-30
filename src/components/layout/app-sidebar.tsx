@@ -42,6 +42,7 @@ import { Button } from '../ui/button';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
 import type { User as AppUser } from '@/lib/data';
 
 
@@ -96,6 +97,7 @@ export function AppSidebar() {
   }, []);
 
   const [userProfile, setUserProfile] = useState<AppUser | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     if (user) {
@@ -115,7 +117,20 @@ export function AppSidebar() {
         }
       };
 
+      const fetchUnreadNotifications = async () => {
+        const { count, error } = await supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('read', false);
+
+        if (!error && count) {
+          setUnreadCount(count);
+        }
+      };
+
       fetchUserProfile();
+      fetchUnreadNotifications();
     }
   }, [user, supabase]);
 
@@ -193,7 +208,14 @@ export function AppSidebar() {
                   className="justify-start font-medium"
                 >
                   <link.icon className="h-5 w-5" />
-                  <span className="group-data-[state=collapsed]:hidden">{t(link.key, link.label)}</span>
+                  <span className="group-data-[state=collapsed]:hidden flex-1 flex items-center justify-between">
+                    <span>{t(link.key, link.label)}</span>
+                    {link.key === 'notifications' && unreadCount > 0 && (
+                      <Badge variant="destructive" className="text-[10px] font-bold px-1.5 py-0 h-4 rounded-full">
+                        {unreadCount}
+                      </Badge>
+                    )}
+                  </span>
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
