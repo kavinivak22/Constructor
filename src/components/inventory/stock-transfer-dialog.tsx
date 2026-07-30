@@ -205,7 +205,7 @@ export function StockTransferDialog({ trigger, defaultSourceType = 'warehouse', 
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-[500px] glass-card border-white/10 max-h-[85vh] overflow-y-auto p-4 sm:p-6 rounded-2xl flex flex-col z-50">
+      <DialogContent className="w-[94vw] max-w-[500px] glass-card border-white/10 max-h-[85vh] overflow-y-auto p-4 sm:p-6 rounded-2xl flex flex-col">
         <DialogHeader className="pb-1 shrink-0">
           <DialogTitle className="text-base sm:text-lg font-bold font-headline flex items-center gap-2">
             <Truck className="h-5 w-5 text-primary" /> Stock & Equipment Transfer
