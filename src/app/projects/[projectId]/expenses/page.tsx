@@ -324,20 +324,20 @@ export default function ExpensesPage() {
                   onClick={() => router.push(`/projects/${projectId}/expenses/consumption`)} 
                   className="glass-card cursor-pointer hover:border-amber-500/40 transition-all group"
                 >
-                  <CardContent className="p-3.5 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                  <CardContent className="p-3.5 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 shrink-0">
                         <PackageIcon className="w-5 h-5" />
                       </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground font-medium flex items-center gap-1">
-                          <span>Materials Consumed</span>
-                          <span className="text-[10px] text-amber-500 font-bold group-hover:translate-x-0.5 transition-transform">➔</span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-foreground truncate">Materials Consumed</p>
+                        <p className="text-[11px] text-amber-500 font-medium flex items-center gap-1 mt-0.5 group-hover:underline">
+                          <span>View Site Consumption Log</span>
+                          <span className="group-hover:translate-x-0.5 transition-transform">→</span>
                         </p>
-                        <p className="text-xs text-amber-500 font-semibold mt-0.5">View Site Consumption Log →</p>
                       </div>
                     </div>
-                    <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/20 text-[10px] font-bold px-2 py-0.5">
+                    <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/20 text-[10px] font-bold px-2 py-1 shrink-0 whitespace-nowrap">
                       Log Analytics
                     </Badge>
                   </CardContent>
