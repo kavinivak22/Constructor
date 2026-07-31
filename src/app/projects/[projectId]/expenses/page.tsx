@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, PlusCircle, MoreHorizontal, Calendar as CalendarIcon, Search, IndianRupee, User, CalendarDays, FileDown, Package as PackageIcon } from 'lucide-react';
+import { ArrowLeft, PlusCircle, MoreHorizontal, Calendar as CalendarIcon, Search, IndianRupee, User, CalendarDays, FileDown, Package as PackageIcon, ArrowRight } from 'lucide-react';
 import { format, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { useToast } from '@/hooks/use-toast';
@@ -325,21 +325,25 @@ export default function ExpensesPage() {
                   className="glass-card cursor-pointer hover:border-amber-500/40 transition-all group"
                 >
                   <CardContent className="p-3.5 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 shrink-0">
                         <PackageIcon className="w-5 h-5" />
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-foreground truncate">Materials Consumed</p>
-                        <p className="text-[11px] text-amber-500 font-medium flex items-center gap-1 mt-0.5 group-hover:underline">
-                          <span>View Site Consumption Log</span>
-                          <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-xs font-bold text-foreground">Materials Consumed</p>
+                          <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/20 text-[9px] font-bold px-1.5 py-0 shrink-0">
+                            Log Analytics
+                          </Badge>
+                        </div>
+                        <p className="text-[11px] text-amber-500 font-medium truncate mt-0.5">
+                          View Site Consumption Log
                         </p>
                       </div>
                     </div>
-                    <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/20 text-[10px] font-bold px-2 py-1 shrink-0 whitespace-nowrap">
-                      Log Analytics
-                    </Badge>
+                    <div className="w-7 h-7 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 group-hover:translate-x-1 transition-transform">
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </div>
                   </CardContent>
                 </Card>
               </div>
