@@ -7,7 +7,7 @@ import { type Project } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Users, IndianRupee, Edit, CheckCircle, Clock, ArrowLeft } from 'lucide-react';
+import { Calendar, Users, IndianRupee, Edit, CheckCircle, Clock, ArrowLeft, Package, PhoneCall, Plus } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -197,94 +197,112 @@ export default function ProjectDetailsPage() {
 
     return (
         <div className="flex flex-col h-full bg-transparent">
-            <header className="flex items-center gap-4 p-4 md:px-6 shrink-0 bg-transparent sticky top-0 z-40">
-                <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                    <ArrowLeft className="h-5 w-5" />
+            <header className="flex items-center gap-3 p-3.5 sm:p-4 md:px-6 shrink-0 bg-transparent sticky top-0 z-40">
+                <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-8 w-8 shrink-0">
+                    <ArrowLeft className="h-4 w-4" />
                 </Button>
-                <div className="flex-1">
-                    <h1 className="text-xl md:text-2xl font-bold tracking-tight font-headline truncate">
+                <div className="flex-1 min-w-0">
+                    <h1 className="text-base sm:text-2xl font-bold tracking-tight font-headline truncate">
                         {project.name}
                     </h1>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2 mt-0.5">
                         {project.thumbnail_url && (
-                            <div className="relative w-5 h-5 rounded-full overflow-hidden shrink-0">
+                            <div className="relative w-4 h-4 rounded-full overflow-hidden shrink-0">
                                 <Image src={project.thumbnail_url} alt={project.client_name || project.clientName || 'Client'} fill className="object-cover" />
                             </div>
                         )}
-                        <p className="text-sm text-muted-foreground">{project.client_name || project.clientName || 'Internal Project'}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground truncate">{project.client_name || project.clientName || 'Internal Project'}</p>
                     </div>
                 </div>
                 {isAdminOrManager && (
                     <EditProjectDialog
                         project={project}
                         trigger={
-                            <Button variant="outline" size="sm">
-                                <Edit className="mr-2 h-3 w-3" />
+                            <Button variant="outline" size="sm" className="h-8 text-xs font-semibold px-2.5">
+                                <Edit className="mr-1.5 h-3 w-3" />
                                 Edit
                             </Button>
                         }
                     />
                 )}
             </header>
-            <main className="flex-1 p-4 overflow-y-auto md:p-6 space-y-6 bg-transparent">
+            <main className="flex-1 p-3.5 sm:p-6 space-y-3.5 sm:space-y-6 bg-transparent">
                 <Card className="glass-card">
-                    <CardHeader>
-                        <CardTitle>Overall Progress</CardTitle>
+                    <CardHeader className="p-3.5 sm:p-5 pb-2 sm:pb-3">
+                        <CardTitle className="text-sm sm:text-base font-bold font-headline">Overall Progress</CardTitle>
                     </CardHeader>
-                    <CardContent className='space-y-4'>
+                    <CardContent className="p-3.5 sm:p-5 pt-0 sm:pt-0 space-y-3 sm:space-y-4">
                         <div>
-                            <div className="flex justify-between items-center text-sm font-medium text-muted-foreground mb-2">
+                            <div className="flex justify-between items-center text-xs sm:text-sm font-medium text-muted-foreground mb-1.5">
                                 <p>Progress</p>
-                                <p className="font-semibold text-foreground text-lg">{project.progress ?? 0}%</p>
+                                <p className="font-semibold text-foreground text-sm sm:text-lg">{project.progress ?? 0}%</p>
                             </div>
                             <Progress value={project.progress ?? 0} aria-label={`${project.progress ?? 0}% complete`} className="h-2" />
                         </div>
-                        <div className='grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-muted-foreground pt-2'>
-                            <div className='flex items-center gap-2'>
-                                <Calendar className="h-4 w-4" />
+                        <div className='grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 text-xs sm:text-sm text-muted-foreground pt-1'>
+                            <div className='flex items-center gap-2 bg-background/40 p-2 sm:p-0 rounded-xl sm:rounded-none border border-white/5 sm:border-none'>
+                                <Calendar className="h-4 w-4 text-primary shrink-0" />
                                 <div>
-                                    <p className='text-xs'>End Date</p>
-                                    <p className='font-semibold text-foreground'>{getFormattedDate(project.endDate as string)}</p>
+                                    <p className='text-[10px] sm:text-xs text-muted-foreground'>End Date</p>
+                                    <p className='font-semibold text-foreground text-xs sm:text-sm'>{getFormattedDate(project.endDate as string)}</p>
                                 </div>
                             </div>
-                            <div className='flex items-center gap-2'>
-                                <IndianRupee className="h-4 w-4" />
+                            <div className='flex items-center gap-2 bg-background/40 p-2 sm:p-0 rounded-xl sm:rounded-none border border-white/5 sm:border-none'>
+                                <IndianRupee className="h-4 w-4 text-emerald-500 shrink-0" />
                                 <div>
-                                    <p className='text-xs'>Budget</p>
-                                    <p className='font-semibold text-foreground'>₹8.5L</p>
+                                    <p className='text-[10px] sm:text-xs text-muted-foreground'>Budget</p>
+                                    <p className='font-semibold text-foreground text-xs sm:text-sm'>₹8.5L</p>
                                 </div>
                             </div>
-                            <div className='flex items-center gap-2'>
-                                <Users className="h-4 w-4" />
+                            <div className='flex items-center gap-2 bg-background/40 p-2 sm:p-0 rounded-xl sm:rounded-none border border-white/5 sm:border-none'>
+                                <Users className="h-4 w-4 text-amber-500 shrink-0" />
                                 <div>
-                                    <p className='text-xs'>Team Size</p>
-                                    <p className='font-semibold text-foreground'>{memberCount} members</p>
+                                    <p className='text-[10px] sm:text-xs text-muted-foreground'>Team Size</p>
+                                    <p className='font-semibold text-foreground text-xs sm:text-sm'>{memberCount} members</p>
                                 </div>
                             </div>
-                            <div className='flex items-center gap-2'>
-                                <Progress value={65} className="w-6 h-6" />
+                            <div className='flex items-center gap-2 bg-background/40 p-2 sm:p-0 rounded-xl sm:rounded-none border border-white/5 sm:border-none'>
+                                <Progress value={65} className="w-5 h-5 shrink-0" />
                                 <div>
-                                    <p className='text-xs'>Spent</p>
-                                    <p className='font-semibold text-foreground'>65%</p>
+                                    <p className='text-[10px] sm:text-xs text-muted-foreground'>Spent</p>
+                                    <p className='font-semibold text-foreground text-xs sm:text-sm'>65%</p>
                                 </div>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                <div className='flex flex-wrap items-center justify-center sm:justify-start gap-2'>
-                    <Button asChild>
-                        <Link href={`/projects/${projectId}/materials`}>View Materials</Link>
+                {/* Creative Asymmetric Staggered Button Bar on Mobile (grid-cols-5) */}
+                <div className="grid grid-cols-5 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2">
+                    {/* Row 1: Short Left (2 cols), Wide Right (3 cols) */}
+                    <Button asChild size="sm" className="col-span-2 sm:col-span-1 text-xs h-9 font-semibold shadow-sm rounded-xl">
+                        <Link href={`/projects/${projectId}/materials`}>
+                            <Package className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+                            <span>Materials</span>
+                        </Link>
                     </Button>
-                    <Button variant="outline" asChild>
-                        <Link href={`/projects/${projectId}/expenses`}>View Expenses</Link>
+                    <Button variant="outline" size="sm" asChild className="col-span-3 sm:col-span-1 text-xs h-9 font-semibold glass border-white/10 rounded-xl">
+                        <Link href={`/projects/${projectId}/expenses`}>
+                            <IndianRupee className="mr-1.5 h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                            <span>View Expenses</span>
+                        </Link>
                     </Button>
-                    <Button variant="outline" asChild>
-                        <Link href={`/work-prep?projectId=${projectIdString}`}>Tomorrow's Prep</Link>
+
+                    {/* Row 2: Wide Left (3 cols), Short Right (2 cols) */}
+                    <Button variant="outline" size="sm" asChild className="col-span-3 sm:col-span-1 text-xs h-9 font-semibold glass border-white/10 rounded-xl">
+                        <Link href={`/work-prep?projectId=${projectIdString}`}>
+                            <PhoneCall className="mr-1.5 h-3.5 w-3.5 text-primary shrink-0" />
+                            <span>Tomorrow's Prep</span>
+                        </Link>
                     </Button>
                     <CreateWorklogDialog
                         projectId={projectIdString}
-                        trigger={<Button variant="outline">Add Update</Button>}
+                        trigger={
+                            <Button variant="outline" size="sm" className="col-span-2 sm:col-span-1 w-full text-xs h-9 font-semibold glass border-white/10 rounded-xl">
+                                <Plus className="mr-1.5 h-3.5 w-3.5 text-primary shrink-0" />
+                                <span>Add Log</span>
+                            </Button>
+                        }
                         onSuccess={() => window.location.reload()}
                     />
                 </div>
@@ -301,9 +319,9 @@ export default function ProjectDetailsPage() {
 
                 {worklogs.length > 0 && (
                     <div>
-                        <h2 className="text-xl font-bold mb-4">Recent Updates</h2>
+                        <h2 className="text-sm sm:text-base font-bold font-headline mb-2.5 sm:mb-3">Recent Updates</h2>
                         <Carousel opts={{ align: "start", loop: true }} className="w-full">
-                            <CarouselContent className="-ml-4">
+                            <CarouselContent className="-ml-3 sm:-ml-4">
                                 {worklogs.map((worklog: any, index: number) => {
                                     // Aggregate descriptions from labor entries
                                     const description = worklog.labor?.map((l: any) => l.work_description).filter(Boolean).join('. ') || 'No description provided.';
@@ -311,29 +329,23 @@ export default function ProjectDetailsPage() {
                                     // Use explicit title if available, otherwise generate smart title
                                     let title = worklog.title || 'Daily Log';
 
-                                    // If title is the default "Daily Log", try to generate a more descriptive one for backward compatibility
                                     if (!worklog.title || worklog.title === 'Daily Log') {
-                                        // 1. Try to use categories
                                         const categories = Array.from(new Set(worklog.labor?.map((l: any) => l.category).filter(Boolean))) as string[];
                                         if (categories.length > 0) {
                                             title = categories.slice(0, 2).join(' & ') + (categories.length > 2 ? '...' : '') + ' Work';
                                         }
-                                        // 2. Try to use photo caption
                                         else if (worklog.photos?.[0]?.caption) {
                                             title = worklog.photos[0].caption;
                                         }
-                                        // 3. Fallback to description summary
                                         else if (description !== 'No description provided.') {
-                                            // Take first sentence or first 40 chars
                                             const firstSentence = description.split(/[.!?]/)[0];
                                             title = firstSentence.length > 40 ? firstSentence.substring(0, 40) + '...' : firstSentence;
                                         }
                                     }
 
-                                    // Use first photo or placeholder
                                     const imageUrl = worklog.photos?.[0]?.photo_url || 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=2940&auto=format&fit=crop';
                                      return (
-                                        <CarouselItem key={worklog.id} className="pl-4 basis-[85%] md:basis-1/2 lg:basis-1/3">
+                                        <CarouselItem key={worklog.id} className="pl-3 sm:pl-4 basis-[82%] sm:basis-1/2 lg:basis-1/3">
                                             <div
                                                 onClick={() => {
                                                     setSelectedWorklog(worklog);
@@ -341,9 +353,9 @@ export default function ProjectDetailsPage() {
                                                 }}
                                                 className="cursor-pointer block h-full"
                                             >
-                                                <Card className="glass-card h-full hover:scale-[1.02] transition-transform duration-300">
+                                                <Card className="glass-card h-full hover:border-white/20 transition-all">
                                                     <CardContent className="p-0 flex flex-col h-full">
-                                                        <div className="relative aspect-[3/2] w-full overflow-hidden rounded-t-lg">
+                                                        <div className="relative aspect-[16/9] sm:aspect-[3/2] w-full overflow-hidden rounded-t-xl">
                                                             <Image
                                                                 src={imageUrl}
                                                                 alt={title}
@@ -352,12 +364,12 @@ export default function ProjectDetailsPage() {
                                                                 data-ai-hint="construction update"
                                                             />
                                                         </div>
-                                                        <div className='p-4 flex-1 flex flex-col'>
-                                                            <div className="flex justify-between items-center text-xs text-muted-foreground mb-2">
+                                                        <div className='p-3 sm:p-4 flex-1 flex flex-col'>
+                                                            <div className="flex justify-between items-center text-[10px] text-muted-foreground mb-1">
                                                                 <p>{format(new Date(worklog.date), 'MMM dd, yyyy')}</p>
                                                             </div>
-                                                            <h3 className="font-bold mb-1 line-clamp-1">{title}</h3>
-                                                            <p className="text-sm text-muted-foreground line-clamp-3">{description}</p>
+                                                            <h3 className="font-bold text-xs sm:text-sm mb-1 line-clamp-1 text-foreground">{title}</h3>
+                                                            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{description}</p>
                                                         </div>
                                                     </CardContent>
                                                 </Card>
@@ -366,20 +378,20 @@ export default function ProjectDetailsPage() {
                                     );
                                 })}
                             </CarouselContent>
-                            <CarouselPrevious variant="ghost" className="absolute left-2 top-1/2 -translate-y-1/2 z-10 hidden sm:flex h-8 w-8 rounded-full bg-white/50 hover:bg-white/75 text-foreground" />
-                            <CarouselNext variant="ghost" className="absolute right-2 top-1/2 -translate-y-1/2 z-10 hidden sm:flex h-8 w-8 rounded-full bg-white/50 hover:bg-white/75 text-foreground" />
+                            <CarouselPrevious variant="ghost" className="absolute left-2 top-1/2 -translate-y-1/2 z-10 hidden sm:flex h-7 w-7 rounded-full bg-white/50 hover:bg-white/75 text-foreground" />
+                            <CarouselNext variant="ghost" className="absolute right-2 top-1/2 -translate-y-1/2 z-10 hidden sm:flex h-7 w-7 rounded-full bg-white/50 hover:bg-white/75 text-foreground" />
                         </Carousel>
                     </div>
                 )}
 
                 <Card className="glass-card">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <CheckCircle className="text-primary h-5 w-5" />
+                    <CardHeader className="p-3.5 sm:p-5 pb-2 sm:pb-3">
+                        <CardTitle className="text-sm sm:text-base font-bold font-headline flex items-center gap-2">
+                            <CheckCircle className="text-primary h-4 w-4" />
                             Project Tasks
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="p-3.5 sm:p-5 pt-0 sm:pt-0 space-y-3 sm:space-y-4">
                         {isLoadingTasks ? (
                             <div className="space-y-3">
                                 {[...Array(3)].map((_, i) => (
@@ -393,29 +405,29 @@ export default function ProjectDetailsPage() {
                                 ))}
                             </div>
                         ) : tasks.length > 0 ? (
-                            <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
+                            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
                                 {tasks.map(task => {
                                     const isCheckboxDisabled = !isAdminOrManager && task.assigned_to !== user?.id;
                                     return (
                                         <div key={task.id} className="flex items-start justify-between py-1 group">
-                                            <div className="flex items-start gap-3 flex-1">
+                                            <div className="flex items-start gap-2.5 flex-1">
                                                 <Checkbox
                                                     id={task.id}
                                                     checked={task.status === 'completed'}
                                                     onCheckedChange={() => handleToggleTask(task.id, task.status)}
                                                     disabled={isCheckboxDisabled}
-                                                    className="mt-1"
+                                                    className="mt-0.5 h-4 w-4"
                                                 />
                                                 <div className="flex-1">
                                                     <label
                                                         htmlFor={task.id}
-                                                        className={`font-medium cursor-pointer select-none transition-all ${
+                                                        className={`text-xs sm:text-sm font-medium cursor-pointer select-none transition-all ${
                                                             task.status === 'completed' ? 'line-through text-muted-foreground/60' : 'text-foreground/90'
                                                         }`}
                                                     >
                                                         {task.title}
                                                     </label>
-                                                    <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                                                    <div className="text-[11px] text-muted-foreground flex flex-wrap gap-x-2.5 gap-y-0.5 mt-0.5">
                                                         {task.due_date && (
                                                             <span className="flex items-center gap-1">
                                                                 <Clock className="h-3 w-3" /> {getFormattedDate(task.due_date)}
@@ -458,7 +470,7 @@ export default function ProjectDetailsPage() {
                                 })}
                             </div>
                         ) : (
-                            <p className="text-sm text-muted-foreground text-center py-6">No project tasks. Create one below!</p>
+                            <p className="text-xs sm:text-sm text-muted-foreground text-center py-4">No project tasks. Create one below!</p>
                         )}
 
                         {isAdminOrManager && (
@@ -472,25 +484,25 @@ export default function ProjectDetailsPage() {
                 </Card>
 
                 <Card className="glass-card">
-                    <CardHeader>
-                        <CardTitle>Budget Overview</CardTitle>
+                    <CardHeader className="p-3.5 sm:p-5 pb-2 sm:pb-3">
+                        <CardTitle className="text-sm sm:text-base font-bold font-headline">Budget Overview</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                                <span>Total Budget</span>
-                                <span>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(budget)}</span>
+                    <CardContent className="p-3.5 sm:p-5 pt-0 sm:pt-0">
+                        <div className="space-y-2 text-xs sm:text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Total Budget</span>
+                                <span className="font-semibold text-foreground">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(budget)}</span>
                             </div>
-                            <div className="flex justify-between text-sm">
-                                <span>Amount Spent</span>
-                                <span>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(spent)}</span>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Amount Spent</span>
+                                <span className="font-semibold text-foreground">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(spent)}</span>
                             </div>
-                            <div className="relative h-4 rounded-full bg-muted overflow-hidden">
+                            <div className="relative h-3 rounded-full bg-muted overflow-hidden my-1">
                                 <div className="absolute top-0 left-0 h-full bg-primary" style={{ width: `${spentPercentage}%` }}></div>
                             </div>
-                            <div className="flex justify-between text-sm font-bold">
+                            <div className="flex justify-between font-bold pt-0.5">
                                 <span>Remaining</span>
-                                <span>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(remaining)}</span>
+                                <span className="text-emerald-500">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(remaining)}</span>
                             </div>
                         </div>
                     </CardContent>
