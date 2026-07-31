@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, PlusCircle, MoreHorizontal, Calendar as CalendarIcon, Search, IndianRupee, User, CalendarDays, FileDown } from 'lucide-react';
+import { ArrowLeft, PlusCircle, MoreHorizontal, Calendar as CalendarIcon, Search, IndianRupee, User, CalendarDays, FileDown, Package as PackageIcon } from 'lucide-react';
 import { format, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { useToast } from '@/hooks/use-toast';
@@ -327,7 +327,7 @@ export default function ExpensesPage() {
                   <CardContent className="p-3.5 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 shrink-0">
-                        <Package className="w-5 h-5" />
+                        <PackageIcon className="w-5 h-5" />
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground font-medium flex items-center gap-1">

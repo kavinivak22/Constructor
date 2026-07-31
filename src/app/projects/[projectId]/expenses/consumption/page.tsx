@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Package, Search, Calendar, IndianRupee, Layers, FileDown } from 'lucide-react';
+import { ArrowLeft, Package as PackageIcon, Search, Calendar, IndianRupee, Layers, FileDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProject } from '@/hooks/queries';
@@ -130,7 +130,7 @@ export default function MaterialConsumptionLogPage() {
           <CardContent className="p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
-                <Package className="h-5 w-5" />
+                <PackageIcon className="h-5 w-5" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground font-medium">Total Site Material Value Consumed</p>
