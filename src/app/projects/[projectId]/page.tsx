@@ -283,23 +283,23 @@ export default function ProjectDetailsPage() {
                         </Link>
                     </Button>
 
-                    {/* Row 2: Wide Left (3 cols), Short Right (2 cols) */}
-                    <Button variant="outline" size="sm" asChild className="col-span-3 sm:col-span-1 text-xs h-9 font-semibold glass border-white/10 rounded-xl">
-                        <Link href={`/work-prep?projectId=${projectIdString}`}>
-                            <PhoneCall className="mr-1.5 h-3.5 w-3.5 text-primary shrink-0" />
-                            <span>Tomorrow's Prep</span>
-                        </Link>
-                    </Button>
+                    {/* Row 2: Wide Left (3 cols - Add Log), Short Right (2 cols - Tomorrow's Prep) */}
                     <CreateWorklogDialog
                         projectId={projectIdString}
                         trigger={
-                            <Button variant="outline" size="sm" className="col-span-2 sm:col-span-1 w-full text-xs h-9 font-semibold glass border-white/10 rounded-xl">
+                            <Button variant="outline" size="sm" className="col-span-3 sm:col-span-1 w-full text-xs h-9 font-semibold glass border-white/10 rounded-xl">
                                 <Plus className="mr-1.5 h-3.5 w-3.5 text-primary shrink-0" />
                                 <span>Add Log</span>
                             </Button>
                         }
                         onSuccess={() => window.location.reload()}
                     />
+                    <Button variant="outline" size="sm" asChild className="col-span-2 sm:col-span-1 text-xs h-9 font-semibold glass border-white/10 rounded-xl">
+                        <Link href={`/work-prep?projectId=${projectIdString}`}>
+                            <PhoneCall className="mr-1.5 h-3.5 w-3.5 text-primary shrink-0" />
+                            <span>Tomorrow's Prep</span>
+                        </Link>
+                    </Button>
                 </div>
 
                 <AdaptiveNextTaskWidget
