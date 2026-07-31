@@ -390,7 +390,7 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
                         })} className="flex-1 flex flex-col overflow-hidden">
                             <div className="flex-1 overflow-y-auto">
                                 <Tabs value={activeTab} onValueChange={(val) => selectedProjectId ? setActiveTab(val) : null} className="h-full flex flex-col">
-                                    <div className="px-4 md:px-8 py-2 border-b border-white/10 dark:border-white/5 bg-transparent sticky top-0 z-20">
+                                    <div className="px-3 sm:px-8 py-2 border-b border-white/10 dark:border-white/5 bg-background/95 dark:bg-zinc-950/95 backdrop-blur-md sticky top-0 z-30">
                                         <TabsList className="grid w-full grid-cols-4 h-10 sm:h-12 bg-white/5 dark:bg-black/20 border border-white/10 dark:border-white/5 p-1 rounded-xl">
                                             <TabsTrigger value="details" className="gap-1 sm:gap-2 data-[state=active]:bg-white/15 dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all text-xs font-medium data-[state=active]:text-foreground text-muted-foreground px-1 sm:px-3">
                                                 <CalendarLucide className="h-3.5 w-3.5 shrink-0" />
@@ -414,12 +414,12 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
                                         </TabsList>
                                     </div>
 
-                                    <div className="p-4 md:p-8 flex-1 max-w-5xl mx-auto w-full">
-                                        <TabsContent value="details" className="mt-0 space-y-8 h-full animate-in fade-in-50 slide-in-from-right-2 duration-300">
-                                            <div className="max-w-lg mx-auto space-y-6 pt-2">
-                                                <div className="space-y-6 glass-card p-6 shadow-sm bg-transparent border-white/10 dark:border-white/5">
-                                                    <div className="space-y-2">
-                                                        <label className="text-sm font-medium leading-none text-foreground">Project</label>
+                                    <div className="p-3.5 sm:p-6 md:p-8 flex-1 max-w-5xl mx-auto w-full">
+                                        <TabsContent value="details" className="mt-0 space-y-6 h-full animate-in fade-in-50 slide-in-from-right-2 duration-300">
+                                            <div className="max-w-lg mx-auto space-y-4 pt-1">
+                                                <div className="space-y-4 glass-card p-4 sm:p-5 shadow-sm bg-transparent border-white/10 dark:border-white/5">
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-xs sm:text-sm font-medium leading-none text-foreground">Project</label>
                                                         <Select
                                                             value={selectedProjectId}
                                                             onValueChange={(val) => {
@@ -433,12 +433,12 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
                                                             }}
                                                             disabled={isEditing} // Lock project if editing
                                                         >
-                                                            <SelectTrigger className="h-12 text-base glass border-white/10 dark:border-white/5 bg-transparent text-foreground">
+                                                            <SelectTrigger className="h-10 sm:h-11 text-xs sm:text-sm glass border-white/10 dark:border-white/5 bg-transparent text-foreground">
                                                                 <SelectValue placeholder="Select a project..." />
                                                             </SelectTrigger>
                                                             <SelectContent className="glass border-white/10 dark:border-white/5 text-foreground">
                                                                 {projects.map(project => (
-                                                                    <SelectItem key={project.id} value={project.id} className="focus:bg-white/10 dark:focus:bg-white/5">{project.name}</SelectItem>
+                                                                    <SelectItem key={project.id} value={project.id} className="text-xs sm:text-sm focus:bg-white/10 dark:focus:bg-white/5">{project.name}</SelectItem>
                                                                 ))}
                                                             </SelectContent>
                                                         </Select>
@@ -448,12 +448,12 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
                                                         control={form.control}
                                                         name="title"
                                                         render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel className="text-foreground">Work Title</FormLabel>
+                                                            <FormItem className="space-y-1.5">
+                                                                <FormLabel className="text-xs sm:text-sm text-foreground">Work Title</FormLabel>
                                                                 <FormControl>
-                                                                    <Input {...field} value={field.value as string} placeholder="e.g. Foundation Pouring" className="h-12 text-base glass border-white/10 dark:border-white/5 bg-transparent focus-visible:ring-primary text-foreground" />
+                                                                    <Input {...field} value={field.value as string} placeholder="e.g. Foundation Pouring" className="h-10 sm:h-11 text-xs sm:text-sm glass border-white/10 dark:border-white/5 bg-transparent focus-visible:ring-primary text-foreground" />
                                                                 </FormControl>
-                                                                <FormMessage />
+                                                                <FormMessage className="text-xs" />
                                                             </FormItem>
                                                         )}
                                                     />
@@ -462,19 +462,19 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
                                                         control={form.control}
                                                         name="date"
                                                         render={({ field }) => (
-                                                            <FormItem className="flex flex-col">
-                                                                <FormLabel>Date</FormLabel>
+                                                            <FormItem className="flex flex-col space-y-1.5">
+                                                                <FormLabel className="text-xs sm:text-sm">Date</FormLabel>
                                                                 <Popover>
                                                                     <PopoverTrigger asChild>
                                                                          <FormControl>
                                                                              <Button
                                                                                  variant={"outline"}
                                                                                  className={cn(
-                                                                                     "w-full h-12 pl-4 text-left font-normal text-base justify-start glass border-white/10 dark:border-white/5 bg-transparent hover:bg-white/10 dark:hover:bg-white/5 text-foreground",
+                                                                                     "w-full h-10 sm:h-11 pl-3 text-left font-normal text-xs sm:text-sm justify-start glass border-white/10 dark:border-white/5 bg-transparent hover:bg-white/10 dark:hover:bg-white/5 text-foreground",
                                                                                      !field.value && "text-muted-foreground"
                                                                                  )}
                                                                              >
-                                                                                 <CalendarIcon className="mr-2 h-5 w-5 opacity-50" />
+                                                                                 <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
                                                                                  {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
                                                                              </Button>
                                                                          </FormControl>
@@ -490,14 +490,11 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
                                                                          />
                                                                      </PopoverContent>
                                                                  </Popover>
-                                                                 <FormMessage />
+                                                                 <FormMessage className="text-xs" />
                                                              </FormItem>
                                                          )}
                                                      />
                                                 </div>
-                                                <Button type="button" onClick={() => nextTab("details")} className="w-full h-12 text-base shadow-md hover:shadow-lg transition-all glass border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5 text-foreground" disabled={!selectedProjectId}>
-                                                    Continue to Labor
-                                                </Button>
                                             </div>
                                         </TabsContent>
 
