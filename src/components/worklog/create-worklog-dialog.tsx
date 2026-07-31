@@ -391,25 +391,25 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
                             <div className="flex-1 overflow-y-auto">
                                 <Tabs value={activeTab} onValueChange={(val) => selectedProjectId ? setActiveTab(val) : null} className="h-full flex flex-col">
                                     <div className="px-4 md:px-8 py-2 border-b border-white/10 dark:border-white/5 bg-transparent sticky top-0 z-20">
-                                        <TabsList className="grid w-full grid-cols-4 h-12 bg-white/5 dark:bg-black/20 border border-white/10 dark:border-white/5 p-1 rounded-xl">
-                                            <TabsTrigger value="details" className="gap-2 data-[state=active]:bg-white/15 dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all text-xs md:text-sm data-[state=active]:text-foreground text-muted-foreground">
-                                                <CalendarLucide className="h-4 w-4" />
-                                                <span className="hidden sm:inline font-medium">Details</span>
+                                        <TabsList className="grid w-full grid-cols-4 h-10 sm:h-12 bg-white/5 dark:bg-black/20 border border-white/10 dark:border-white/5 p-1 rounded-xl">
+                                            <TabsTrigger value="details" className="gap-1 sm:gap-2 data-[state=active]:bg-white/15 dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all text-xs font-medium data-[state=active]:text-foreground text-muted-foreground px-1 sm:px-3">
+                                                <CalendarLucide className="h-3.5 w-3.5 shrink-0" />
+                                                <span className="font-medium truncate">Details</span>
                                             </TabsTrigger>
-                                            <TabsTrigger value="labor" disabled={!selectedProjectId} className="gap-2 data-[state=active]:bg-white/15 dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all text-xs md:text-sm data-[state=active]:text-foreground text-muted-foreground">
-                                                <Users className="h-4 w-4" />
-                                                <span className="hidden sm:inline font-medium">Labor</span>
-                                                {laborFields.length > 0 && <Badge variant="secondary" className="ml-1 px-1.5 h-5 min-w-[1.25rem] bg-white/20 dark:bg-white/10 text-foreground">{laborFields.length}</Badge>}
+                                            <TabsTrigger value="labor" disabled={!selectedProjectId} className="gap-1 sm:gap-2 data-[state=active]:bg-white/15 dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all text-xs font-medium data-[state=active]:text-foreground text-muted-foreground px-1 sm:px-3">
+                                                <Users className="h-3.5 w-3.5 shrink-0" />
+                                                <span className="font-medium truncate">Labor</span>
+                                                {laborFields.length > 0 && <Badge variant="secondary" className="ml-0.5 px-1 h-4 text-[10px] min-w-[1rem] bg-white/20 dark:bg-white/10 text-foreground">{laborFields.length}</Badge>}
                                             </TabsTrigger>
-                                            <TabsTrigger value="materials" disabled={!selectedProjectId} className="gap-2 data-[state=active]:bg-white/15 dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all text-xs md:text-sm data-[state=active]:text-foreground text-muted-foreground">
-                                                <Package className="h-4 w-4" />
-                                                <span className="hidden sm:inline font-medium">Materials</span>
-                                                {materialFields.length > 0 && <Badge variant="secondary" className="ml-1 px-1.5 h-5 min-w-[1.25rem] bg-white/20 dark:bg-white/10 text-foreground">{materialFields.length}</Badge>}
+                                            <TabsTrigger value="materials" disabled={!selectedProjectId} className="gap-1 sm:gap-2 data-[state=active]:bg-white/15 dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all text-xs font-medium data-[state=active]:text-foreground text-muted-foreground px-1 sm:px-3">
+                                                <Package className="h-3.5 w-3.5 shrink-0" />
+                                                <span className="font-medium truncate">Materials</span>
+                                                {materialFields.length > 0 && <Badge variant="secondary" className="ml-0.5 px-1 h-4 text-[10px] min-w-[1rem] bg-white/20 dark:bg-white/10 text-foreground">{materialFields.length}</Badge>}
                                             </TabsTrigger>
-                                            <TabsTrigger value="photos" disabled={!selectedProjectId} className="gap-2 data-[state=active]:bg-white/15 dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all text-xs md:text-sm data-[state=active]:text-foreground text-muted-foreground">
-                                                <ImageIcon className="h-4 w-4" />
-                                                <span className="hidden sm:inline font-medium">Photos</span>
-                                                {photoFields.length > 0 && <Badge variant="secondary" className="ml-1 px-1.5 h-5 min-w-[1.25rem] bg-white/20 dark:bg-white/10 text-foreground">{photoFields.length}</Badge>}
+                                            <TabsTrigger value="photos" disabled={!selectedProjectId} className="gap-1 sm:gap-2 data-[state=active]:bg-white/15 dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all text-xs font-medium data-[state=active]:text-foreground text-muted-foreground px-1 sm:px-3">
+                                                <ImageIcon className="h-3.5 w-3.5 shrink-0" />
+                                                <span className="font-medium truncate">Photos</span>
+                                                {photoFields.length > 0 && <Badge variant="secondary" className="ml-0.5 px-1 h-4 text-[10px] min-w-[1rem] bg-white/20 dark:bg-white/10 text-foreground">{photoFields.length}</Badge>}
                                             </TabsTrigger>
                                         </TabsList>
                                     </div>
@@ -501,27 +501,26 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
                                             </div>
                                         </TabsContent>
 
-                                        <TabsContent value="labor" className="mt-0 space-y-6 animate-in fade-in-50 slide-in-from-right-2 duration-300">
-                                             <div className="flex justify-between items-center glass p-4 rounded-2xl border border-white/10 dark:border-white/5 shadow-sm bg-transparent">
-                                                 <div><h3 className="text-lg font-semibold text-foreground">Labor Teams</h3><p className="text-sm text-muted-foreground">Who worked on site today?</p></div>
-                                                 <Button type="button" onClick={() => appendLabor({ contractorName: "", category: "", paymentStatus: "Pending", workDoneQuantity: null, workDoneUnit: "", workers: [{ workerType: "Mason", count: 1 }] })} className="shadow-sm glass border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5"><Plus className="mr-2 h-4 w-4" />Add Team</Button>
+                                         <TabsContent value="labor" className="mt-0 space-y-6 animate-in fade-in-50 slide-in-from-right-2 duration-300">
+                                             <div className="flex justify-between items-center glass p-3.5 sm:p-4 rounded-2xl border border-white/10 dark:border-white/5 shadow-sm bg-transparent">
+                                                 <div><h3 className="text-base sm:text-lg font-semibold text-foreground">Labor Teams</h3><p className="text-xs sm:text-sm text-muted-foreground">Who worked on site today?</p></div>
+                                                 <Button type="button" size="sm" onClick={() => appendLabor({ contractorName: "", category: "", paymentStatus: "Pending", workDoneQuantity: null, workDoneUnit: "", workers: [{ workerType: "Mason", count: 1 }] })} className="shadow-sm bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-8.5 px-3 rounded-xl"><Plus className="mr-1.5 h-3.5 w-3.5" />Add Team</Button>
                                              </div>
                                              {laborFields.length === 0 ? (
-                                                 <div className="flex flex-col items-center justify-center py-16 border border-white/10 dark:border-white/5 rounded-2xl glass-card bg-transparent">
-                                                     <div className="w-16 h-16 bg-white/5 dark:bg-black/20 rounded-full flex items-center justify-center mb-4"><Users className="h-8 w-8 text-muted-foreground" /></div>
-                                                     <h3 className="text-lg font-medium text-foreground">No labor entries yet</h3>
-                                                     <Button variant="outline" className="mt-4 glass border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5" onClick={() => appendLabor({ contractorName: "", category: "", paymentStatus: "Pending", workDoneQuantity: null, workDoneUnit: "", workers: [{ workerType: "Mason", count: 1 }] })}>Add First Team</Button>
+                                                 <div className="flex flex-col items-center justify-center py-12 border border-white/10 dark:border-white/5 rounded-2xl glass-card bg-transparent">
+                                                     <div className="w-14 h-14 bg-white/5 dark:bg-black/20 rounded-full flex items-center justify-center mb-3"><Users className="h-7 w-7 text-muted-foreground" /></div>
+                                                     <h3 className="text-base font-medium text-foreground">No labor entries yet</h3>
+                                                     <Button variant="outline" size="sm" className="mt-3 bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20 font-semibold text-xs" onClick={() => appendLabor({ contractorName: "", category: "", paymentStatus: "Pending", workDoneQuantity: null, workDoneUnit: "", workers: [{ workerType: "Mason", count: 1 }] })}>Add First Team</Button>
                                                  </div>
                                              ) : (
-                                                 <div className="grid gap-6">{laborFields.map((field, index) => <LaborEntryForm key={field.id} index={index} form={form} remove={() => removeLabor(index)} contractors={contractors} salaryProfiles={salaryProfiles} onAddNew={() => { setActiveLaborIndex(index); setIsCreateContractorOpen(true); }} />)}</div>
+                                                 <div className="grid gap-4 sm:gap-6">{laborFields.map((field, index) => <LaborEntryForm key={field.id} index={index} form={form} remove={() => removeLabor(index)} contractors={contractors} salaryProfiles={salaryProfiles} onAddNew={() => { setActiveLaborIndex(index); setIsCreateContractorOpen(true); }} />)}</div>
                                              )}
-                                             <div className="flex justify-end pt-6"><Button type="button" size="lg" onClick={() => nextTab("labor")} className="px-8 glass border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5 text-foreground">Continue to Materials</Button></div>
-                                        </TabsContent>
+                                         </TabsContent>
 
                                          <TabsContent value="materials" className="mt-0 space-y-6 animate-in fade-in-50 slide-in-from-right-2 duration-300">
-                                             <div className="flex justify-between items-center glass p-4 rounded-2xl border border-white/10 dark:border-white/5 shadow-sm bg-transparent">
-                                                 <div><h3 className="text-lg font-semibold text-foreground">Materials</h3><p className="text-sm text-muted-foreground">What was consumed from inventory?</p></div>
-                                                 <Button type="button" onClick={() => appendMaterial({ materialName: "", quantityConsumed: 0, unit: "" })} className="shadow-sm glass border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5"><Plus className="mr-2 h-4 w-4" />Add Manual Log</Button>
+                                             <div className="flex justify-between items-center glass p-3.5 sm:p-4 rounded-2xl border border-white/10 dark:border-white/5 shadow-sm bg-transparent">
+                                                 <div><h3 className="text-base sm:text-lg font-semibold text-foreground">Materials</h3><p className="text-xs sm:text-sm text-muted-foreground">What was consumed from inventory?</p></div>
+                                                 <Button type="button" size="sm" onClick={() => appendMaterial({ materialName: "", quantityConsumed: 0, unit: "" })} className="shadow-sm bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-8.5 px-3 rounded-xl"><Plus className="mr-1.5 h-3.5 w-3.5" />Add Manual Log</Button>
                                              </div>
 
                                              {/* Auto-Calc Mix Ratio & Recent Memory Helper Widget */}
@@ -531,37 +530,57 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
                                                }}
                                              />
 
-                                             {materialFields.length === 0 ? <div className="text-center py-8 border border-white/10 dark:border-white/5 rounded-2xl glass bg-transparent text-muted-foreground">No materials logged today</div> :
+                                             {materialFields.length === 0 ? <div className="text-center py-8 border border-white/10 dark:border-white/5 rounded-2xl glass bg-transparent text-muted-foreground text-xs sm:text-sm">No materials logged today</div> :
                                                  <div className="space-y-4">{materialFields.map((field, index) => <MaterialEntryForm key={field.id} index={index} form={form} remove={() => removeMaterial(index)} materials={projectMaterials} />)}</div>
                                              }
-                                             <div className="flex justify-end pt-6"><Button type="button" size="lg" onClick={() => nextTab("materials")} className="px-8 glass border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5 text-foreground">Continue to Photos</Button></div>
                                          </TabsContent>
 
-                                        <TabsContent value="photos" className="mt-0 space-y-6 animate-in fade-in-50 slide-in-from-right-2 duration-300">
-                                             <div className="flex justify-between items-center glass p-4 rounded-2xl border border-white/10 dark:border-white/5 shadow-sm bg-transparent">
-                                                 <div><h3 className="text-lg font-semibold text-foreground">Site Photos</h3><p className="text-sm text-muted-foreground">Upload site progress images.</p></div>
-                                                 <div className="flex items-center gap-2"><Input type="file" accept="image/*" multiple className="hidden" id="photo-upload" onChange={handleFileUpload} disabled={isUploading} /><Button type="button" disabled={isUploading} onClick={() => document.getElementById('photo-upload')?.click()} size="sm" className="shadow-sm glass border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5 text-foreground">{isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}Upload</Button></div>
+                                         <TabsContent value="photos" className="mt-0 space-y-6 animate-in fade-in-50 slide-in-from-right-2 duration-300">
+                                             <div className="flex justify-between items-center glass p-3.5 sm:p-4 rounded-2xl border border-white/10 dark:border-white/5 shadow-sm bg-transparent">
+                                                 <div><h3 className="text-base sm:text-lg font-semibold text-foreground">Site Photos</h3><p className="text-xs sm:text-sm text-muted-foreground">Upload site progress images.</p></div>
+                                                 <div className="flex items-center gap-2"><Input type="file" accept="image/*" multiple className="hidden" id="photo-upload" onChange={handleFileUpload} disabled={isUploading} /><Button type="button" disabled={isUploading} onClick={() => document.getElementById('photo-upload')?.click()} size="sm" className="shadow-sm bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-8.5 px-3 rounded-xl">{isUploading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-1.5 h-3.5 w-3.5" />}Upload</Button></div>
                                              </div>
-                                             {photoFields.length === 0 ? <div className="text-center py-12 border border-white/10 dark:border-white/5 rounded-2xl glass bg-transparent text-muted-foreground cursor-pointer hover:bg-white/5" onClick={() => document.getElementById('photo-upload')?.click()}>Click to upload photos</div> :
+                                             {photoFields.length === 0 ? <div className="text-center py-12 border border-white/10 dark:border-white/5 rounded-2xl glass bg-transparent text-muted-foreground cursor-pointer hover:bg-white/5 text-xs sm:text-sm" onClick={() => document.getElementById('photo-upload')?.click()}>Click to upload photos</div> :
                                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">{photoFields.map((field, index) => <PhotoEntryForm key={field.id} index={index} form={form} remove={() => removePhoto(index)} />)}</div>
                                              }
-                                        </TabsContent>
-                                    </div>
-                                </Tabs>
-                            </div>
-
-                             <div className="p-4 md:p-6 border-t border-white/10 dark:border-white/5 bg-white/5 dark:bg-black/20 backdrop-blur-md flex flex-col md:flex-row justify-between items-center gap-4 sticky bottom-0 z-20">
-                                 <div className="text-xs md:text-sm text-muted-foreground text-center md:text-left font-medium">
-                                     Summary: {laborFields.length} teams • {materialFields.length} materials • {photoFields.length} photos
-                                 </div>
-                                 <div className="flex flex-col items-end gap-2 w-full md:w-auto">
-                                     {submitError && <p className="text-sm text-destructive font-medium px-2 py-1 bg-destructive/10 rounded-md">{submitError}</p>}
-                                     <div className="flex gap-3 w-full md:w-auto">
-                                         <Button type="button" variant="outline" onClick={() => setOpen(false)} className="flex-1 md:flex-none glass border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5 text-foreground">Cancel</Button>
-                                         <Button type="submit" size="lg" disabled={form.formState.isSubmitting || !selectedProjectId} className="flex-1 md:flex-none min-w-[160px] shadow-lg bg-primary hover:bg-primary/95 text-white">
-                                             {form.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {isEditing ? 'Updating...' : 'Saving...'}</> : <><CheckCircle2 className="mr-2 h-5 w-5" /> {isEditing ? 'Update Worklog' : 'Save Worklog'}</>}
-                                         </Button>
+                                         </TabsContent>
                                      </div>
+                                 </Tabs>
+                             </div>
+
+                             <div className="p-3 sm:p-4 border-t border-white/10 dark:border-white/5 bg-background/90 dark:bg-black/80 backdrop-blur-md flex flex-col sm:flex-row justify-between items-center gap-3 sticky bottom-0 z-20">
+                                 <div className="text-xs text-muted-foreground font-medium text-center sm:text-left">
+                                     Summary: <span className="font-bold text-foreground">{laborFields.length}</span> teams • <span className="font-bold text-foreground">{materialFields.length}</span> materials • <span className="font-bold text-foreground">{photoFields.length}</span> photos
+                                 </div>
+                                 <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                                     <Button type="button" variant="outline" onClick={() => setOpen(false)} className="h-9 text-xs px-3">
+                                         Cancel
+                                     </Button>
+                                     
+                                     {activeTab === 'details' && (
+                                         <Button type="button" onClick={() => nextTab('details')} disabled={!selectedProjectId} className="h-9 text-xs font-semibold px-4 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md">
+                                             Continue to Labor →
+                                         </Button>
+                                     )}
+                                     {activeTab === 'labor' && (
+                                         <Button type="button" onClick={() => nextTab('labor')} className="h-9 text-xs font-semibold px-4 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md">
+                                             Continue to Materials →
+                                         </Button>
+                                     )}
+                                     {activeTab === 'materials' && (
+                                         <Button type="button" onClick={() => nextTab('materials')} className="h-9 text-xs font-semibold px-4 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md">
+                                             Continue to Photos →
+                                         </Button>
+                                     )}
+                                     {activeTab === 'photos' && (
+                                         <Button type="submit" disabled={form.formState.isSubmitting || !selectedProjectId} className="h-9 text-xs font-semibold px-4 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md">
+                                             {form.formState.isSubmitting ? (
+                                                 <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> {isEditing ? 'Updating...' : 'Saving...'}</>
+                                             ) : (
+                                                 <><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> {isEditing ? 'Update Worklog' : 'Save Worklog'}</>
+                                             )}
+                                         </Button>
+                                     )}
                                  </div>
                              </div>
                         </form>
