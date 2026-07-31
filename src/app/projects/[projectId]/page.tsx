@@ -227,49 +227,44 @@ export default function ProjectDetailsPage() {
                 )}
             </header>
             <main className="flex-1 p-3.5 sm:p-6 space-y-3.5 sm:space-y-6 bg-transparent">
-                <Card className="glass-card">
-                    <CardHeader className="p-3.5 sm:p-5 pb-2 sm:pb-3">
-                        <CardTitle className="text-sm sm:text-base font-bold font-headline">Overall Progress</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-3.5 sm:p-5 pt-0 sm:pt-0 space-y-3 sm:space-y-4">
-                        <div>
-                            <div className="flex justify-between items-center text-xs sm:text-sm font-medium text-muted-foreground mb-1.5">
-                                <p>Progress</p>
-                                <p className="font-semibold text-foreground text-sm sm:text-lg">{project.progress ?? 0}%</p>
-                            </div>
-                            <Progress value={project.progress ?? 0} aria-label={`${project.progress ?? 0}% complete`} className="h-2" />
-                        </div>
-                        <div className='grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 text-xs sm:text-sm text-muted-foreground pt-1'>
-                            <div className='flex items-center gap-2 bg-background/40 p-2 sm:p-0 rounded-xl sm:rounded-none border border-white/5 sm:border-none'>
-                                <Calendar className="h-4 w-4 text-primary shrink-0" />
-                                <div>
-                                    <p className='text-[10px] sm:text-xs text-muted-foreground'>End Date</p>
-                                    <p className='font-semibold text-foreground text-xs sm:text-sm'>{getFormattedDate(project.endDate as string)}</p>
-                                </div>
-                            </div>
-                            <div className='flex items-center gap-2 bg-background/40 p-2 sm:p-0 rounded-xl sm:rounded-none border border-white/5 sm:border-none'>
-                                <IndianRupee className="h-4 w-4 text-emerald-500 shrink-0" />
-                                <div>
-                                    <p className='text-[10px] sm:text-xs text-muted-foreground'>Budget</p>
-                                    <p className='font-semibold text-foreground text-xs sm:text-sm'>₹8.5L</p>
-                                </div>
-                            </div>
-                            <div className='flex items-center gap-2 bg-background/40 p-2 sm:p-0 rounded-xl sm:rounded-none border border-white/5 sm:border-none'>
-                                <Users className="h-4 w-4 text-amber-500 shrink-0" />
-                                <div>
-                                    <p className='text-[10px] sm:text-xs text-muted-foreground'>Team Size</p>
-                                    <p className='font-semibold text-foreground text-xs sm:text-sm'>{memberCount} members</p>
-                                </div>
-                            </div>
-                            <div className='flex items-center gap-2 bg-background/40 p-2 sm:p-0 rounded-xl sm:rounded-none border border-white/5 sm:border-none'>
-                                <Progress value={65} className="w-5 h-5 shrink-0" />
-                                <div>
-                                    <p className='text-[10px] sm:text-xs text-muted-foreground'>Spent</p>
-                                    <p className='font-semibold text-foreground text-xs sm:text-sm'>65%</p>
-                                </div>
+                <Card className="glass-card p-4 sm:p-5 space-y-3">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-sm sm:text-base font-bold font-headline text-foreground">Overall Progress</h2>
+                        <span className="text-sm sm:text-base font-bold text-primary">{project.progress ?? 0}%</span>
+                    </div>
+                    
+                    <Progress value={project.progress ?? 0} aria-label={`${project.progress ?? 0}% complete`} className="h-2" />
+
+                    <div className='grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 pt-1'>
+                        <div className='flex items-center gap-2.5 bg-background/40 p-2.5 rounded-xl border border-white/5'>
+                            <Calendar className="h-4 w-4 text-primary shrink-0" />
+                            <div>
+                                <p className='text-[10px] sm:text-xs text-muted-foreground font-medium'>End Date</p>
+                                <p className='font-bold text-foreground text-xs sm:text-sm'>{getFormattedDate(project.endDate as string)}</p>
                             </div>
                         </div>
-                    </CardContent>
+                        <div className='flex items-center gap-2.5 bg-background/40 p-2.5 rounded-xl border border-white/5'>
+                            <IndianRupee className="h-4 w-4 text-emerald-500 shrink-0" />
+                            <div>
+                                <p className='text-[10px] sm:text-xs text-muted-foreground font-medium'>Budget</p>
+                                <p className='font-bold text-foreground text-xs sm:text-sm'>₹8.5L</p>
+                            </div>
+                        </div>
+                        <div className='flex items-center gap-2.5 bg-background/40 p-2.5 rounded-xl border border-white/5'>
+                            <Users className="h-4 w-4 text-amber-500 shrink-0" />
+                            <div>
+                                <p className='text-[10px] sm:text-xs text-muted-foreground font-medium'>Team Size</p>
+                                <p className='font-bold text-foreground text-xs sm:text-sm'>{memberCount} members</p>
+                            </div>
+                        </div>
+                        <div className='flex items-center gap-2.5 bg-background/40 p-2.5 rounded-xl border border-white/5'>
+                            <Progress value={65} className="w-4 h-4 shrink-0" />
+                            <div>
+                                <p className='text-[10px] sm:text-xs text-muted-foreground font-medium'>Spent</p>
+                                <p className='font-bold text-foreground text-xs sm:text-sm'>65%</p>
+                            </div>
+                        </div>
+                    </div>
                 </Card>
 
                 {/* Creative Asymmetric Staggered Button Bar on Mobile (grid-cols-5) */}
