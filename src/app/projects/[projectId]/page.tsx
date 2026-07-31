@@ -7,7 +7,7 @@ import { type Project } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Users, IndianRupee, Edit, CheckCircle, Clock, ArrowLeft, Package, PhoneCall, Plus } from 'lucide-react';
+import { Calendar, Users, IndianRupee, Edit, CheckCircle, Clock, ArrowLeft, Package as PackageIcon, PhoneCall, Plus } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -272,7 +272,7 @@ export default function ProjectDetailsPage() {
                     {/* Row 1: Short Left (2 cols), Wide Right (3 cols) */}
                     <Button asChild size="sm" className="col-span-2 sm:col-span-1 text-xs h-9 font-semibold shadow-sm rounded-xl">
                         <Link href={`/projects/${projectId}/materials`}>
-                            <Package className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+                            <PackageIcon className="mr-1.5 h-3.5 w-3.5 shrink-0" />
                             <span>Materials</span>
                         </Link>
                     </Button>
