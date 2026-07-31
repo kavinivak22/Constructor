@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Plus, Package, Receipt } from 'lucide-react';
 import { useState } from 'react';
 import { ExpenseFormSheet } from '@/components/expenses/expense-form-sheet';
+import { CreateWorklogDialog } from '@/components/worklog/create-worklog-dialog';
 
 export function QuickActions() {
     const [isExpenseSheetOpen, setIsExpenseSheetOpen] = useState(false);
@@ -12,12 +13,14 @@ export function QuickActions() {
     return (
         <>
             <div className="grid grid-cols-2 gap-2 mb-4 sm:flex sm:items-center sm:mb-2">
-                <Link href="/worklog" className="w-full sm:w-auto">
-                    <Button variant="outline" size="sm" className="gap-2 h-9 w-full sm:w-auto">
-                        <Plus className="h-4 w-4 text-primary" />
-                        Add Worklog
-                    </Button>
-                </Link>
+                <CreateWorklogDialog
+                    trigger={
+                        <Button variant="outline" size="sm" className="gap-2 h-9 w-full sm:w-auto">
+                            <Plus className="h-4 w-4 text-primary" />
+                            Add Worklog
+                        </Button>
+                    }
+                />
                 <Button
                     variant="outline"
                     size="sm"

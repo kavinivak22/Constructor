@@ -285,7 +285,7 @@ export function ProcessScopeDialog({ projectId, projectName, onSuccess, trigger 
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+      <DialogContent className="w-[95vw] sm:max-w-3xl min-h-[400px] max-h-[88vh] overflow-y-auto p-4 sm:p-6 flex flex-col rounded-2xl">
         <DialogHeader>
           <DialogTitle className="text-lg sm:text-xl font-bold font-headline flex items-center gap-2">
             <Layers className="h-5 w-5 text-primary" /> Construction Building Plan & Checklists

@@ -363,7 +363,7 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
                         </Button>
                     )}
                 </DialogTrigger>
-                <DialogContent className="w-screen h-[100dvh] max-w-none rounded-none sm:rounded-2xl sm:h-[90vh] sm:max-w-5xl flex flex-col p-0 gap-0 overflow-hidden glass border border-white/10 dark:border-white/5 shadow-2xl">
+                <DialogContent className="w-full sm:w-[95vw] h-[92vh] sm:h-[90vh] min-h-[500px] max-w-5xl flex flex-col p-0 gap-0 overflow-hidden rounded-2xl glass border border-white/10 dark:border-white/5 shadow-2xl">
                     <div className="p-4 md:p-6 border-b border-white/10 dark:border-white/5 bg-white/5 dark:bg-black/20 flex items-center gap-4">
                         <Button variant="ghost" size="icon" className="md:hidden -ml-2 rounded-full hover:bg-white/10 dark:hover:bg-white/5 text-foreground" onClick={() => setOpen(false)}>
                             <ArrowLeft className="h-5 w-5" />
