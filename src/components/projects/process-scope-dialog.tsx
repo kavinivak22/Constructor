@@ -285,21 +285,22 @@ export function ProcessScopeDialog({ projectId, projectName, onSuccess, trigger 
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="w-[95vw] sm:max-w-3xl min-h-[400px] max-h-[88vh] overflow-y-auto p-4 sm:p-6 flex flex-col rounded-2xl">
-        <DialogHeader>
+      <DialogContent className="w-full sm:w-[95vw] h-[92vh] sm:h-[90vh] min-h-[500px] max-w-5xl flex flex-col p-0 gap-0 overflow-hidden rounded-2xl glass border border-white/10 dark:border-white/5 shadow-2xl">
+        <DialogHeader className="p-4 md:p-6 border-b border-white/10 dark:border-white/5 bg-white/5 dark:bg-black/20 shrink-0 text-left">
           <DialogTitle className="text-lg sm:text-xl font-bold font-headline flex items-center gap-2">
-            <Layers className="h-5 w-5 text-primary" /> Construction Building Plan & Checklists
+            <Layers className="h-5 w-5 text-primary" /> Construction Building Plan & Quality Checklists
           </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
+          <DialogDescription className="text-xs text-muted-foreground mt-0.5">
             Select or customize construction stages, tasks, and quality checklists for {projectName}.
           </DialogDescription>
         </DialogHeader>
 
-        {isLoading ? (
-          <div className="py-12 flex justify-center items-center text-muted-foreground">
-            <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading construction building plans...
-          </div>
-        ) : (
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
+          {isLoading ? (
+            <div className="py-16 flex justify-center items-center text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading construction building plans...
+            </div>
+          ) : (
           <div className="space-y-5 py-2">
             {/* Select Saved Building Template */}
             <div className="p-3.5 sm:p-4 rounded-2xl bg-primary/5 border border-primary/20 space-y-2.5">
@@ -524,14 +525,15 @@ export function ProcessScopeDialog({ projectId, projectName, onSuccess, trigger 
                 </Button>
               </div>
             </div>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
-          <Button variant="outline" onClick={() => setIsOpen(false)} className="w-full sm:w-auto">
+        <DialogFooter className="p-4 md:p-6 border-t border-white/10 dark:border-white/5 bg-white/5 dark:bg-black/20 flex flex-col sm:flex-row justify-end gap-2 shrink-0">
+          <Button variant="outline" onClick={() => setIsOpen(false)} className="w-full sm:w-auto h-10 text-xs font-semibold">
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isSubmitting} className="w-full sm:w-auto">
+          <Button onClick={handleSave} disabled={isSubmitting} className="w-full sm:w-auto h-10 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-md">
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save & Apply Plan to Project
           </Button>
