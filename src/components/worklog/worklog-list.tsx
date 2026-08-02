@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { format, isSameDay } from 'date-fns';
-import { Users, Package, Image as ImageIcon, Calendar as CalendarIcon, Clock, ArrowRight, Search, X, MoreVertical, Edit, Trash2, AlertTriangle } from 'lucide-react';
+import { Users, Package, Image as ImageIcon, Calendar as CalendarIcon, Clock, ArrowRight, Search, X, MoreVertical, Edit, Trash2, AlertTriangle, Maximize2 } from 'lucide-react';
+import { FullscreenPhotoViewer } from '@/components/worklog/fullscreen-photo-viewer';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -358,6 +359,8 @@ function WorklogFeedCard({
     currentUserProfile: { id: string; role: string } | null;
 }) {
     const [expanded, setExpanded] = useState(initiallyExpanded);
+    const [isFullscreenViewerOpen, setIsFullscreenViewerOpen] = useState(false);
+    const [fullscreenPhotoIndex, setFullscreenPhotoIndex] = useState(0);
 
     useEffect(() => {
         if (initiallyExpanded) {
@@ -442,7 +445,13 @@ function WorklogFeedCard({
                         <CarouselContent>
                             {worklog.photos.map((photo: any, i: number) => (
                                 <CarouselItem key={i} className="pl-0">
-                                    <div className="relative w-full aspect-[4/3]">
+                                    <div 
+                                        onClick={() => {
+                                            setFullscreenPhotoIndex(i);
+                                            setIsFullscreenViewerOpen(true);
+                                        }}
+                                        className="relative w-full aspect-[4/3] cursor-pointer"
+                                    >
                                         <Image
                                             src={photo.photo_url}
                                             alt={photo.caption || `Photo ${i + 1}`}
@@ -460,17 +469,41 @@ function WorklogFeedCard({
                         </div>
                     </Carousel>
                 ) : totalPhotos === 1 ? (
-                    <Image
-                        src={worklog.photos[0].photo_url}
-                        alt="Worklog update"
-                        fill
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                        unoptimized
-                    />
+                    <div 
+                        onClick={() => {
+                            setFullscreenPhotoIndex(0);
+                            setIsFullscreenViewerOpen(true);
+                        }}
+                        className="relative w-full h-full cursor-pointer"
+                    >
+                        <Image
+                            src={worklog.photos[0].photo_url}
+                            alt="Worklog update"
+                            fill
+                            className="object-cover transition-transform duration-500 group-hover:scale-105"
+                            unoptimized
+                        />
+                    </div>
                 ) : (
                     <div className="flex items-center justify-center h-full text-muted-foreground/30">
                         <ImageIcon className="h-10 w-10 text-muted-foreground/45" />
                     </div>
+                )}
+
+                {/* Fullscreen Overlay Button */}
+                {totalPhotos > 0 && (
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                            setFullscreenPhotoIndex(0);
+                            setIsFullscreenViewerOpen(true);
+                        }}
+                        className="absolute bottom-3 right-3 z-20 h-8 px-2.5 rounded-xl bg-black/65 hover:bg-black/85 text-white backdrop-blur-md border border-white/20 text-xs font-semibold flex items-center gap-1.5 shadow-lg transition-all"
+                    >
+                        <Maximize2 className="h-3.5 w-3.5" />
+                        <span>Full Screen</span>
+                    </Button>
                 )}
 
                 {/* Date Badge Overlay */}
@@ -594,6 +627,16 @@ function WorklogFeedCard({
                     </Button>
                 </div>
             </div>
+
+            {/* Fullscreen Photo Viewer Lightbox */}
+            <FullscreenPhotoViewer
+                photos={worklog.photos}
+                initialIndex={fullscreenPhotoIndex}
+                isOpen={isFullscreenViewerOpen}
+                onClose={() => setIsFullscreenViewerOpen(false)}
+                title={title}
+                dateLabel={format(new Date(worklog.date), 'MMM dd, yyyy')}
+            />
         </div>
     );
 }
