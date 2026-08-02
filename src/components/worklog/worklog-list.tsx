@@ -446,7 +446,8 @@ function WorklogFeedCard({
                             {worklog.photos.map((photo: any, i: number) => (
                                 <CarouselItem key={i} className="pl-0">
                                     <div 
-                                        onClick={() => {
+                                        onClick={(e) => {
+                                            e.stopPropagation();
                                             setFullscreenPhotoIndex(i);
                                             setIsFullscreenViewerOpen(true);
                                         }}
@@ -470,7 +471,8 @@ function WorklogFeedCard({
                     </Carousel>
                 ) : totalPhotos === 1 ? (
                     <div 
-                        onClick={() => {
+                        onClick={(e) => {
+                            e.stopPropagation();
                             setFullscreenPhotoIndex(0);
                             setIsFullscreenViewerOpen(true);
                         }}
@@ -495,11 +497,12 @@ function WorklogFeedCard({
                     <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => {
+                        onClick={(e) => {
+                            e.stopPropagation();
                             setFullscreenPhotoIndex(0);
                             setIsFullscreenViewerOpen(true);
                         }}
-                        className="absolute bottom-3 right-3 z-20 h-8 px-2.5 rounded-xl bg-black/65 hover:bg-black/85 text-white backdrop-blur-md border border-white/20 text-xs font-semibold flex items-center gap-1.5 shadow-lg transition-all"
+                        className="absolute bottom-3 right-3 z-30 h-7.5 px-2.5 rounded-xl bg-black/75 hover:bg-black text-white backdrop-blur-md border border-white/20 text-xs font-semibold flex items-center gap-1.5 shadow-lg transition-all"
                     >
                         <Maximize2 className="h-3.5 w-3.5" />
                         <span>Full Screen</span>
