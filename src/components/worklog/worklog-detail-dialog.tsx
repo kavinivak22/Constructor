@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { format } from 'date-fns';
 import {
   Dialog,
@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, Package, Image as ImageIcon, Clock, X } from 'lucide-react';
+import { Users, Package, Image as ImageIcon, Clock, X, Maximize2 } from 'lucide-react';
 import {
   Carousel,
   CarouselContent,
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
 import Image from 'next/image';
+import { FullscreenPhotoViewer } from '@/components/worklog/fullscreen-photo-viewer';
 
 interface WorklogDetailDialogProps {
   worklog: any | null;
@@ -26,6 +27,9 @@ interface WorklogDetailDialogProps {
 }
 
 export function WorklogDetailDialog({ worklog, isOpen, onClose }: WorklogDetailDialogProps) {
+  const [isFullscreenViewerOpen, setIsFullscreenViewerOpen] = useState(false);
+  const [fullscreenPhotoIndex, setFullscreenPhotoIndex] = useState(0);
+
   const plugin = useRef(
     Autoplay({ delay: 3000, stopOnInteraction: true })
   );
@@ -69,69 +73,100 @@ export function WorklogDetailDialog({ worklog, isOpen, onClose }: WorklogDetailD
   const createdObj = worklog.created_at || worklog.date ? new Date(worklog.created_at || worklog.date) : new Date();
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-xl p-0 overflow-hidden bg-background/95 dark:bg-card/95 backdrop-blur-2xl border border-border/60 shadow-2xl rounded-3xl text-foreground">
-        <div className="relative flex flex-col max-h-[85vh] overflow-y-auto scrollbar-thin">
-          {/* Close Button Overlay */}
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={onClose}
-            className="absolute top-3 right-3 z-30 h-8 w-8 rounded-full bg-background/80 dark:bg-card/80 backdrop-blur-md border border-border/50 text-foreground hover:bg-muted"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+    <>
+      <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+        <DialogContent className="max-w-xl p-0 overflow-hidden bg-background/95 dark:bg-card/95 backdrop-blur-2xl border border-border/60 shadow-2xl rounded-3xl text-foreground">
+          <div className="relative flex flex-col max-h-[85vh] overflow-y-auto scrollbar-thin">
+            {/* Close Button Overlay */}
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={onClose}
+              className="absolute top-3 right-3 z-30 h-8 w-8 rounded-full bg-background/80 dark:bg-card/80 backdrop-blur-md border border-border/50 text-foreground hover:bg-muted"
+            >
+              <X className="h-4 w-4" />
+            </Button>
 
-          {/* Image Section */}
-          <div className="relative bg-muted/40 overflow-hidden w-full aspect-[4/3] shrink-0 border-b border-border/40">
-            {totalPhotos > 1 ? (
-              <Carousel
-                className="w-full h-full"
-                opts={{ loop: true }}
-                plugins={[plugin.current]}
-                onMouseEnter={plugin.current.stop}
-                onMouseLeave={plugin.current.reset}
-              >
-                <CarouselContent>
-                  {photoEntries.map((photo: any, i: number) => (
-                    <CarouselItem key={i} className="pl-0">
-                      <div className="relative w-full aspect-[4/3]">
-                        <Image
-                          src={photo.photo_url || photo.url}
-                          alt={photo.caption || `Photo ${i + 1}`}
-                          fill
-                          className="object-cover"
-                          unoptimized
-                        />
-                      </div>
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                  <CarouselPrevious className="left-2 bg-background/80 hover:bg-background border-border text-foreground h-8 w-8" />
-                  <CarouselNext className="right-2 bg-background/80 hover:bg-background border-border text-foreground h-8 w-8" />
+            {/* Image Section */}
+            <div className="relative bg-muted/40 overflow-hidden w-full aspect-[4/3] shrink-0 border-b border-border/40 group">
+              {totalPhotos > 1 ? (
+                <Carousel
+                  className="w-full h-full"
+                  opts={{ loop: true }}
+                  plugins={[plugin.current]}
+                  onMouseEnter={plugin.current.stop}
+                  onMouseLeave={plugin.current.reset}
+                >
+                  <CarouselContent>
+                    {photoEntries.map((photo: any, i: number) => (
+                      <CarouselItem key={i} className="pl-0">
+                        <div
+                          onClick={() => {
+                            setFullscreenPhotoIndex(i);
+                            setIsFullscreenViewerOpen(true);
+                          }}
+                          className="relative w-full aspect-[4/3] cursor-pointer"
+                        >
+                          <Image
+                            src={photo.photo_url || photo.url}
+                            alt={photo.caption || `Photo ${i + 1}`}
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </div>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <CarouselPrevious className="left-2 bg-background/80 hover:bg-background border-border text-foreground h-8 w-8" />
+                    <CarouselNext className="right-2 bg-background/80 hover:bg-background border-border text-foreground h-8 w-8" />
+                  </div>
+                </Carousel>
+              ) : totalPhotos === 1 ? (
+                <div
+                  onClick={() => {
+                    setFullscreenPhotoIndex(0);
+                    setIsFullscreenViewerOpen(true);
+                  }}
+                  className="relative w-full h-full cursor-pointer"
+                >
+                  <Image
+                    src={photoEntries[0].photo_url || photoEntries[0].url}
+                    alt="Worklog update"
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
                 </div>
-              </Carousel>
-            ) : totalPhotos === 1 ? (
-              <Image
-                src={photoEntries[0].photo_url || photoEntries[0].url}
-                alt="Worklog update"
-                fill
-                className="object-cover"
-                unoptimized
-              />
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground/40 bg-muted/30">
-                <ImageIcon className="h-12 w-12 text-muted-foreground/50" />
-              </div>
-            )}
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground/40 bg-muted/30">
+                  <ImageIcon className="h-12 w-12 text-muted-foreground/50" />
+                </div>
+              )}
 
-            {/* Date Badge Overlay */}
-            <div className="absolute top-3 left-3 z-10 bg-background/90 dark:bg-card/90 backdrop-blur-md border border-border/60 px-3 py-1.5 rounded-xl shadow-md text-xs font-semibold flex flex-col items-center pointer-events-none text-foreground">
-              <span className="text-muted-foreground uppercase text-[10px] leading-tight font-bold">{format(dateObj, 'MMM')}</span>
-              <span className="text-lg leading-none font-bold text-foreground">{format(dateObj, 'dd')}</span>
+              {/* Fullscreen Expand Overlay Button */}
+              {totalPhotos > 0 && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setFullscreenPhotoIndex(0);
+                    setIsFullscreenViewerOpen(true);
+                  }}
+                  className="absolute bottom-3 right-3 z-20 h-8 px-2.5 rounded-xl bg-black/65 hover:bg-black/85 text-white backdrop-blur-md border border-white/20 text-xs font-semibold flex items-center gap-1.5 shadow-lg transition-all"
+                >
+                  <Maximize2 className="h-3.5 w-3.5" />
+                  <span>Full Screen</span>
+                </Button>
+              )}
+
+              {/* Date Badge Overlay */}
+              <div className="absolute top-3 left-3 z-10 bg-background/90 dark:bg-card/90 backdrop-blur-md border border-border/60 px-3 py-1.5 rounded-xl shadow-md text-xs font-semibold flex flex-col items-center pointer-events-none text-foreground">
+                <span className="text-muted-foreground uppercase text-[10px] leading-tight font-bold">{format(dateObj, 'MMM')}</span>
+                <span className="text-lg leading-none font-bold text-foreground">{format(dateObj, 'dd')}</span>
+              </div>
             </div>
-          </div>
 
           {/* Content Section */}
           <div className="flex flex-col p-6 space-y-4">
@@ -258,5 +293,16 @@ export function WorklogDetailDialog({ worklog, isOpen, onClose }: WorklogDetailD
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Fullscreen Photo Lightbox Modal */}
+    <FullscreenPhotoViewer
+      photos={photoEntries}
+      initialIndex={fullscreenPhotoIndex}
+      isOpen={isFullscreenViewerOpen}
+      onClose={() => setIsFullscreenViewerOpen(false)}
+      title={title}
+      dateLabel={format(dateObj, 'MMM dd, yyyy')}
+    />
+    </>
   );
 }
