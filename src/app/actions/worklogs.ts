@@ -72,6 +72,7 @@ export async function createWorklog(data: WorklogData) {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error('Unauthorized')
 
+        const now = new Date().toISOString();
         // 1. Create Daily Worklog Entry
         const { data: worklog, error: worklogError } = await supabase
             .from('daily_worklogs')
@@ -80,6 +81,7 @@ export async function createWorklog(data: WorklogData) {
                 title: title,
                 date: date,
                 created_by: user.id,
+                updated_at: now,
             })
             .select()
             .single()
@@ -207,7 +209,10 @@ export async function getWorklogs(projectId: string) {
             query = query.eq('project_id', projectId)
         }
 
-        const { data, error } = await query.order('date', { ascending: false })
+        const { data, error } = await query
+            .order('date', { ascending: false })
+            .order('updated_at', { ascending: false })
+            .order('created_at', { ascending: false })
 
         if (error) throw error
 
@@ -303,7 +308,7 @@ export async function updateWorklog(worklogId: string, data: WorklogData) {
         // 2. Update Basic Info
         const { error: updateError } = await supabase
             .from('daily_worklogs')
-            .update({ title, date })
+            .update({ title, date, updated_at: new Date().toISOString() })
             .eq('id', worklogId)
 
         if (updateError) throw updateError
@@ -397,6 +402,8 @@ export async function getRecentWorklogs(limit: number = 5) {
                 )
             `)
             .order('date', { ascending: false })
+            .order('updated_at', { ascending: false })
+            .order('created_at', { ascending: false })
             .limit(limit)
 
         if (error) throw error

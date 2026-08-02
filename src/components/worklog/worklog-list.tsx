@@ -134,7 +134,7 @@ export function WorklogList({ projectId, refreshTrigger, highlightWorklogId }: W
     };
 
     const filteredWorklogs = useMemo(() => {
-        let filtered = worklogs;
+        let filtered = [...worklogs];
 
         // Filter by Date
         if (date) {
@@ -150,6 +150,18 @@ export function WorklogList({ projectId, refreshTrigger, highlightWorklogId }: W
                 return title.toLowerCase().includes(query) || description.toLowerCase().includes(query);
             });
         }
+
+        // Secondary Sort: Ensure for logs on the same date, the last updated/created log appears first!
+        filtered.sort((a, b) => {
+            const dateA = new Date(a.date).getTime();
+            const dateB = new Date(b.date).getTime();
+            if (dateA !== dateB) {
+                return dateB - dateA;
+            }
+            const updatedA = new Date(a.updated_at || a.created_at || 0).getTime();
+            const updatedB = new Date(b.updated_at || b.created_at || 0).getTime();
+            return updatedB - updatedA;
+        });
 
         return filtered;
     }, [worklogs, searchTerm, date]);
