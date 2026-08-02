@@ -492,23 +492,6 @@ function WorklogFeedCard({
                     </div>
                 )}
 
-                {/* Fullscreen Overlay Button */}
-                {totalPhotos > 0 && (
-                    <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setFullscreenPhotoIndex(0);
-                            setIsFullscreenViewerOpen(true);
-                        }}
-                        className="absolute bottom-3 right-3 z-30 h-7.5 px-2.5 rounded-xl bg-black/75 hover:bg-black text-white backdrop-blur-md border border-white/20 text-xs font-semibold flex items-center gap-1.5 shadow-lg transition-all"
-                    >
-                        <Maximize2 className="h-3.5 w-3.5" />
-                        <span>Full Screen</span>
-                    </Button>
-                )}
-
                 {/* Date Badge Overlay */}
                 <div className="absolute top-3 left-3 z-10 glass border border-white/10 dark:border-white/5 px-3 py-1.5 rounded-xl shadow-sm text-xs font-semibold flex flex-col items-center pointer-events-none text-foreground">
                     <span className="text-muted-foreground uppercase text-[10px] leading-tight">{format(new Date(worklog.date), 'MMM')}</span>

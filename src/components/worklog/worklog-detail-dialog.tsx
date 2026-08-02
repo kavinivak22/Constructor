@@ -145,22 +145,6 @@ export function WorklogDetailDialog({ worklog, isOpen, onClose }: WorklogDetailD
                 </div>
               )}
 
-              {/* Fullscreen Expand Overlay Button */}
-              {totalPhotos > 0 && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setFullscreenPhotoIndex(0);
-                    setIsFullscreenViewerOpen(true);
-                  }}
-                  className="absolute bottom-3 right-3 z-20 h-8 px-2.5 rounded-xl bg-black/65 hover:bg-black/85 text-white backdrop-blur-md border border-white/20 text-xs font-semibold flex items-center gap-1.5 shadow-lg transition-all"
-                >
-                  <Maximize2 className="h-3.5 w-3.5" />
-                  <span>Full Screen</span>
-                </Button>
-              )}
-
               {/* Date Badge Overlay */}
               <div className="absolute top-3 left-3 z-10 bg-background/90 dark:bg-card/90 backdrop-blur-md border border-border/60 px-3 py-1.5 rounded-xl shadow-md text-xs font-semibold flex flex-col items-center pointer-events-none text-foreground">
                 <span className="text-muted-foreground uppercase text-[10px] leading-tight font-bold">{format(dateObj, 'MMM')}</span>
