@@ -1,8 +1,6 @@
-'use server'
+// Client action module
 
-import { createClient } from '@/utils/supabase/server'
-import { cookies } from 'next/headers'
-import { revalidatePath } from 'next/cache'
+import { createClient } from '@/utils/supabase/client'
 
 // ==========================================
 // Salary Profiles Actions
@@ -188,7 +186,7 @@ export async function getPayoutItems(payoutId: string) {
     }
 }
 
-export async function createWeeklyPayoutRun(weekStartDate: string, weekEndDate: string) {
+export async function createWeeklyPayoutRun(weekStartDate: string, weekEndDate: string, includePreviousUnpaid: boolean = true) {
     const supabase = await createClient()
 
     try {
@@ -239,12 +237,17 @@ export async function createWeeklyPayoutRun(weekStartDate: string, weekEndDate: 
             .eq('company_id', companyId)
 
         // 3. Fetch daily labor log entries for attendance calculation
-        // Find daily worklogs in range
-        const { data: worklogs } = await supabase
+        // Find daily worklogs (including previous unpaid ones if includePreviousUnpaid is true)
+        let worklogQuery = supabase
             .from('daily_worklogs')
-            .select('id, project_id')
-            .gte('date', weekStartDate)
-            .lte('date', weekEndDate)
+            .select('id, project_id, date')
+            .lte('date', weekEndDate);
+
+        if (!includePreviousUnpaid) {
+            worklogQuery = worklogQuery.gte('date', weekStartDate);
+        }
+
+        const { data: worklogs } = await worklogQuery;
 
         const worklogIds = worklogs?.map(w => w.id) || []
         let laborEntries: any[] = []
@@ -448,15 +451,20 @@ export async function createWeeklyPayoutRun(weekStartDate: string, weekEndDate: 
             }
         }
 
-        // 5. Fetch approved/delivered Purchase Orders in the date range that are not paid
-        const { data: pos } = await supabase
+        // 5. Fetch approved/delivered Purchase Orders that are not paid
+        let poQuery = supabase
             .from('purchase_orders')
             .select('*')
             .eq('company_id', companyId)
             .in('status', ['approved', 'delivered'])
             .neq('payment_status', 'paid')
-            .gte('created_at', weekStartDate)
-            .lte('created_at', weekEndDate)
+            .lte('created_at', weekEndDate);
+
+        if (!includePreviousUnpaid) {
+            poQuery = poQuery.gte('created_at', weekStartDate);
+        }
+
+        const { data: pos } = await poQuery;
 
         if (pos) {
             for (const po of pos) {

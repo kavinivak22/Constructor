@@ -20,6 +20,8 @@ import {
 import { getContractors } from '@/app/actions/contractors'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
+import { Switch } from '@/components/ui/switch'
+import { format } from 'date-fns'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -108,6 +110,38 @@ export default function PaydayPage() {
     const [isGenOpen, setIsGenOpen] = useState(false)
     const [weekStart, setWeekStart] = useState('')
     const [weekEnd, setWeekEnd] = useState('')
+    const [includePreviousUnpaid, setIncludePreviousUnpaid] = useState(true)
+
+    const setPresetThisWeek = () => {
+        const now = new Date();
+        const day = now.getDay();
+        const diffToMon = day === 0 ? -6 : 1 - day;
+        const mon = new Date(now);
+        mon.setDate(now.getDate() + diffToMon);
+        const sun = new Date(mon);
+        sun.setDate(mon.getDate() + 6);
+        setWeekStart(format(mon, 'yyyy-MM-dd'));
+        setWeekEnd(format(sun, 'yyyy-MM-dd'));
+    };
+
+    const setPresetLastWeek = () => {
+        const now = new Date();
+        const day = now.getDay();
+        const diffToMon = day === 0 ? -6 : 1 - day;
+        const lastMon = new Date(now);
+        lastMon.setDate(now.getDate() + diffToMon - 7);
+        const lastSun = new Date(lastMon);
+        lastSun.setDate(lastMon.getDate() + 6);
+        setWeekStart(format(lastMon, 'yyyy-MM-dd'));
+        setWeekEnd(format(lastSun, 'yyyy-MM-dd'));
+    };
+
+    const setPresetThisMonth = () => {
+        const now = new Date();
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        setWeekStart(format(firstDay, 'yyyy-MM-dd'));
+        setWeekEnd(format(now, 'yyyy-MM-dd'));
+    };
 
     const [isCustomOpen, setIsCustomOpen] = useState(false)
     const [customName, setCustomName] = useState('')
@@ -323,7 +357,7 @@ export default function PaydayPage() {
 
         setIsActionLoading(true)
         try {
-            const res = await createWeeklyPayoutRun(weekStart, weekEnd)
+            const res = await createWeeklyPayoutRun(weekStart, weekEnd, includePreviousUnpaid)
             if (res.success) {
                 toast({
                     title: 'Success',
@@ -1827,6 +1861,22 @@ export default function PaydayPage() {
                         </DialogHeader>
 
                         <form onSubmit={handleGenerateRun} className="space-y-4 py-2">
+                            {/* Quick Presets Bar */}
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-semibold text-muted-foreground">Quick Date Presets</Label>
+                                <div className="flex flex-wrap gap-1.5">
+                                    <Button type="button" variant="outline" size="sm" onClick={setPresetThisWeek} className="text-xs h-7 glass border-muted/30 hover:bg-primary/10">
+                                        This Week (Mon–Sun)
+                                    </Button>
+                                    <Button type="button" variant="outline" size="sm" onClick={setPresetLastWeek} className="text-xs h-7 glass border-muted/30 hover:bg-primary/10">
+                                        Last Week
+                                    </Button>
+                                    <Button type="button" variant="outline" size="sm" onClick={setPresetThisMonth} className="text-xs h-7 glass border-muted/30 hover:bg-primary/10">
+                                        This Month
+                                    </Button>
+                                </div>
+                            </div>
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="weekStart">Start Date</Label>
@@ -1850,6 +1900,23 @@ export default function PaydayPage() {
                                         required
                                     />
                                 </div>
+                            </div>
+
+                            {/* Carry-Forward Unpaid Wages Switch */}
+                            <div className="flex items-center justify-between p-3 rounded-lg border border-primary/20 bg-primary/5 gap-3">
+                                <div className="space-y-0.5">
+                                    <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5 cursor-pointer">
+                                        <Layers className="h-3.5 w-3.5 text-primary" /> Carry-Forward Unpaid Wages
+                                    </Label>
+                                    <p className="text-[11px] text-muted-foreground leading-normal">
+                                        Include all unpaid worklog entries prior to Start Date so no labor wages are left behind.
+                                    </p>
+                                </div>
+                                <Switch
+                                    checked={includePreviousUnpaid}
+                                    onCheckedChange={setIncludePreviousUnpaid}
+                                    className="shrink-0"
+                                />
                             </div>
 
                             <div className="bg-muted/10 border border-muted/20 p-3 rounded-lg flex items-start gap-2.5">
