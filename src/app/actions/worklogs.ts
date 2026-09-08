@@ -1,7 +1,6 @@
-'use server'
+// Client action module
 
-import { createClient } from '@/utils/supabase/server';
-import { cookies } from 'next/headers'
+import { createClient } from '@/utils/supabase/client';
 import { z } from 'zod'
 import { evaluateWorklogProgressWithGemini } from '@/app/actions/ai-progress';
 
@@ -381,6 +380,29 @@ export async function getRecentWorklogs(limit: number = 5) {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error('Unauthorized')
 
+        // Fetch user's company_id
+        const { data: userProfile } = await supabase
+            .from('users')
+            .select('company_id')
+            .eq('id', user.id)
+            .single();
+
+        if (!userProfile?.company_id) {
+            return { success: true, data: [] };
+        }
+
+        // Fetch projects for this company
+        const { data: companyProjects } = await supabase
+            .from('projects')
+            .select('id')
+            .eq('company_id', userProfile.company_id);
+
+        const projectIds = (companyProjects || []).map(p => p.id);
+
+        if (projectIds.length === 0) {
+            return { success: true, data: [] };
+        }
+
         const { data, error } = await supabase
             .from('daily_worklogs')
             .select(`
@@ -401,6 +423,7 @@ export async function getRecentWorklogs(limit: number = 5) {
                     id
                 )
             `)
+            .in('project_id', projectIds)
             .order('date', { ascending: false })
             .order('updated_at', { ascending: false })
             .order('created_at', { ascending: false })
