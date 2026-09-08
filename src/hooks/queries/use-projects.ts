@@ -80,20 +80,7 @@ export function useProject(projectId: string | undefined) {
         queryFn: async () => {
             if (!user || !projectId) return null;
 
-            // Check user has access to this project via project_members
-            const { data: memberData, error: memberError } = await supabase
-                .from('project_members')
-                .select('project_id')
-                .eq('user_id', user.id)
-                .eq('project_id', projectId)
-                .maybeSingle();
-
-            if (memberError) throw memberError;
-            if (!memberData) {
-                throw new Error('You do not have access to this project');
-            }
-
-            // Fetch the project
+            // Fetch the project (Supabase RLS handles access control)
             const { data, error } = await supabase
                 .from('projects')
                 .select('*')
@@ -104,7 +91,7 @@ export function useProject(projectId: string | undefined) {
             return data as Project;
         },
         enabled: !!user && !!projectId,
-        staleTime: 10 * 60 * 1000, // 10 minutes for individual projects
+        staleTime: 0,
     });
 }
 
