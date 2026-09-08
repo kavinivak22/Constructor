@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-static';
+
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSupabase } from '@/supabase/provider';
@@ -16,6 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useProject, useProjectMembersCount } from '@/hooks/queries';
+import { useExpenses } from '@/hooks/queries/use-expenses';
 import { useProjectWorklogs } from '@/hooks/queries/use-worklogs';
 import { CreateWorklogDialog } from '@/components/worklog/create-worklog-dialog';
 import { WorklogDetailDialog } from '@/components/worklog/worklog-detail-dialog';
@@ -158,6 +161,7 @@ export default function ProjectDetailsPage() {
     // Use React Query hooks for data fetching
     const { data: project, isLoading, error } = useProject(projectIdString);
     const { data: memberCount = 0 } = useProjectMembersCount(projectIdString);
+    const { data: expenses = [] } = useExpenses(projectIdString);
 
     const { data: worklogs = [] } = useProjectWorklogs(projectIdString);
 
@@ -166,10 +170,10 @@ export default function ProjectDetailsPage() {
         return format(new Date(date), formatStr);
     };
 
-    const budget = 850000;
-    const spent = 552500;
-    const spentPercentage = (spent / budget) * 100;
-    const remaining = budget - spent;
+    const budget = project?.budget ? Number(project.budget) : 0;
+    const spent = (expenses || []).reduce((sum: number, exp: any) => sum + (Number(exp.amount) || 0), 0);
+    const remaining = Math.max(0, budget - spent);
+    const spentPercentage = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
 
 
     if (isLoading) {

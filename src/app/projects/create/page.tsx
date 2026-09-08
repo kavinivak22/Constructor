@@ -245,27 +245,11 @@ export default function CreateProjectPage() {
 
       if (projectError) throw projectError;
 
-      // Add project to creator's project list
-      const currentProjectIds = userProfile.projectIds || [];
-      const { error: userUpdateError } = await supabase
-        .from('users')
-        .update({
-          projectIds: [...currentProjectIds, projectData.id]
-        })
-        .eq('id', user.id);
-
-      if (userUpdateError) {
-        console.error("Failed to add project to user", userUpdateError);
-        // Optional: rollback project creation or warn user
-      }
-
-      // if (error) throw error;
-
       toast({
         title: 'Project Created',
         description: 'Your new project has been created successfully.',
       });
-      router.push('/');
+      router.push('/projects');
     } catch (error: any) {
       toast({
         title: 'Error creating project',
