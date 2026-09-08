@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Constructor</string>
+    <string name="title_activity_main">Constructor</string>
+    <string name="package_name">com.constructor.app</string>
+    <string name="custom_url_scheme">com.constructor.app</string>
+</resources>

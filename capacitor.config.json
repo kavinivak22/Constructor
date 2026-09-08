@@ -1,0 +1,17 @@
+{
+  "appId": "com.constructor.app",
+  "appName": "Constructor",
+  "webDir": "out",
+  "server": {
+    "url": "https://constructor-beta.vercel.app",
+    "cleartext": true
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
+    "CapacitorUpdater": {
+      "autoUpdate": false
+    }
+  }
+}
