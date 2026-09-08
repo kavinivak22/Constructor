@@ -36,32 +36,37 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
 
     // Don't run profile fetching/routing logic on auth routes
     if (user && !isAuthRoute) {
-      setIsUserProfileLoading(true);
+      // Only show full loading screen if we don't have a profile for this user yet
+      if (!userProfile || userProfile.id !== user.id) {
+        setIsUserProfileLoading(true);
+      }
+
       const fetchUserProfile = async () => {
-        const { data, error } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', user.id)
-          .single();
+        try {
+          const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', user.id)
+            .single();
 
-        // User record might not exist yet (created only when joining/creating company)
-        if (error && error.code === 'PGRST116') {
-          // No user record found - this is expected for new signups
-          setUserProfile(null);
-        } else if (error) {
-          console.error('Error fetching user profile:', error.message);
-          setUserProfile(null);
-        } else {
-          setUserProfile({
-            ...data,
-            companyId: data.company_id,
-            displayName: data.display_name,
-            photoURL: data.photo_url,
-            projectIds: [],
-          } as AppUser);
+          // User record might not exist yet (created only when joining/creating company)
+          if (error && error.code === 'PGRST116') {
+            setUserProfile(null);
+          } else if (error) {
+            console.error('Error fetching user profile:', error.message);
+            setUserProfile(null);
+          } else {
+            setUserProfile({
+              ...data,
+              companyId: data.company_id,
+              displayName: data.display_name,
+              photoURL: data.photo_url,
+              projectIds: [],
+            } as AppUser);
+          }
+        } finally {
+          setIsUserProfileLoading(false);
         }
-
-        setIsUserProfileLoading(false);
       };
 
       fetchUserProfile();
@@ -69,7 +74,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
       setUserProfile(null);
       setIsUserProfileLoading(false);
     }
-  }, [user, isUserLoading, isAuthRoute, supabase]);
+  }, [user?.id, isUserLoading, isAuthRoute]);
 
 
   useEffect(() => {
@@ -88,7 +93,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
       }
     }
 
-  }, [user, userProfile, isUserLoading, isUserProfileLoading, pathname, router, isRegisterCompanyRoute, isAuthRoute]);
+  }, [user?.id, userProfile?.companyId, isUserLoading, isUserProfileLoading, isRegisterCompanyRoute, isAuthRoute, router]);
 
   const isLoadingScreen = isUserLoading || (user && !isAuthRoute && isUserProfileLoading);
   const showFullLayout = user && userProfile?.companyId && !isAuthRoute;
