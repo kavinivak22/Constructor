@@ -22,15 +22,16 @@ export const SupabaseProvider = ({ children }: { children: React.ReactNode }) =>
     const router = useRouter();
 
     useEffect(() => {
+        // Get initial session on mount
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setUser(session?.user ?? null);
+            setIsLoading(false);
+        });
+
         const {
             data: { subscription },
-        } = supabase.auth.onAuthStateChange((event, session) => {
-            setIsLoading(true);
-            if (session) {
-                setUser(session.user);
-            } else {
-                setUser(null);
-            }
+        } = supabase.auth.onAuthStateChange((_event, session) => {
+            setUser(session?.user ?? null);
             setIsLoading(false);
         });
 
@@ -38,7 +39,7 @@ export const SupabaseProvider = ({ children }: { children: React.ReactNode }) =>
         return () => {
             subscription.unsubscribe();
         };
-    }, [router, supabase]);
+    }, [supabase]);
 
     return (
         <SupabaseContext.Provider value={{ supabase, user, isLoading }}>

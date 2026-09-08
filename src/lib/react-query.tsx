@@ -12,8 +12,8 @@ const queryClientConfig = {
             staleTime: 5 * 60 * 1000,
             // Keep unused data in cache for 10 minutes
             gcTime: 10 * 60 * 1000,
-            // Refetch on window focus for fresh data
-            refetchOnWindowFocus: true,
+            // Do not refetch on window focus to avoid resetting UI state/forms during tab switches
+            refetchOnWindowFocus: false,
             // Retry failed requests 3 times with exponential backoff
             retry: 3,
             retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 30000),
