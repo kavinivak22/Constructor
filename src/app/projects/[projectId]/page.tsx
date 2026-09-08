@@ -174,6 +174,11 @@ export default function ProjectDetailsPage() {
     const spent = (expenses || []).reduce((sum: number, exp: any) => sum + (Number(exp.amount) || 0), 0);
     const remaining = Math.max(0, budget - spent);
     const spentPercentage = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
+    const formattedBudgetDisplay = budget >= 100000 
+        ? `${(budget / 100000).toLocaleString('en-IN', { maximumFractionDigits: 2 })}L`
+        : budget > 0 
+            ? `${budget.toLocaleString('en-IN')}`
+            : '0';
 
 
     if (isLoading) {
@@ -244,14 +249,14 @@ export default function ProjectDetailsPage() {
                             <Calendar className="h-4 w-4 text-primary shrink-0" />
                             <div>
                                 <p className='text-[10px] sm:text-xs text-muted-foreground font-medium'>End Date</p>
-                                <p className='font-bold text-foreground text-xs sm:text-sm'>{getFormattedDate(project.endDate as string)}</p>
+                                <p className='font-bold text-foreground text-xs sm:text-sm'>{getFormattedDate((project.end_date || project.endDate) as string)}</p>
                             </div>
                         </div>
                         <div className='flex items-center gap-2.5 bg-background/40 p-2.5 rounded-xl border border-white/5'>
                             <IndianRupee className="h-4 w-4 text-emerald-500 shrink-0" />
                             <div>
                                 <p className='text-[10px] sm:text-xs text-muted-foreground font-medium'>Budget</p>
-                                <p className='font-bold text-foreground text-xs sm:text-sm'>₹8.5L</p>
+                                <p className='font-bold text-foreground text-xs sm:text-sm'>₹{formattedBudgetDisplay}</p>
                             </div>
                         </div>
                         <div className='flex items-center gap-2.5 bg-background/40 p-2.5 rounded-xl border border-white/5'>
@@ -262,10 +267,10 @@ export default function ProjectDetailsPage() {
                             </div>
                         </div>
                         <div className='flex items-center gap-2.5 bg-background/40 p-2.5 rounded-xl border border-white/5'>
-                            <Progress value={65} className="w-4 h-4 shrink-0" />
+                            <Progress value={spentPercentage} className="w-4 h-4 shrink-0" />
                             <div>
                                 <p className='text-[10px] sm:text-xs text-muted-foreground font-medium'>Spent</p>
-                                <p className='font-bold text-foreground text-xs sm:text-sm'>65%</p>
+                                <p className='font-bold text-foreground text-xs sm:text-sm'>{Math.round(spentPercentage)}%</p>
                             </div>
                         </div>
                     </div>
