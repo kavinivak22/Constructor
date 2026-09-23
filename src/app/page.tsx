@@ -327,8 +327,8 @@ export default function DashboardPage() {
 
                 {/* Tomorrow's Work Prep Card (Minimized to conserve space) */}
                 <Card className="glass-card overflow-hidden border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent shadow-sm">
-                    <CardContent className="p-3.5 sm:p-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <CardContent className="p-3.5 sm:p-4 sm:flex sm:items-center sm:min-h-[4.5rem]">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
                             <div className="flex items-center gap-3">
                                 <div className="h-9 w-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
                                     <PhoneCall className="h-4 w-4" />

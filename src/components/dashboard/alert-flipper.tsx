@@ -61,8 +61,8 @@ export function AlertFlipper({
     };
 
     const AlertCardContent = ({ alert }: { alert: Alert }) => (
-        <div className="flex items-start gap-3 sm:gap-4">
-            <alert.icon className="h-5 w-5 sm:h-6 sm:w-6 mt-1 flex-shrink-0" />
+        <div className="flex items-start sm:items-center gap-3 sm:gap-4">
+            <alert.icon className="h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0" />
             <div className='flex-1 min-w-0'>
                 <h4 className="font-semibold text-sm sm:font-bold sm:text-base truncate">{alert.title}</h4>
                 <p className="text-xs sm:text-sm line-clamp-2 sm:line-clamp-none leading-snug sm:leading-normal">{alert.description}</p>
