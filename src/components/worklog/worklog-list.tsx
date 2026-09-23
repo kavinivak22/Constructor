@@ -43,6 +43,9 @@ import Autoplay from "embla-carousel-autoplay"
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { CreateWorklogDialog } from '@/components/worklog/create-worklog-dialog';
+import { WorklogDetailDialog } from '@/components/worklog/worklog-detail-dialog';
+import { getSalaryProfiles } from '@/app/actions/financials';
+import { getProjectMaterials } from '@/app/actions/materials';
 import { useToast } from '@/hooks/use-toast';
 import { useSupabase } from '@/supabase/provider';
 
@@ -78,10 +81,31 @@ export function WorklogList({ projectId, refreshTrigger, highlightWorklogId }: W
     const [date, setDate] = useState<Date | undefined>(undefined);
     const [editingWorklog, setEditingWorklog] = useState<any | null>(null);
     const [deletingWorklogId, setDeletingWorklogId] = useState<string | null>(null);
+    const [selectedWorklog, setSelectedWorklog] = useState<any | null>(null);
+    const [isWorklogDialogOpen, setIsWorklogDialogOpen] = useState(false);
+    const [salaryProfiles, setSalaryProfiles] = useState<any[]>([]);
+    const [projectMaterials, setProjectMaterials] = useState<any[]>([]);
     const { toast } = useToast();
 
     // Key to force re-render/fetch
     const [fetchKey, setFetchKey] = useState(0);
+
+    // Fetch salary profiles and materials for wage & job costing
+    useEffect(() => {
+        const loadRates = async () => {
+            try {
+                const [profilesRes, materialsRes] = await Promise.all([
+                    getSalaryProfiles(),
+                    projectId && projectId !== 'all' ? getProjectMaterials(projectId) : Promise.resolve({ success: false, data: [] })
+                ]);
+                if (Array.isArray(profilesRes)) setSalaryProfiles(profilesRes);
+                if (materialsRes?.success && Array.isArray(materialsRes.data)) setProjectMaterials(materialsRes.data);
+            } catch (e) {
+                console.error("Failed to load rates for WorklogList:", e);
+            }
+        };
+        loadRates();
+    }, [projectId]);
 
     // Refs for scrolling
     const worklogRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -273,8 +297,14 @@ export function WorklogList({ projectId, refreshTrigger, highlightWorklogId }: W
                                 index={index}
                                 onEdit={() => setEditingWorklog(log)}
                                 onDelete={() => setDeletingWorklogId(log.id)}
+                                onViewDetail={() => {
+                                    setSelectedWorklog(log);
+                                    setIsWorklogDialogOpen(true);
+                                }}
                                 initiallyExpanded={log.id === highlightWorklogId}
                                 currentUserProfile={currentUserProfile}
+                                salaryProfiles={salaryProfiles}
+                                projectMaterials={projectMaterials}
                             />
                         </div>
                     ))}
@@ -282,31 +312,6 @@ export function WorklogList({ projectId, refreshTrigger, highlightWorklogId }: W
             )}
 
             {/* Hidden Edit Dialog Trigger removed */}
-
-            {/* We force the dialog to open by passing a ref or controlled prop? 
-                The Refactored code has `const [open, setOpen] = useState(false);`
-                To make it open immediately for editing, we might need a small tweak or just click the trigger programmatically.
-                HACK: The Refactored Dialog sets state on mount if trigger is clicked? No.
-                
-                Let's use a simpler approach: The Dialog renders, but starts closed. 
-                We need to open it.
-                I will add an `open` prop to the CreateWorklogDialog in a future iteration if needed.
-                For now, let's wrap it in an Effect or just use the `trigger` prop which is a ReactNode.
-                
-                Actually, the cleanest way without changing the Dialog again is:
-                1. Render the Dialog
-                2. Use the `trigger` prop to pass a button that we click? No that's messy.
-                3. The User clicks "Edit" in dropdown -> we setEditingWorklog -> Dialog mounts.
-                BUT Dialog internal state is `false`.
-                
-                Let's MODIFY `CreateWorklogDialog` to accept `open` control prop or defaultOpen. 
-                Actually, I just modified it in Step 252. I can see `const [open, setOpen] = useState(false);`.
-                I should have added `managedOpen` prop.
-                
-                Correction: I will update `CreateWorklogDialog` in next step to accept `defaultOpen` or `controlledOpen`.
-                OR, I can just use a `ref` to click the trigger.
-                Let's stick to modifying `WorklogList` now, and I will do a quick patch on `CreateWorklogDialog` to accept `defaultOpen`.
-             */}
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!deletingWorklogId} onOpenChange={(open) => !open && setDeletingWorklogId(null)}>
@@ -339,6 +344,17 @@ export function WorklogList({ projectId, refreshTrigger, highlightWorklogId }: W
                     forceOpen={true}
                 />
             )}
+
+            {selectedWorklog && (
+                <WorklogDetailDialog
+                    worklog={selectedWorklog}
+                    isOpen={isWorklogDialogOpen}
+                    onClose={() => {
+                        setIsWorklogDialogOpen(false);
+                        setSelectedWorklog(null);
+                    }}
+                />
+            )}
         </div>
     );
 }
@@ -348,15 +364,21 @@ function WorklogFeedCard({
     index, 
     onEdit, 
     onDelete, 
+    onViewDetail,
     initiallyExpanded = false,
-    currentUserProfile
+    currentUserProfile,
+    salaryProfiles = [],
+    projectMaterials = []
 }: { 
     worklog: any; 
     index: number; 
     onEdit: () => void; 
     onDelete: () => void; 
+    onViewDetail?: () => void;
     initiallyExpanded?: boolean; 
     currentUserProfile: { id: string; role: string } | null;
+    salaryProfiles?: any[];
+    projectMaterials?: any[];
 }) {
     const [expanded, setExpanded] = useState(initiallyExpanded);
     const [isFullscreenViewerOpen, setIsFullscreenViewerOpen] = useState(false);
@@ -369,11 +391,120 @@ function WorklogFeedCard({
     }, [initiallyExpanded]);
 
     // Totals
-    const totalWorkers = worklog.labor.reduce((acc: number, entry: any) => {
-        return acc + entry.workers.reduce((wAcc: number, w: any) => wAcc + Number(w.count), 0);
+    const totalWorkers = (worklog.labor || []).reduce((acc: number, entry: any) => {
+        return acc + (entry.workers || []).reduce((wAcc: number, w: any) => wAcc + Number(w.count || 0), 0);
     }, 0);
-    const totalMaterials = worklog.materials.length;
-    const totalPhotos = worklog.photos.length;
+    const totalMaterials = (worklog.materials || []).length;
+    const totalPhotos = (worklog.photos || []).length;
+
+    // Helper to match contractor wage profile
+    const findContractorProfile = (contractorName: string, profiles: any[]) => {
+        if (!contractorName || !profiles?.length) return null;
+        const cleanName = contractorName.toLowerCase().trim();
+        return profiles.find((p: any) => {
+            const pName = (p.contractors?.name || p.worker_name || '').toLowerCase().trim();
+            if (!pName) return false;
+            return cleanName === pName || cleanName.includes(pName) || pName.includes(cleanName);
+        });
+    };
+
+    // Helper to find unit cost from project materials
+    const getMaterialUnitCost = (m: any, materialsList: any[]) => {
+        const mName = (m.material_name || m.materialName || '').toLowerCase().trim();
+        const mId = m.project_material_id || m.projectMaterialId;
+        const match = materialsList.find(pm => (mId && pm.id === mId) || (pm.name && pm.name.toLowerCase().trim() === mName));
+        return match ? Number(match.cost || 0) : 0;
+    };
+
+    // Calculate Labor Cost based on wage profiles
+    const laborCostBreakdown = useMemo(() => {
+        let totalLaborCost = 0;
+        let profilesMatchedCount = 0;
+
+        const entries = (worklog.labor || []).map((entry: any) => {
+            const contractorName = entry.contractor_name || entry.contractorName || '';
+            const profile = findContractorProfile(contractorName, salaryProfiles);
+            if (profile) profilesMatchedCount++;
+
+            let entryTotal = 0;
+            const workers = (entry.workers || []).map((w: any) => {
+                const count = Number(w.count || 0);
+                const wType = (w.worker_type || w.workerType || '').trim();
+                const wTypeLower = wType.toLowerCase();
+
+                let rate = 0;
+                let hasProfileRate = false;
+
+                if (profile) {
+                    const rates = (profile.rates as Record<string, number>) || {};
+                    const matchingKey = Object.keys(rates).find(k => k.toLowerCase().trim() === wTypeLower);
+                    if (matchingKey && Number(rates[matchingKey]) > 0) {
+                        rate = Number(rates[matchingKey]);
+                        hasProfileRate = true;
+                    } else if (Number(profile.rate) > 0) {
+                        rate = Number(profile.rate);
+                        hasProfileRate = true;
+                    }
+                }
+
+                if (!hasProfileRate && salaryProfiles.length > 0) {
+                    for (const p of salaryProfiles) {
+                        const rates = (p.rates as Record<string, number>) || {};
+                        const matchingKey = Object.keys(rates).find(k => k.toLowerCase().trim() === wTypeLower);
+                        if (matchingKey && Number(rates[matchingKey]) > 0) {
+                            rate = Number(rates[matchingKey]);
+                            hasProfileRate = true;
+                            break;
+                        }
+                    }
+                }
+
+                const subtotal = count * rate;
+                entryTotal += subtotal;
+
+                return {
+                    type: wType,
+                    count,
+                    rate,
+                    subtotal,
+                    hasProfileRate,
+                };
+            });
+
+            totalLaborCost += entryTotal;
+            return {
+                ...entry,
+                contractorName,
+                profileFound: !!profile,
+                entryTotal,
+                workersBreakdown: workers,
+            };
+        });
+
+        return { totalLaborCost, entries, profilesMatchedCount };
+    }, [worklog.labor, salaryProfiles]);
+
+    // Calculate Materials Cost based on inventory cost per unit
+    const materialsCostBreakdown = useMemo(() => {
+        let totalMaterialsCost = 0;
+        const items = (worklog.materials || []).map((m: any) => {
+            const qty = Number(m.quantity_consumed || m.quantity || 0);
+            const unitCost = getMaterialUnitCost(m, projectMaterials);
+            const subtotal = qty * unitCost;
+            totalMaterialsCost += subtotal;
+            return {
+                name: m.material_name || m.materialName || 'Material',
+                quantity: qty,
+                unit: m.unit || '',
+                unitCost,
+                subtotal,
+                hasCost: unitCost > 0,
+            };
+        });
+        return { totalMaterialsCost, items };
+    }, [worklog.materials, projectMaterials]);
+
+    const estimatedTotalCost = laborCostBreakdown.totalLaborCost + materialsCostBreakdown.totalMaterialsCost;
 
     // Autoplay Plugin Reference
     const plugin = useRef(
@@ -404,7 +535,7 @@ function WorklogFeedCard({
         description = "No detailed description provided for this day.";
     }
 
-        const canEditOrDelete = currentUserProfile?.role === 'admin' || currentUserProfile?.id === worklog.created_by;
+    const canEditOrDelete = currentUserProfile?.role === 'admin' || currentUserProfile?.id === worklog.created_by;
 
         return (
             <div className="group overflow-hidden glass-card flex flex-col h-full relative border-none bg-transparent">
@@ -501,7 +632,7 @@ function WorklogFeedCard({
 
             {/* Content Section */}
             <div className="flex flex-col flex-1 p-5">
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex flex-wrap items-center gap-2 mb-3">
                     {worklog.project?.name && (
                         <Badge variant="secondary" className="text-[10px] px-2 py-0.5 h-auto glass border-white/10 dark:border-white/5 text-foreground font-semibold bg-white/10">
                             {worklog.project.name}
@@ -515,9 +646,17 @@ function WorklogFeedCard({
                             <Package className="h-3 w-3 text-muted-foreground" /> {totalMaterials} Mats
                         </Badge>
                     )}
+                    {estimatedTotalCost > 0 && (
+                        <Badge variant="outline" className="text-[10px] px-2 py-0.5 h-auto glass border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10">
+                            ₹{estimatedTotalCost.toLocaleString('en-IN')} Cost
+                        </Badge>
+                    )}
                 </div>
 
-                <h3 className="font-bold text-lg mb-2 leading-tight group-hover:text-primary transition-colors line-clamp-2 text-foreground">
+                <h3 
+                    onClick={onViewDetail}
+                    className="font-bold text-lg mb-2 leading-tight group-hover:text-primary transition-colors line-clamp-2 text-foreground cursor-pointer"
+                >
                     {title}
                 </h3>
 
@@ -528,17 +667,59 @@ function WorklogFeedCard({
                 {/* Detailed expanded sections */}
                 {expanded && (
                     <div className="space-y-4 my-4 pt-4 border-t border-white/10 dark:border-white/5 animate-in fade-in-50 slide-in-from-top-2 duration-300">
+                        {/* Job-Costing Cost of Work Banner */}
+                        <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col gap-2">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">
+                                        ₹
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-1">
+                                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider leading-none">Job Cost of Work</p>
+                                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">• Wage Profile Linked</span>
+                                        </div>
+                                        <p className="text-base font-bold text-emerald-600 dark:text-emerald-400 leading-tight mt-0.5 font-mono">
+                                            ₹{estimatedTotalCost.toLocaleString('en-IN')}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-muted-foreground self-end sm:self-auto">
+                                    <span className="bg-background/80 px-2 py-0.5 rounded-md border border-white/10 dark:border-white/5 flex items-center gap-1 text-[11px]">
+                                        <Users className="h-3 w-3 text-primary" /> Labour: <span className="font-mono text-foreground font-bold">₹{laborCostBreakdown.totalLaborCost.toLocaleString('en-IN')}</span>
+                                    </span>
+                                    <span className="bg-background/80 px-2 py-0.5 rounded-md border border-white/10 dark:border-white/5 flex items-center gap-1 text-[11px]">
+                                        <Package className="h-3 w-3 text-amber-500" /> Materials: <span className="font-mono text-foreground font-bold">₹{materialsCostBreakdown.totalMaterialsCost.toLocaleString('en-IN')}</span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Labor section */}
-                        {worklog.labor && worklog.labor.length > 0 && (
+                        {laborCostBreakdown.entries.length > 0 && (
                             <div className="space-y-3">
-                                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                                    <Users className="h-3.5 w-3.5" /> Labor & Activity
-                                </h4>
+                                <div className="flex justify-between items-center">
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                        <Users className="h-3.5 w-3.5 text-primary" /> Labor & Activity
+                                    </h4>
+                                    {laborCostBreakdown.totalLaborCost > 0 && (
+                                        <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                                            Total: ₹{laborCostBreakdown.totalLaborCost.toLocaleString('en-IN')}
+                                        </span>
+                                    )}
+                                </div>
                                 <div className="space-y-2">
-                                    {worklog.labor.map((entry: any, eIdx: number) => (
+                                    {laborCostBreakdown.entries.map((entry: any, eIdx: number) => (
                                         <div key={eIdx} className="p-3 rounded-xl bg-white/5 dark:bg-black/20 border border-white/5 space-y-2">
                                             <div className="flex justify-between items-start gap-2">
-                                                <span className="font-semibold text-sm text-foreground">{entry.contractor_name}</span>
+                                                <div>
+                                                    <span className="font-semibold text-sm text-foreground">{entry.contractorName}</span>
+                                                    {entry.profileFound && (
+                                                        <span className="ml-2 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                                                            (Wage Profile)
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 {entry.category && (
                                                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-white/10 text-foreground border-none">
                                                         {entry.category}
@@ -555,13 +736,24 @@ function WorklogFeedCard({
                                                     {entry.work_done_unit && <span className="text-foreground">{entry.work_done_unit}</span>}
                                                 </div>
                                             )}
-                                            {entry.workers && entry.workers.length > 0 && (
+                                            {entry.workersBreakdown && entry.workersBreakdown.length > 0 && (
                                                 <div className="flex flex-wrap gap-1.5 pt-1">
-                                                    {entry.workers.map((w: any, wIdx: number) => (
-                                                        <Badge key={wIdx} variant="outline" className="text-[10px] py-0 px-2 glass border-white/5 text-muted-foreground font-normal">
-                                                            {w.worker_type}: <span className="font-bold text-foreground ml-0.5">{w.count}</span>
+                                                    {entry.workersBreakdown.map((w: any, wIdx: number) => (
+                                                        <Badge key={wIdx} variant="outline" className="text-[10px] py-0.5 px-2 glass border-white/5 text-foreground font-medium flex items-center gap-1">
+                                                            <span className="text-muted-foreground">{w.type}:</span>
+                                                            <span className="font-bold">{w.count}</span>
+                                                            {w.hasProfileRate ? (
+                                                                <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold ml-0.5">
+                                                                    (@ ₹{w.rate} = ₹{w.subtotal.toLocaleString('en-IN')})
+                                                                </span>
+                                                            ) : null}
                                                         </Badge>
                                                     ))}
+                                                </div>
+                                            )}
+                                            {entry.entryTotal > 0 && (
+                                                <div className="flex justify-end pt-1 border-t border-white/5 text-xs text-muted-foreground">
+                                                    <span>Team Daily Wages: <strong className="font-mono text-foreground font-bold">₹{entry.entryTotal.toLocaleString('en-IN')}</strong></span>
                                                 </div>
                                             )}
                                         </div>
@@ -571,18 +763,39 @@ function WorklogFeedCard({
                         )}
 
                         {/* Materials section */}
-                        {worklog.materials && worklog.materials.length > 0 && (
+                        {materialsCostBreakdown.items.length > 0 && (
                             <div className="space-y-2">
-                                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                                    <Package className="h-3.5 w-3.5" /> Materials Consumed
-                                </h4>
+                                <div className="flex justify-between items-center">
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                        <Package className="h-3.5 w-3.5 text-amber-500" /> Materials Consumed
+                                    </h4>
+                                    {materialsCostBreakdown.totalMaterialsCost > 0 && (
+                                        <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                                            Total: ₹{materialsCostBreakdown.totalMaterialsCost.toLocaleString('en-IN')}
+                                        </span>
+                                    )}
+                                </div>
                                 <div className="p-3 rounded-xl bg-white/5 dark:bg-black/20 border border-white/5 divide-y divide-white/5">
-                                    {worklog.materials.map((m: any, mIdx: number) => (
+                                    {materialsCostBreakdown.items.map((m: any, mIdx: number) => (
                                         <div key={mIdx} className="flex justify-between items-center py-1.5 first:pt-0 last:pb-0 text-xs">
-                                            <span className="text-foreground font-medium">{m.material_name}</span>
-                                            <span className="text-muted-foreground font-semibold">
-                                                {m.quantity_consumed} <span className="text-[10px] font-normal">{m.unit}</span>
-                                            </span>
+                                            <div className="flex flex-col">
+                                                <span className="text-foreground font-medium">{m.name}</span>
+                                                {m.hasCost && (
+                                                    <span className="text-[10px] text-muted-foreground font-mono">
+                                                        ₹{m.unitCost} per {m.unit || 'unit'}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-muted-foreground font-semibold">
+                                                    {m.quantity} <span className="text-[10px] font-normal">{m.unit}</span>
+                                                </span>
+                                                {m.hasCost && (
+                                                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                                                        ₹{m.subtotal.toLocaleString('en-IN')}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -602,15 +815,28 @@ function WorklogFeedCard({
                             </span>
                         )}
                     </span>
-                    <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => setExpanded(!expanded)} 
-                        className="text-xs text-primary hover:text-primary/80 font-semibold flex items-center gap-1 hover:bg-white/10 dark:hover:bg-white/5"
-                    >
-                        {expanded ? "Hide Details" : "Show Details"}
-                        <ArrowRight className={cn("h-3.5 w-3.5 transition-transform", expanded ? "rotate-90" : "")} />
-                    </Button>
+                    <div className="flex items-center gap-1.5">
+                        {onViewDetail && (
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={onViewDetail}
+                                className="text-xs text-muted-foreground hover:text-foreground font-medium flex items-center gap-1 hover:bg-white/10 dark:hover:bg-white/5 h-8 px-2"
+                                title="Open full worklog details modal"
+                            >
+                                <Maximize2 className="h-3 w-3" /> Full View
+                            </Button>
+                        )}
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => setExpanded(!expanded)} 
+                            className="text-xs text-primary hover:text-primary/80 font-semibold flex items-center gap-1 hover:bg-white/10 dark:hover:bg-white/5 h-8 px-2"
+                        >
+                            {expanded ? "Hide Details" : "Show Details"}
+                            <ArrowRight className={cn("h-3.5 w-3.5 transition-transform", expanded ? "rotate-90" : "")} />
+                        </Button>
+                    </div>
                 </div>
             </div>
 
