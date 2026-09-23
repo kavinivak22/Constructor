@@ -799,6 +799,7 @@ function LaborEntryForm({ index, form, remove, contractors, salaryProfiles = [],
                                                     <FormControl>
                                                         <Input 
                                                             type="number"
+                                                            step="any"
                                                             {...field}
                                                             className="h-9 text-sm glass border-white/10 dark:border-white/5 bg-transparent text-foreground focus-visible:ring-primary"
                                                         />

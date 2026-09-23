@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { format, isSameDay } from 'date-fns';
-import { Users, Package, Image as ImageIcon, Calendar as CalendarIcon, Clock, ArrowRight, Search, X, MoreVertical, Edit, Trash2, AlertTriangle, Maximize2 } from 'lucide-react';
+import { Users, Package, Image as ImageIcon, Calendar as CalendarIcon, Clock, ArrowRight, Search, X, MoreVertical, Edit, Trash2, AlertTriangle } from 'lucide-react';
 import { FullscreenPhotoViewer } from '@/components/worklog/fullscreen-photo-viewer';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -43,7 +43,6 @@ import Autoplay from "embla-carousel-autoplay"
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { CreateWorklogDialog } from '@/components/worklog/create-worklog-dialog';
-import { WorklogDetailDialog } from '@/components/worklog/worklog-detail-dialog';
 import { getSalaryProfiles } from '@/app/actions/financials';
 import { getProjectMaterials } from '@/app/actions/materials';
 import { useToast } from '@/hooks/use-toast';
@@ -81,8 +80,6 @@ export function WorklogList({ projectId, refreshTrigger, highlightWorklogId }: W
     const [date, setDate] = useState<Date | undefined>(undefined);
     const [editingWorklog, setEditingWorklog] = useState<any | null>(null);
     const [deletingWorklogId, setDeletingWorklogId] = useState<string | null>(null);
-    const [selectedWorklog, setSelectedWorklog] = useState<any | null>(null);
-    const [isWorklogDialogOpen, setIsWorklogDialogOpen] = useState(false);
     const [salaryProfiles, setSalaryProfiles] = useState<any[]>([]);
     const [projectMaterials, setProjectMaterials] = useState<any[]>([]);
     const { toast } = useToast();
@@ -297,10 +294,6 @@ export function WorklogList({ projectId, refreshTrigger, highlightWorklogId }: W
                                 index={index}
                                 onEdit={() => setEditingWorklog(log)}
                                 onDelete={() => setDeletingWorklogId(log.id)}
-                                onViewDetail={() => {
-                                    setSelectedWorklog(log);
-                                    setIsWorklogDialogOpen(true);
-                                }}
                                 initiallyExpanded={log.id === highlightWorklogId}
                                 currentUserProfile={currentUserProfile}
                                 salaryProfiles={salaryProfiles}
@@ -344,17 +337,6 @@ export function WorklogList({ projectId, refreshTrigger, highlightWorklogId }: W
                     forceOpen={true}
                 />
             )}
-
-            {selectedWorklog && (
-                <WorklogDetailDialog
-                    worklog={selectedWorklog}
-                    isOpen={isWorklogDialogOpen}
-                    onClose={() => {
-                        setIsWorklogDialogOpen(false);
-                        setSelectedWorklog(null);
-                    }}
-                />
-            )}
         </div>
     );
 }
@@ -364,7 +346,6 @@ function WorklogFeedCard({
     index, 
     onEdit, 
     onDelete, 
-    onViewDetail,
     initiallyExpanded = false,
     currentUserProfile,
     salaryProfiles = [],
@@ -374,7 +355,6 @@ function WorklogFeedCard({
     index: number; 
     onEdit: () => void; 
     onDelete: () => void; 
-    onViewDetail?: () => void;
     initiallyExpanded?: boolean; 
     currentUserProfile: { id: string; role: string } | null;
     salaryProfiles?: any[];
@@ -654,7 +634,7 @@ function WorklogFeedCard({
                 </div>
 
                 <h3 
-                    onClick={onViewDetail}
+                    onClick={() => setExpanded(!expanded)}
                     className="font-bold text-lg mb-2 leading-tight group-hover:text-primary transition-colors line-clamp-2 text-foreground cursor-pointer"
                 >
                     {title}
@@ -816,17 +796,6 @@ function WorklogFeedCard({
                         )}
                     </span>
                     <div className="flex items-center gap-1.5">
-                        {onViewDetail && (
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={onViewDetail}
-                                className="text-xs text-muted-foreground hover:text-foreground font-medium flex items-center gap-1 hover:bg-white/10 dark:hover:bg-white/5 h-8 px-2"
-                                title="Open full worklog details modal"
-                            >
-                                <Maximize2 className="h-3 w-3" /> Full View
-                            </Button>
-                        )}
                         <Button 
                             variant="ghost" 
                             size="sm" 
