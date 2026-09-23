@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { EditContractorDialog } from '@/components/contractors/edit-contractor-dialog';
 import {
@@ -23,7 +24,14 @@ import {
     ChevronUp,
     Edit,
     FileText,
-    Wallet
+    Wallet,
+    Calendar,
+    CheckCircle2,
+    Clock,
+    CreditCard,
+    Receipt,
+    Users,
+    Info
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -61,6 +69,9 @@ export default function ContractorDetailPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [ledgerProjectFilter, setLedgerProjectFilter] = useState<string>('all');
     const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
+
+    // Modal state for Payment Details
+    const [selectedTxModal, setSelectedTxModal] = useState<any | null>(null);
 
     // Edit modal state
     const [isEditOpen, setIsEditOpen] = useState(false);
@@ -147,8 +158,32 @@ export default function ContractorDetailPage() {
         return account.nmrAccount.items.filter(tx => tx.project_id === ledgerProjectFilter);
     }, [account, ledgerProjectFilter]);
 
-    const totalPaidSum = filteredTransactions.filter(tx => tx.status === 'paid').reduce((sum, tx) => sum + Number(tx.amount_paid), 0);
-    const totalPendingSum = filteredTransactions.filter(tx => tx.status === 'pending').reduce((sum, tx) => sum + Number(tx.amount_paid), 0);
+    // Combined Totals
+    const totalPaidSum = useMemo(() => {
+        return filteredTransactions.filter(tx => tx.status === 'paid').reduce((sum, tx) => sum + Number(tx.amount_paid || 0), 0);
+    }, [filteredTransactions]);
+
+    const totalPendingSum = useMemo(() => {
+        return filteredTransactions.filter(tx => tx.status === 'pending').reduce((sum, tx) => sum + Number(tx.amount_paid || 0), 0);
+    }, [filteredTransactions]);
+
+    // Rate Totals
+    const ratePaidSum = useMemo(() => {
+        return filteredRateItems.filter(tx => tx.status === 'paid').reduce((sum, tx) => sum + Number(tx.amount_paid || 0), 0);
+    }, [filteredRateItems]);
+
+    const ratePendingSum = useMemo(() => {
+        return filteredRateItems.filter(tx => tx.status === 'pending').reduce((sum, tx) => sum + Number(tx.amount_paid || 0), 0);
+    }, [filteredRateItems]);
+
+    // NMR Totals
+    const nmrPaidSum = useMemo(() => {
+        return filteredNmrItems.filter(tx => tx.status === 'paid').reduce((sum, tx) => sum + Number(tx.amount_paid || 0), 0);
+    }, [filteredNmrItems]);
+
+    const nmrPendingSum = useMemo(() => {
+        return filteredNmrItems.filter(tx => tx.status === 'pending').reduce((sum, tx) => sum + Number(tx.amount_paid || 0), 0);
+    }, [filteredNmrItems]);
 
     // Helper to safely parse reference_details JSON payload into human readable text
     const parseReferenceDetails = (raw: string | null | undefined): { title: string; subtitle?: string | null } => {
@@ -350,17 +385,10 @@ export default function ContractorDetailPage() {
                                                 <TableRow
                                                     key={tx.id}
                                                     className="border-border/30 hover:bg-muted/30 text-xs cursor-pointer select-none"
-                                                    onClick={() => setExpandedTxId(expandedTxId === tx.id ? null : tx.id)}
+                                                    onClick={() => setSelectedTxModal(tx)}
                                                 >
-                                                    <TableCell className="font-medium flex items-center gap-1.5 py-3">
-                                                        {expandedTxId === tx.id ? (
-                                                            <ChevronUp className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                                        ) : (
-                                                            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                                        )}
-                                                        <span>
-                                                            {tx.paid_at || tx.created_at ? new Date(tx.paid_at || tx.created_at).toLocaleDateString('en-IN') : 'Pending'}
-                                                        </span>
+                                                    <TableCell className="font-medium py-3">
+                                                        {tx.paid_at || tx.created_at ? new Date(tx.paid_at || tx.created_at).toLocaleDateString('en-IN') : 'Pending'}
                                                     </TableCell>
                                                     <TableCell>{getPayoutClassBadge(tx.payout_class)}</TableCell>
                                                     <TableCell className="max-w-[280px]">
@@ -387,12 +415,11 @@ export default function ContractorDetailPage() {
                                 </div>
                             ) : (
                                 filteredTransactions.map((tx) => {
-                                    const isExpanded = expandedTxId === tx.id;
                                     const details = parseReferenceDetails(tx.reference_details);
                                     return (
                                         <div
                                             key={tx.id}
-                                            onClick={() => setExpandedTxId(isExpanded ? null : tx.id)}
+                                            onClick={() => setSelectedTxModal(tx)}
                                             className="glass-card rounded-2xl p-3.5 border border-white/10 space-y-2.5 cursor-pointer active:scale-[0.99] transition-transform"
                                         >
                                             <div className="flex items-center justify-between gap-2">
@@ -429,6 +456,17 @@ export default function ContractorDetailPage() {
 
                     {/* Rate Account Tab */}
                     <TabsContent value="rate" className="space-y-4">
+                        <div className="flex items-center justify-between p-3.5 sm:p-4 glass-card rounded-2xl border border-white/10">
+                            <div className="text-xs sm:text-sm">
+                                <span className="text-muted-foreground">Rate Cleared: </span>
+                                <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{ratePaidSum.toLocaleString('en-IN')}</span>
+                            </div>
+                            <div className="text-xs sm:text-sm">
+                                <span className="text-muted-foreground">Rate Outstanding: </span>
+                                <span className="font-bold text-amber-600 dark:text-amber-400">₹{ratePendingSum.toLocaleString('en-IN')}</span>
+                            </div>
+                        </div>
+
                         {/* Desktop Table */}
                         <div className="hidden md:block glass-card rounded-2xl border border-white/10 overflow-hidden">
                             <Table className="text-xs sm:text-sm">
@@ -449,7 +487,11 @@ export default function ContractorDetailPage() {
                                         filteredRateItems.map((tx) => {
                                             const details = parseReferenceDetails(tx.reference_details);
                                             return (
-                                                <TableRow key={tx.id} className="border-border/30 hover:bg-muted/30">
+                                                <TableRow
+                                                    key={tx.id}
+                                                    className="border-border/30 hover:bg-muted/30 cursor-pointer select-none"
+                                                    onClick={() => setSelectedTxModal(tx)}
+                                                >
                                                     <TableCell className="font-medium">
                                                         {tx.paid_at || tx.created_at ? new Date(tx.paid_at || tx.created_at).toLocaleDateString('en-IN') : 'Pending'}
                                                     </TableCell>
@@ -479,7 +521,8 @@ export default function ContractorDetailPage() {
                                     return (
                                         <div
                                             key={tx.id}
-                                            className="glass-card rounded-2xl p-3.5 border border-white/10 space-y-2.5"
+                                            onClick={() => setSelectedTxModal(tx)}
+                                            className="glass-card rounded-2xl p-3.5 border border-white/10 space-y-2.5 cursor-pointer active:scale-[0.99] transition-transform"
                                         >
                                             <div className="flex items-center justify-between gap-2">
                                                 <span className="text-[11px] text-muted-foreground">
@@ -512,6 +555,17 @@ export default function ContractorDetailPage() {
 
                     {/* NMR Account Tab */}
                     <TabsContent value="nmr" className="space-y-4">
+                        <div className="flex items-center justify-between p-3.5 sm:p-4 glass-card rounded-2xl border border-white/10">
+                            <div className="text-xs sm:text-sm">
+                                <span className="text-muted-foreground">NMR Cleared: </span>
+                                <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{nmrPaidSum.toLocaleString('en-IN')}</span>
+                            </div>
+                            <div className="text-xs sm:text-sm">
+                                <span className="text-muted-foreground">NMR Outstanding: </span>
+                                <span className="font-bold text-amber-600 dark:text-amber-400">₹{nmrPendingSum.toLocaleString('en-IN')}</span>
+                            </div>
+                        </div>
+
                         {/* Desktop Table */}
                         <div className="hidden md:block glass-card rounded-2xl border border-white/10 overflow-hidden">
                             <Table className="text-xs sm:text-sm">
@@ -532,7 +586,11 @@ export default function ContractorDetailPage() {
                                         filteredNmrItems.map((tx) => {
                                             const details = parseReferenceDetails(tx.reference_details);
                                             return (
-                                                <TableRow key={tx.id} className="border-border/30 hover:bg-muted/30">
+                                                <TableRow
+                                                    key={tx.id}
+                                                    className="border-border/30 hover:bg-muted/30 cursor-pointer select-none"
+                                                    onClick={() => setSelectedTxModal(tx)}
+                                                >
                                                     <TableCell className="font-medium">
                                                         {tx.paid_at || tx.created_at ? new Date(tx.paid_at || tx.created_at).toLocaleDateString('en-IN') : 'Pending'}
                                                     </TableCell>
@@ -562,7 +620,8 @@ export default function ContractorDetailPage() {
                                     return (
                                         <div
                                             key={tx.id}
-                                            className="glass-card rounded-2xl p-3.5 border border-white/10 space-y-2.5"
+                                            onClick={() => setSelectedTxModal(tx)}
+                                            className="glass-card rounded-2xl p-3.5 border border-white/10 space-y-2.5 cursor-pointer active:scale-[0.99] transition-transform"
                                         >
                                             <div className="flex items-center justify-between gap-2">
                                                 <span className="text-[11px] text-muted-foreground">
@@ -602,8 +661,141 @@ export default function ContractorDetailPage() {
                     onSuccess={() => loadData()}
                 />
 
+                {/* Payment Detail Dialog Modal */}
+                <Dialog open={!!selectedTxModal} onOpenChange={(open) => !open && setSelectedTxModal(null)}>
+                    <DialogContent className="max-w-md sm:max-w-lg rounded-2xl p-5 sm:p-6 glass-card border border-white/20 shadow-2xl max-h-[85vh] overflow-y-auto">
+                        {selectedTxModal && (() => {
+                            const details = parseReferenceDetails(selectedTxModal.reference_details);
+                            let parsedJson: any = null;
+                            if (typeof selectedTxModal.reference_details === 'string' && selectedTxModal.reference_details.trim().startsWith('{')) {
+                                try {
+                                    parsedJson = JSON.parse(selectedTxModal.reference_details);
+                                } catch (e) {}
+                            }
+
+                            return (
+                                <div className="space-y-4">
+                                    <DialogHeader className="space-y-2 pb-3 border-b border-border/40">
+                                        <div className="flex items-center justify-between gap-2">
+                                            {getPayoutClassBadge(selectedTxModal.payout_class)}
+                                            {getStatusBadge(selectedTxModal.status)}
+                                        </div>
+                                        <DialogTitle className="text-lg sm:text-xl font-bold font-headline text-foreground">
+                                            {details.title}
+                                        </DialogTitle>
+                                        <DialogDescription className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                            <Calendar className="h-3.5 w-3.5 text-primary/80" />
+                                            <span>
+                                                {selectedTxModal.paid_at || selectedTxModal.created_at
+                                                    ? new Date(selectedTxModal.paid_at || selectedTxModal.created_at).toLocaleDateString('en-IN', {
+                                                        day: 'numeric',
+                                                        month: 'short',
+                                                        year: 'numeric'
+                                                      })
+                                                    : 'Pending Settlement'}
+                                            </span>
+                                        </DialogDescription>
+                                    </DialogHeader>
+
+                                    {/* Financial Summary Box */}
+                                    <div className="p-4 rounded-2xl bg-muted/40 border border-border/40 space-y-3">
+                                        <div className="flex items-baseline justify-between">
+                                            <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Amount Paid</span>
+                                            <span className="text-xl sm:text-2xl font-mono font-extrabold text-foreground">
+                                                ₹{Number(selectedTxModal.amount_paid || 0).toLocaleString('en-IN')}
+                                            </span>
+                                        </div>
+
+                                        {Number(selectedTxModal.amount_due || 0) > 0 && (
+                                            <div className="flex items-baseline justify-between pt-2 border-t border-border/30">
+                                                <span className="text-xs text-muted-foreground">Original Due Amount</span>
+                                                <span className="text-xs font-mono font-semibold text-muted-foreground">
+                                                    ₹{Number(selectedTxModal.amount_due || 0).toLocaleString('en-IN')}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Metadata Grid */}
+                                    <div className="grid grid-cols-2 gap-3 text-xs">
+                                        <div className="p-3 rounded-xl bg-background/50 border border-border/30 flex flex-col gap-1">
+                                            <span className="text-[10px] text-muted-foreground font-semibold uppercase flex items-center gap-1">
+                                                <Building2 className="h-3 w-3 text-primary" /> Building / Project
+                                            </span>
+                                            <span className="font-bold text-foreground truncate">
+                                                {selectedTxModal.project?.name || 'All Sites'}
+                                            </span>
+                                        </div>
+
+                                        <div className="p-3 rounded-xl bg-background/50 border border-border/30 flex flex-col gap-1">
+                                            <span className="text-[10px] text-muted-foreground font-semibold uppercase flex items-center gap-1">
+                                                <Calendar className="h-3 w-3 text-primary" /> Settlement Date
+                                            </span>
+                                            <span className="font-bold text-foreground truncate">
+                                                {selectedTxModal.paid_at ? new Date(selectedTxModal.paid_at).toLocaleDateString('en-IN') : 'Pending'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* NMR Daily Muster Breakdown Table if JSON */}
+                                    {parsedJson?.type === 'contractor_wages' && Array.isArray(parsedJson.breakdown) && parsedJson.breakdown.length > 0 && (
+                                        <div className="space-y-2 pt-2">
+                                            <h4 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                                <FileText className="h-3.5 w-3.5 text-primary" />
+                                                Daily Muster Roll Labor Breakdown
+                                            </h4>
+                                            <div className="rounded-xl border border-border/40 overflow-hidden bg-background/40">
+                                                <Table className="text-xs">
+                                                    <TableHeader className="bg-muted/40">
+                                                        <TableRow>
+                                                            <TableHead className="py-2 text-[11px] font-semibold">Category</TableHead>
+                                                            <TableHead className="py-2 text-[11px] font-semibold text-center">Days</TableHead>
+                                                            <TableHead className="py-2 text-[11px] font-semibold text-right">Rate</TableHead>
+                                                            <TableHead className="py-2 text-[11px] font-semibold text-right">Subtotal</TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {parsedJson.breakdown.map((row: any, idx: number) => (
+                                                            <TableRow key={idx} className="border-border/30">
+                                                                <TableCell className="py-2.5 font-medium">{row.category}</TableCell>
+                                                                <TableCell className="py-2.5 text-center">{row.days}d</TableCell>
+                                                                <TableCell className="py-2.5 text-right font-mono">₹{row.rate}</TableCell>
+                                                                <TableCell className="py-2.5 text-right font-mono font-bold">
+                                                                    ₹{Number(row.amount || (row.days * row.rate)).toLocaleString('en-IN')}
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
+
+                                            {Number(parsedJson.same_day_advance || 0) > 0 && (
+                                                <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                                                    * Includes ₹{Number(parsedJson.same_day_advance).toLocaleString('en-IN')} same-day advance deduction.
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Generic / Raw Notes display if not NMR breakdown */}
+                                    {(!parsedJson || parsedJson.type !== 'contractor_wages') && selectedTxModal.reference_details && (
+                                        <div className="space-y-1.5 pt-1">
+                                            <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Payment Notes</span>
+                                            <div className="p-3 rounded-xl bg-background/40 border border-border/30 text-xs text-foreground font-medium">
+                                                {details.title}
+                                                {details.subtitle && <p className="text-muted-foreground text-[11px] mt-1">{details.subtitle}</p>}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()}
+                    </DialogContent>
+                </Dialog>
+
             </div>
         </main>
     );
 }
+
 
