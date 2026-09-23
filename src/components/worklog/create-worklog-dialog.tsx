@@ -332,7 +332,6 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
         }
     };
 
-    // ... helper functions for tabs and contractors ...
     const nextTab = (current: string) => {
         if (!selectedProjectId) {
             toast({ title: "Select Project", description: "Please select a project to proceed." });
@@ -341,6 +340,12 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
         if (current === "details") setActiveTab("labor");
         if (current === "labor") setActiveTab("materials");
         if (current === "materials") setActiveTab("photos");
+    };
+
+    const prevTab = (current: string) => {
+        if (current === "labor") setActiveTab("details");
+        if (current === "materials") setActiveTab("labor");
+        if (current === "photos") setActiveTab("materials");
     };
 
     const handleContractorCreated = (newContractor: any) => {
@@ -550,9 +555,26 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
                                      Summary: <span className="font-bold text-foreground">{laborFields.length}</span> teams • <span className="font-bold text-foreground">{materialFields.length}</span> materials • <span className="font-bold text-foreground">{photoFields.length}</span> photos
                                  </div>
                                  <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-                                     <Button type="button" variant="outline" onClick={() => setOpen(false)} className="h-9 text-xs px-3">
-                                         Cancel
-                                     </Button>
+                                     {activeTab === 'details' && (
+                                         <Button type="button" variant="outline" onClick={() => setOpen(false)} className="h-9 text-xs px-3">
+                                             Cancel
+                                         </Button>
+                                     )}
+                                     {activeTab === 'labor' && (
+                                         <Button type="button" variant="outline" onClick={() => prevTab('labor')} className="h-9 text-xs px-3">
+                                             <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Back to Details
+                                         </Button>
+                                     )}
+                                     {activeTab === 'materials' && (
+                                         <Button type="button" variant="outline" onClick={() => prevTab('materials')} className="h-9 text-xs px-3">
+                                             <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Back to Labor
+                                         </Button>
+                                     )}
+                                     {activeTab === 'photos' && (
+                                         <Button type="button" variant="outline" onClick={() => prevTab('photos')} className="h-9 text-xs px-3">
+                                             <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Back to Materials
+                                         </Button>
+                                     )}
                                      
                                      {activeTab === 'details' && (
                                          <Button type="button" onClick={() => nextTab('details')} disabled={!selectedProjectId} className="h-9 text-xs font-semibold px-4 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md">
