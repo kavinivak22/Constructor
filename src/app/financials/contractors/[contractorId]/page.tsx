@@ -150,6 +150,35 @@ export default function ContractorDetailPage() {
     const totalPaidSum = filteredTransactions.filter(tx => tx.status === 'paid').reduce((sum, tx) => sum + Number(tx.amount_paid), 0);
     const totalPendingSum = filteredTransactions.filter(tx => tx.status === 'pending').reduce((sum, tx) => sum + Number(tx.amount_paid), 0);
 
+    // Helper to safely parse reference_details JSON payload into human readable text
+    const parseReferenceDetails = (raw: string | null | undefined): { title: string; subtitle?: string | null } => {
+        if (!raw) return { title: 'Payout entry' };
+        if (typeof raw === 'string' && raw.trim().startsWith('{')) {
+            try {
+                const parsed = JSON.parse(raw);
+                if (parsed.type === 'contractor_wages') {
+                    const titleParts = [parsed.category, parsed.description].filter(Boolean);
+                    const titleText = titleParts.length > 0 ? titleParts.join(' • ') : 'Daily Labor Wages';
+                    let breakdownParts: string[] = [];
+                    if (Array.isArray(parsed.breakdown) && parsed.breakdown.length > 0) {
+                        breakdownParts = parsed.breakdown.map((b: any) => `${b.category}: ${b.days}d @ ₹${b.rate}`);
+                    }
+                    const subtitleText = breakdownParts.length > 0 ? breakdownParts.join(' | ') : null;
+                    return {
+                        title: titleText,
+                        subtitle: subtitleText
+                    };
+                }
+                if (parsed.description || parsed.title) {
+                    return { title: parsed.description || parsed.title, subtitle: parsed.category || null };
+                }
+            } catch (e) {
+                // fallback to raw text if parsing fails
+            }
+        }
+        return { title: raw };
+    };
+
     if (isLoading) {
         return (
             <div className="flex h-[70vh] items-center justify-center">
@@ -315,32 +344,36 @@ export default function ContractorDetailPage() {
                                             </TableCell>
                                         </TableRow>
                                     ) : (
-                                        filteredTransactions.map((tx) => (
-                                            <TableRow
-                                                key={tx.id}
-                                                className="border-border/30 hover:bg-muted/30 text-xs cursor-pointer select-none"
-                                                onClick={() => setExpandedTxId(expandedTxId === tx.id ? null : tx.id)}
-                                            >
-                                                <TableCell className="font-medium flex items-center gap-1.5 py-3">
-                                                    {expandedTxId === tx.id ? (
-                                                        <ChevronUp className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                                    ) : (
-                                                        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                                    )}
-                                                    <span>
-                                                        {tx.paid_at || tx.created_at ? new Date(tx.paid_at || tx.created_at).toLocaleDateString('en-IN') : 'Pending'}
-                                                    </span>
-                                                </TableCell>
-                                                <TableCell>{getPayoutClassBadge(tx.payout_class)}</TableCell>
-                                                <TableCell className="max-w-[220px] truncate text-muted-foreground">
-                                                    {tx.reference_details?.startsWith('{') ? 'Daily wage logs aggregated' : tx.reference_details || 'Manual payout entry'}
-                                                </TableCell>
-                                                <TableCell className="text-right font-mono font-bold text-foreground">
-                                                    ₹{Number(tx.amount_paid || 0).toLocaleString('en-IN')}
-                                                </TableCell>
-                                                <TableCell className="text-right">{getStatusBadge(tx.status)}</TableCell>
-                                            </TableRow>
-                                        ))
+                                        filteredTransactions.map((tx) => {
+                                            const details = parseReferenceDetails(tx.reference_details);
+                                            return (
+                                                <TableRow
+                                                    key={tx.id}
+                                                    className="border-border/30 hover:bg-muted/30 text-xs cursor-pointer select-none"
+                                                    onClick={() => setExpandedTxId(expandedTxId === tx.id ? null : tx.id)}
+                                                >
+                                                    <TableCell className="font-medium flex items-center gap-1.5 py-3">
+                                                        {expandedTxId === tx.id ? (
+                                                            <ChevronUp className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                                        ) : (
+                                                            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                                        )}
+                                                        <span>
+                                                            {tx.paid_at || tx.created_at ? new Date(tx.paid_at || tx.created_at).toLocaleDateString('en-IN') : 'Pending'}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell>{getPayoutClassBadge(tx.payout_class)}</TableCell>
+                                                    <TableCell className="max-w-[280px]">
+                                                        <div className="font-medium text-foreground">{details.title}</div>
+                                                        {details.subtitle && <div className="text-[11px] text-muted-foreground truncate">{details.subtitle}</div>}
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-mono font-bold text-foreground">
+                                                        ₹{Number(tx.amount_paid || 0).toLocaleString('en-IN')}
+                                                    </TableCell>
+                                                    <TableCell className="text-right">{getStatusBadge(tx.status)}</TableCell>
+                                                </TableRow>
+                                            );
+                                        })
                                     )}
                                 </TableBody>
                             </Table>
@@ -355,6 +388,7 @@ export default function ContractorDetailPage() {
                             ) : (
                                 filteredTransactions.map((tx) => {
                                     const isExpanded = expandedTxId === tx.id;
+                                    const details = parseReferenceDetails(tx.reference_details);
                                     return (
                                         <div
                                             key={tx.id}
@@ -372,10 +406,17 @@ export default function ContractorDetailPage() {
                                             </div>
 
                                             <div className="flex items-baseline justify-between gap-2 pt-1 border-t border-border/30">
-                                                <span className="text-xs text-muted-foreground truncate max-w-[60%]">
-                                                    {tx.reference_details?.startsWith('{') ? 'Daily wage logs' : tx.reference_details || 'Payout entry'}
-                                                </span>
-                                                <span className="font-mono font-bold text-sm text-foreground">
+                                                <div className="min-w-0 flex-1">
+                                                    <span className="text-xs font-semibold text-foreground block truncate">
+                                                        {details.title}
+                                                    </span>
+                                                    {details.subtitle && (
+                                                        <span className="text-[10px] text-muted-foreground block truncate">
+                                                            {details.subtitle}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span className="font-mono font-bold text-sm text-foreground shrink-0">
                                                     ₹{Number(tx.amount_paid || 0).toLocaleString('en-IN')}
                                                 </span>
                                             </div>
@@ -388,12 +429,8 @@ export default function ContractorDetailPage() {
 
                     {/* Rate Account Tab */}
                     <TabsContent value="rate" className="space-y-4">
-                        <div className="p-4 glass-card rounded-2xl border border-white/10 text-xs sm:text-sm space-y-1">
-                            <p className="font-semibold text-foreground">Rate Contract Statement (Sq.Ft Settlements)</p>
-                            <p className="text-muted-foreground">Filtered transactions for square-footage contract payouts.</p>
-                        </div>
-                        {/* Table / List using filteredRateItems */}
-                        <div className="glass-card rounded-2xl border border-white/10 overflow-hidden">
+                        {/* Desktop Table */}
+                        <div className="hidden md:block glass-card rounded-2xl border border-white/10 overflow-hidden">
                             <Table className="text-xs sm:text-sm">
                                 <TableHeader className="bg-muted/30">
                                     <TableRow>
@@ -409,27 +446,74 @@ export default function ContractorDetailPage() {
                                             <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No rate contract transactions found.</TableCell>
                                         </TableRow>
                                     ) : (
-                                        filteredRateItems.map((tx) => (
-                                            <TableRow key={tx.id}>
-                                                <TableCell className="font-medium">{tx.paid_at ? new Date(tx.paid_at).toLocaleDateString('en-IN') : 'Pending'}</TableCell>
-                                                <TableCell className="text-muted-foreground">{tx.reference_details || 'Rate payout'}</TableCell>
-                                                <TableCell className="text-right font-mono font-bold">₹{Number(tx.amount_paid || 0).toLocaleString('en-IN')}</TableCell>
-                                                <TableCell className="text-right">{getStatusBadge(tx.status)}</TableCell>
-                                            </TableRow>
-                                        ))
+                                        filteredRateItems.map((tx) => {
+                                            const details = parseReferenceDetails(tx.reference_details);
+                                            return (
+                                                <TableRow key={tx.id} className="border-border/30 hover:bg-muted/30">
+                                                    <TableCell className="font-medium">
+                                                        {tx.paid_at || tx.created_at ? new Date(tx.paid_at || tx.created_at).toLocaleDateString('en-IN') : 'Pending'}
+                                                    </TableCell>
+                                                    <TableCell className="max-w-[280px]">
+                                                        <div className="font-medium text-foreground">{details.title}</div>
+                                                        {details.subtitle && <div className="text-[11px] text-muted-foreground truncate">{details.subtitle}</div>}
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-mono font-bold text-foreground">₹{Number(tx.amount_paid || 0).toLocaleString('en-IN')}</TableCell>
+                                                    <TableCell className="text-right">{getStatusBadge(tx.status)}</TableCell>
+                                                </TableRow>
+                                            );
+                                        })
                                     )}
                                 </TableBody>
                             </Table>
+                        </div>
+
+                        {/* Mobile Transaction Cards */}
+                        <div className="block md:hidden space-y-2.5">
+                            {filteredRateItems.length === 0 ? (
+                                <div className="text-center py-10 p-4 glass-card rounded-2xl text-xs text-muted-foreground">
+                                    No rate contract transactions found.
+                                </div>
+                            ) : (
+                                filteredRateItems.map((tx) => {
+                                    const details = parseReferenceDetails(tx.reference_details);
+                                    return (
+                                        <div
+                                            key={tx.id}
+                                            className="glass-card rounded-2xl p-3.5 border border-white/10 space-y-2.5"
+                                        >
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="text-[11px] text-muted-foreground">
+                                                    {tx.paid_at || tx.created_at ? new Date(tx.paid_at || tx.created_at).toLocaleDateString('en-IN') : 'Pending'}
+                                                </span>
+                                                {getStatusBadge(tx.status)}
+                                            </div>
+
+                                            <div className="flex items-baseline justify-between gap-2 pt-1 border-t border-border/30">
+                                                <div className="min-w-0 flex-1">
+                                                    <span className="text-xs font-semibold text-foreground block truncate">
+                                                        {details.title}
+                                                    </span>
+                                                    {details.subtitle && (
+                                                        <span className="text-[10px] text-muted-foreground block truncate">
+                                                            {details.subtitle}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span className="font-mono font-bold text-sm text-foreground shrink-0">
+                                                    ₹{Number(tx.amount_paid || 0).toLocaleString('en-IN')}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
                         </div>
                     </TabsContent>
 
                     {/* NMR Account Tab */}
                     <TabsContent value="nmr" className="space-y-4">
-                        <div className="p-4 glass-card rounded-2xl border border-white/10 text-xs sm:text-sm space-y-1">
-                            <p className="font-semibold text-foreground">NMR Account Statement (Daily Labor Wages)</p>
-                            <p className="text-muted-foreground">Filtered transactions for daily muster roll labor payouts.</p>
-                        </div>
-                        <div className="glass-card rounded-2xl border border-white/10 overflow-hidden">
+                        {/* Desktop Table */}
+                        <div className="hidden md:block glass-card rounded-2xl border border-white/10 overflow-hidden">
                             <Table className="text-xs sm:text-sm">
                                 <TableHeader className="bg-muted/30">
                                     <TableRow>
@@ -445,17 +529,67 @@ export default function ContractorDetailPage() {
                                             <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No NMR labor transactions found.</TableCell>
                                         </TableRow>
                                     ) : (
-                                        filteredNmrItems.map((tx) => (
-                                            <TableRow key={tx.id}>
-                                                <TableCell className="font-medium">{tx.paid_at ? new Date(tx.paid_at).toLocaleDateString('en-IN') : 'Pending'}</TableCell>
-                                                <TableCell className="text-muted-foreground">{tx.reference_details || 'NMR wage payout'}</TableCell>
-                                                <TableCell className="text-right font-mono font-bold">₹{Number(tx.amount_paid || 0).toLocaleString('en-IN')}</TableCell>
-                                                <TableCell className="text-right">{getStatusBadge(tx.status)}</TableCell>
-                                            </TableRow>
-                                        ))
+                                        filteredNmrItems.map((tx) => {
+                                            const details = parseReferenceDetails(tx.reference_details);
+                                            return (
+                                                <TableRow key={tx.id} className="border-border/30 hover:bg-muted/30">
+                                                    <TableCell className="font-medium">
+                                                        {tx.paid_at || tx.created_at ? new Date(tx.paid_at || tx.created_at).toLocaleDateString('en-IN') : 'Pending'}
+                                                    </TableCell>
+                                                    <TableCell className="max-w-[280px]">
+                                                        <div className="font-medium text-foreground">{details.title}</div>
+                                                        {details.subtitle && <div className="text-[11px] text-muted-foreground truncate">{details.subtitle}</div>}
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-mono font-bold text-foreground">₹{Number(tx.amount_paid || 0).toLocaleString('en-IN')}</TableCell>
+                                                    <TableCell className="text-right">{getStatusBadge(tx.status)}</TableCell>
+                                                </TableRow>
+                                            );
+                                        })
                                     )}
                                 </TableBody>
                             </Table>
+                        </div>
+
+                        {/* Mobile Transaction Cards */}
+                        <div className="block md:hidden space-y-2.5">
+                            {filteredNmrItems.length === 0 ? (
+                                <div className="text-center py-10 p-4 glass-card rounded-2xl text-xs text-muted-foreground">
+                                    No NMR labor transactions found.
+                                </div>
+                            ) : (
+                                filteredNmrItems.map((tx) => {
+                                    const details = parseReferenceDetails(tx.reference_details);
+                                    return (
+                                        <div
+                                            key={tx.id}
+                                            className="glass-card rounded-2xl p-3.5 border border-white/10 space-y-2.5"
+                                        >
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="text-[11px] text-muted-foreground">
+                                                    {tx.paid_at || tx.created_at ? new Date(tx.paid_at || tx.created_at).toLocaleDateString('en-IN') : 'Pending'}
+                                                </span>
+                                                {getStatusBadge(tx.status)}
+                                            </div>
+
+                                            <div className="flex items-baseline justify-between gap-2 pt-1 border-t border-border/30">
+                                                <div className="min-w-0 flex-1">
+                                                    <span className="text-xs font-semibold text-foreground block truncate">
+                                                        {details.title}
+                                                    </span>
+                                                    {details.subtitle && (
+                                                        <span className="text-[10px] text-muted-foreground block truncate">
+                                                            {details.subtitle}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span className="font-mono font-bold text-sm text-foreground shrink-0">
+                                                    ₹{Number(tx.amount_paid || 0).toLocaleString('en-IN')}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
                         </div>
                     </TabsContent>
                 </Tabs>
@@ -472,3 +606,4 @@ export default function ContractorDetailPage() {
         </main>
     );
 }
+

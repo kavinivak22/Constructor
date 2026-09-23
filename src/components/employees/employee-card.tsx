@@ -43,7 +43,6 @@ export function EmployeeCard({ employee, projects, onEdit, onStatusChange, onRem
     const isInteractive = !!onEdit && !!onStatusChange;
 
     return (
-    return (
         <Card className={cn("glass-card flex flex-col rounded-2xl border border-white/10 dark:border-white/5", employee.status === 'inactive' && "bg-muted/50 opacity-75")}>
             <CardHeader className="flex-row items-center gap-3 sm:gap-4 p-3.5 sm:p-5">
                 <Avatar className="w-12 h-12 sm:w-14 sm:h-14 border border-border/50 shrink-0">
