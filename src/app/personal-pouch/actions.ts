@@ -80,7 +80,6 @@ export async function createPersonalNote(input: {
     throw error;
   }
 
-  revalidatePath('/personal-pouch');
   return data;
 }
 
@@ -114,7 +113,6 @@ export async function updatePersonalNote(
     throw error;
   }
 
-  revalidatePath('/personal-pouch');
   return data;
 }
 
@@ -136,7 +134,6 @@ export async function deletePersonalNote(id: string) {
     throw error;
   }
 
-  revalidatePath('/personal-pouch');
   return { success: true };
 }
 
@@ -194,7 +191,6 @@ export async function savePersonalDocumentMetadata(input: {
     throw error;
   }
 
-  revalidatePath('/personal-pouch');
   return data;
 }
 
@@ -239,6 +235,5 @@ export async function deletePersonalDocument(id: string) {
     }
   }
 
-  revalidatePath('/personal-pouch');
   return { success: true };
 }

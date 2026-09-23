@@ -95,7 +95,6 @@ export async function saveSalaryProfile(data: {
             if (error) throw error
         }
 
-        revalidatePath('/financials/salary-profiles')
         return { success: true }
     } catch (error: any) {
         console.error('Error saving salary profile:', error)
@@ -127,7 +126,6 @@ export async function deleteSalaryProfile(id: string) {
 
         if (error) throw error
 
-        revalidatePath('/financials/salary-profiles')
         return { success: true }
     } catch (error: any) {
         console.error('Error deleting salary profile:', error)
@@ -503,7 +501,6 @@ export async function createWeeklyPayoutRun(weekStartDate: string, weekEndDate: 
                 .eq('id', payoutId)
         }
 
-        revalidatePath('/financials/payday')
         return { success: true, payoutId }
     } catch (error: any) {
         console.error('Error creating payout run:', error)
@@ -612,7 +609,6 @@ export async function updatePayoutItem(id: string, data: {
             .update({ total_amount: totalPaid })
             .eq('id', item.payout_id)
 
-        revalidatePath('/financials/payday')
         return { success: true }
     } catch (error: any) {
         console.error('Error updating payout item:', error)
@@ -693,7 +689,6 @@ export async function deletePayoutItem(id: string) {
             .update({ total_amount: totalPaid })
             .eq('id', item.payout_id)
 
-        revalidatePath('/financials/payday')
         return { success: true }
     } catch (error: any) {
         console.error('Error deleting payout item:', error)
@@ -813,7 +808,6 @@ export async function bulkUpdatePayoutItems(ids: string[], updates: {
             .update({ total_amount: totalPaid })
             .eq('id', payoutId)
 
-        revalidatePath('/financials/payday')
         return { success: true }
     } catch (error: any) {
         console.error('Error bulk updating payout items:', error)
@@ -909,7 +903,6 @@ export async function bulkDeletePayoutItems(ids: string[]) {
             .update({ total_amount: totalPaid })
             .eq('id', payoutId)
 
-        revalidatePath('/financials/payday')
         return { success: true }
     } catch (error: any) {
         console.error('Error bulk deleting payout items:', error)
@@ -975,7 +968,6 @@ export async function createCustomPayoutItem(payoutId: string, data: {
             .update({ total_amount: totalPaid })
             .eq('id', payoutId)
 
-        revalidatePath('/financials/payday')
         return { success: true }
     } catch (error: any) {
         console.error('Error creating custom payout item:', error)
@@ -1093,7 +1085,6 @@ export async function processWeeklyPayout(payoutId: string, status: 'approved' |
             }
         }
 
-        revalidatePath('/financials/payday')
         return { success: true }
     } catch (error: any) {
         console.error('Error processing weekly payout:', error)
@@ -1125,7 +1116,6 @@ export async function deleteWeeklyPayout(id: string) {
 
         if (error) throw error
 
-        revalidatePath('/financials/payday')
         return { success: true }
     } catch (error: any) {
         console.error('Error deleting weekly payout:', error)
@@ -1437,7 +1427,6 @@ export async function splitPayoutItem(itemId: string, rateAmount: number, nmrAmo
             .update({ total_amount: totalPaid })
             .eq('id', item.payout_id)
 
-        revalidatePath('/financials/payday')
         return { success: true }
     } catch (error: any) {
         console.error('Error splitting payout item:', error)
