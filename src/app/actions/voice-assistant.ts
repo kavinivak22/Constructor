@@ -1,6 +1,6 @@
-'use server';
+// Client action module
 
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@/utils/supabase/client';
 import type { StagedVoiceAction } from '@/lib/ai-tools/registry';
 
 // Voice-friendly date formatting helper

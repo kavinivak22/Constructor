@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useState, startTransition } from 'react';
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { PlaceholderPage } from "../../components/placeholder-page";
 import { AreaChart, TrendingUp, TrendingDown, IndianRupee, Users, Package, AlertCircle } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { Loader2 } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { Switch } from "../../components/ui/switch";
+import { Label } from "../../components/ui/label";
 import {
   BarChart as RechartsBarChart,
   Bar,

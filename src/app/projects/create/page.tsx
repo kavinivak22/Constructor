@@ -29,13 +29,14 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { ArrowLeft, CalendarIcon, Loader2, Upload } from 'lucide-react';
+import { ArrowLeft, CalendarIcon, Loader2, Upload, Cloud, RotateCcw } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useSupabase } from '@/supabase/provider';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { type User as AppUser } from '@/lib/data';
 import { compressImage } from '@/lib/compression';
@@ -82,6 +83,22 @@ export default function CreateProjectPage() {
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
   const [sites, setSites] = useState<any[]>([]);
   const [isLoadingSites, setIsLoadingSites] = useState(true);
+
+  // Auto-Save Draft State
+  const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
+  const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
+  const isInitialMount = useRef(true);
+  const DRAFT_KEY = 'draft_create_project';
+
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch (e) {}
+    setDraftStatus('idle');
+    setLastSavedTime(null);
+    setHasRestoredDraft(false);
+  };
 
   useEffect(() => {
     if (userProfile?.companyId) {
@@ -140,6 +157,67 @@ export default function CreateProjectPage() {
       newSiteName: '',
     },
   });
+
+  // Load saved draft on mount
+  useEffect(() => {
+    try {
+      const rawDraft = localStorage.getItem(DRAFT_KEY);
+      if (rawDraft) {
+        const parsed = JSON.parse(rawDraft);
+        if (parsed && (parsed.name || parsed.description || parsed.projectType || parsed.budget > 0)) {
+          form.reset({
+            name: parsed.name || '',
+            description: parsed.description || '',
+            projectType: parsed.projectType || '',
+            clientName: parsed.clientName || '',
+            clientContact: parsed.clientContact || '',
+            location: parsed.location || '',
+            budget: parsed.budget || 0,
+            siteSelection: parsed.siteSelection || '',
+            newSiteName: parsed.newSiteName || '',
+            startDate: parsed.startDate ? new Date(parsed.startDate) : undefined,
+            endDate: parsed.endDate ? new Date(parsed.endDate) : undefined,
+          });
+          setHasRestoredDraft(true);
+          setDraftStatus('saved');
+          if (parsed.updatedAt) {
+            setLastSavedTime(new Date(parsed.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load project draft', e);
+    }
+  }, [form]);
+
+  // Watch form fields for debounced auto-save
+  const watchedValues = form.watch();
+
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    setDraftStatus('saving');
+    const timer = setTimeout(() => {
+      try {
+        const now = new Date();
+        const payload = {
+          ...watchedValues,
+          updatedAt: now.toISOString(),
+        };
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+        setDraftStatus('saved');
+        setLastSavedTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      } catch (e) {
+        console.error('Failed to save project draft', e);
+        setDraftStatus('idle');
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [watchedValues]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!user || !userProfile?.companyId) {
@@ -245,6 +323,7 @@ export default function CreateProjectPage() {
 
       if (projectError) throw projectError;
 
+      clearDraft();
       toast({
         title: 'Project Created',
         description: 'Your new project has been created successfully.',
@@ -263,16 +342,61 @@ export default function CreateProjectPage() {
 
   return (
     <div className="flex flex-col h-full bg-transparent">
-      <header className="flex items-center gap-4 p-4 md:px-6 shrink-0 bg-transparent sticky top-0 z-10">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <h1 className="text-xl md:text-2xl font-bold tracking-tight font-headline">
-          Create New Project
-        </h1>
+      <header className="flex items-center justify-between gap-4 p-4 md:px-6 shrink-0 bg-transparent sticky top-0 z-10 border-b border-border/20 backdrop-blur-md">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight font-headline">
+            Create New Project
+          </h1>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {draftStatus === 'saving' && (
+            <Badge variant="secondary" className="text-[10px] bg-amber-500/15 text-amber-400 border border-amber-500/30 font-medium px-2 py-0.5 animate-pulse">
+              <Loader2 className="h-3 w-3 animate-spin mr-1 text-amber-400" /> Saving draft...
+            </Badge>
+          )}
+          {draftStatus === 'saved' && (
+            <Badge variant="secondary" className="text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-medium px-2 py-0.5 flex items-center">
+              <Cloud className="h-3 w-3 mr-1 text-emerald-400" /> Draft saved {lastSavedTime ? `at ${lastSavedTime}` : '(auto)'}
+            </Badge>
+          )}
+        </div>
       </header>
       <main className="flex-1 p-4 overflow-y-auto md:p-6">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto space-y-4">
+          {hasRestoredDraft && (
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex flex-wrap items-center justify-between gap-2 shadow-sm">
+              <div className="flex items-center gap-2">
+                <RotateCcw className="h-4 w-4 shrink-0 text-amber-400" />
+                <span>Restored unsaved project creation draft from your previous session {lastSavedTime ? `(${lastSavedTime})` : ''}.</span>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  clearDraft();
+                  form.reset({
+                    name: '',
+                    description: '',
+                    projectType: '',
+                    clientName: '',
+                    clientContact: '',
+                    location: '',
+                    budget: 0,
+                    siteSelection: '',
+                    newSiteName: '',
+                  });
+                }}
+                className="h-7 text-[11px] text-amber-400 hover:bg-amber-500/20 hover:text-amber-200 font-semibold px-2.5"
+              >
+                Discard Draft
+              </Button>
+            </div>
+          )}
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <Card className="glass-card">

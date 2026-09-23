@@ -1,4 +1,4 @@
-'use server';
+// Client flow module
 /**
  * @fileOverview Generates material estimations based on project specifications.
  *

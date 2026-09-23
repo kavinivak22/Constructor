@@ -1,7 +1,6 @@
-'use server';
+// Client action module
 
-import { createClient } from '@/utils/supabase/server';
-import { revalidatePath } from 'next/cache';
+import { createClient } from '@/utils/supabase/client';
 
 export interface PersonalNote {
   id: string;

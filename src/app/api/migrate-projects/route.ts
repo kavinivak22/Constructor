@@ -1,6 +1,7 @@
-import { createClient } from '@/utils/supabase/server';
-import { cookies } from 'next/headers';
+import { createClient } from '@/utils/supabase/client';
 import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-static';
 
 export async function GET() {
     const supabase = await createClient();

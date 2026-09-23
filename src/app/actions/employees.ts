@@ -1,7 +1,6 @@
-'use server'
+// Client action module
 
-import { createClient } from '@/utils/supabase/server';
-import { cookies } from 'next/headers'
+import { createClient } from '@/utils/supabase/client';
 import { z } from 'zod'
 
 const inviteSchema = z.object({
@@ -20,7 +19,6 @@ export type InviteEmployeeState = {
 }
 
 export async function inviteEmployee(data: z.infer<typeof inviteSchema>) {
-    const cookieStore = cookies()
     const supabase = await createClient();
 
     const validatedFields = inviteSchema.safeParse(data)
@@ -159,7 +157,6 @@ export async function inviteEmployee(data: z.infer<typeof inviteSchema>) {
 }
 
 export async function getPendingInvites() {
-    const cookieStore = cookies()
     const supabase = await createClient();
 
     try {
@@ -198,7 +195,6 @@ export async function getPendingInvites() {
 }
 
 export async function getUserPendingInvites() {
-    const cookieStore = cookies()
     const supabase = await createClient();
 
     try {
@@ -238,7 +234,6 @@ export async function getUserPendingInvites() {
 }
 
 export async function acceptInvite(inviteId: string) {
-    const cookieStore = cookies()
     const supabase = await createClient();
 
     try {
@@ -322,7 +317,6 @@ export async function updateEmployee(employeeId: string, data: {
     projectIds?: string[];
     permissions?: Record<string, any>;
 }) {
-    const cookieStore = cookies()
     const supabase = await createClient();
 
     try {
@@ -389,7 +383,6 @@ export async function updateEmployee(employeeId: string, data: {
 }
 
 export async function resignFromCompany() {
-    const cookieStore = cookies()
     const supabase = await createClient();
 
     try {
@@ -454,7 +447,6 @@ export async function resignFromCompany() {
 }
 
 export async function getExEmployees() {
-    const cookieStore = cookies()
     const supabase = await createClient();
 
     try {
@@ -496,7 +488,6 @@ export async function getExEmployees() {
 }
 
 export async function removeEmployee(employeeId: string) {
-    const cookieStore = cookies()
     const supabase = await createClient();
 
     try {

@@ -47,7 +47,6 @@ export type WorklogData = z.infer<typeof createWorklogSchema>
 // --- Actions ---
 
 export async function createWorklog(data: WorklogData) {
-    const cookieStore = cookies()
     const supabase = await createClient();
 
     const validated = createWorklogSchema.safeParse(data)
@@ -172,7 +171,6 @@ export async function createWorklog(data: WorklogData) {
 }
 
 export async function getWorklogs(projectId: string) {
-    const cookieStore = cookies()
     const supabase = await createClient();
 
     try {
@@ -223,7 +221,6 @@ export async function getWorklogs(projectId: string) {
 }
 
 export async function deleteWorklog(worklogId: string) {
-    const cookieStore = cookies()
     const supabase = await createClient();
 
     try {
@@ -269,7 +266,6 @@ export async function deleteWorklog(worklogId: string) {
 }
 
 export async function updateWorklog(worklogId: string, data: WorklogData) {
-    const cookieStore = cookies()
     const supabase = await createClient();
 
     const validated = createWorklogSchema.safeParse(data)
@@ -373,7 +369,6 @@ export async function updateWorklog(worklogId: string, data: WorklogData) {
 }
 
 export async function getRecentWorklogs(limit: number = 5) {
-    const cookieStore = cookies()
     const supabase = await createClient();
 
     try {

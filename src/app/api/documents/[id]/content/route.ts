@@ -1,5 +1,10 @@
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@/utils/supabase/client';
 import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-static';
+export function generateStaticParams() {
+  return [{ id: 'placeholder' }];
+}
 
 export async function GET(
     request: Request,

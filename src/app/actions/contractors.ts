@@ -1,7 +1,6 @@
-'use server';
+// Client action module
 
-import { createClient } from '@/utils/supabase/server';
-import { cookies } from 'next/headers';
+import { createClient } from '@/utils/supabase/client';
 import { z } from 'zod';
 
 const contractorSchema = z.object({
@@ -80,6 +79,40 @@ export async function createContractor(data: ContractorData) {
         return { success: true, data: newContractor };
     } catch (error: any) {
         console.error('Error creating contractor:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function updateContractor(contractorId: string, data: ContractorData) {
+    const supabase = await createClient();
+
+    try {
+        const validation = contractorSchema.safeParse(data);
+        if (!validation.success) {
+            return { success: false, error: validation.error.errors[0].message };
+        }
+
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return { success: false, error: 'Unauthorized' };
+
+        const { data: updatedContractor, error } = await supabase
+            .from('contractors')
+            .update({
+                name: data.name,
+                category: data.category || null,
+                contactPerson: data.contactPerson || null,
+                phone: data.phone,
+                email: data.email || null,
+            })
+            .eq('id', contractorId)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        return { success: true, data: updatedContractor };
+    } catch (error: any) {
+        console.error('Error updating contractor:', error);
         return { success: false, error: error.message };
     }
 }

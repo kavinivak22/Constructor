@@ -25,20 +25,22 @@ export default function NotificationsPage() {
 
     return (
         <div className="flex flex-col h-full bg-transparent">
-            <header className="flex items-center justify-between gap-4 p-4 md:px-6 shrink-0 glass sticky top-0 z-10">
-                <h1 className="text-2xl font-bold tracking-tight font-headline">
+            <header className="flex items-center justify-between gap-3 p-3.5 sm:p-4 md:px-6 shrink-0 glass sticky top-0 z-10 border-b border-white/10">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight font-headline text-foreground">
                     Notifications
                 </h1>
-                <Button variant="outline" size="sm" onClick={handleMarkAllAsRead}>
+                <Button variant="outline" size="sm" onClick={handleMarkAllAsRead} className="h-8 sm:h-9 text-xs sm:text-sm rounded-xl">
                     Mark all as read
                 </Button>
             </header>
-            <main className="flex-1 p-4 overflow-y-auto md:p-6">
+            <main className="flex-1 p-3.5 sm:p-4 md:p-6 overflow-y-auto">
                 <div className="max-w-2xl mx-auto">
-                    <div className="flex flex-col items-center justify-center h-full text-center border-2 border-dashed glass-card p-12">
-                        <Bell className="w-12 h-12 text-muted-foreground mb-4" />
-                        <h2 className="text-2xl font-bold font-headline">All Caught Up!</h2>
-                        <p className="max-w-sm mt-2 text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center h-full text-center glass-card border border-white/10 p-8 sm:p-12 rounded-3xl shadow-sm">
+                        <div className="bg-primary/10 p-4 rounded-2xl mb-3 text-primary">
+                            <Bell className="w-8 h-8 sm:w-10 sm:h-10" />
+                        </div>
+                        <h2 className="text-lg sm:text-2xl font-bold font-headline text-foreground">All Caught Up!</h2>
+                        <p className="max-w-sm mt-1.5 text-xs sm:text-sm text-muted-foreground">
                             You don't have any notifications right now.
                         </p>
                     </div>

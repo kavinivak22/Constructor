@@ -603,14 +603,14 @@ export default function PurchaseOrdersPage() {
                                 </div>
                               </div>
 
-                              <div className="border border-white/10 dark:border-black/10 rounded-lg overflow-hidden bg-white/5 dark:bg-black/10 mt-4">
-                                <Table>
+                              <div className="border border-white/10 dark:border-black/10 rounded-xl overflow-hidden bg-white/5 dark:bg-black/10 mt-4 overflow-x-auto">
+                                <Table className="min-w-[500px] text-xs sm:text-sm">
                                   <TableHeader>
                                     <TableRow className="bg-muted/30">
-                                      <TableHead className="h-9">Item Name</TableHead>
-                                      <TableHead className="h-9 text-right">Quantity</TableHead>
-                                      <TableHead className="h-9 text-right">Unit Price</TableHead>
-                                      <TableHead className="h-9 text-right">Total Price</TableHead>
+                                      <TableHead className="h-9 font-semibold">Item Name</TableHead>
+                                      <TableHead className="h-9 text-right font-semibold">Quantity</TableHead>
+                                      <TableHead className="h-9 text-right font-semibold">Unit Price</TableHead>
+                                      <TableHead className="h-9 text-right font-semibold">Total Price</TableHead>
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
@@ -619,7 +619,7 @@ export default function PurchaseOrdersPage() {
                                         <TableCell className="py-2.5 font-medium">{item.material_name}</TableCell>
                                         <TableCell className="py-2.5 text-right">{item.quantity}</TableCell>
                                         <TableCell className="py-2.5 text-right">₹{Number(item.unit_price).toFixed(2)}</TableCell>
-                                        <TableCell className="py-2.5 text-right font-semibold">₹{Number(item.total_price).toFixed(2)}</TableCell>
+                                        <TableCell className="py-2.5 text-right font-semibold text-foreground">₹{Number(item.total_price).toFixed(2)}</TableCell>
                                       </TableRow>
                                     ))}
                                   </TableBody>

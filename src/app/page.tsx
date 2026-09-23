@@ -454,7 +454,7 @@ export default function DashboardPage() {
                                                 </form>
                                             ) : (
                                                 <>
-                                                    <div className="flex items-center space-x-3">
+                                                    <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0 flex-1">
                                                         <Checkbox
                                                             id={task.id}
                                                             checked={task.status === 'completed'}
@@ -462,21 +462,21 @@ export default function DashboardPage() {
                                                         />
                                                         <label
                                                             htmlFor={task.id}
-                                                            className={`text-sm font-medium leading-none cursor-pointer select-none transition-all ${
+                                                            className={`text-xs sm:text-sm font-medium leading-snug cursor-pointer select-none transition-all truncate ${
                                                                 task.status === 'completed' ? 'line-through text-muted-foreground/60' : 'text-foreground/90'
                                                             }`}
                                                         >
                                                             {task.title}
                                                         </label>
                                                     </div>
-                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                                    <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
                                                         <Button
                                                             size="icon"
                                                             variant="ghost"
                                                             className="h-7 w-7 p-0"
                                                             onClick={() => startEditing(task.id, task.title)}
                                                         >
-                                                            <Pencil className="h-3.5 w-3.5" />
+                                                            <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
                                                         </Button>
                                                         <Button
                                                             size="icon"
@@ -484,7 +484,7 @@ export default function DashboardPage() {
                                                             className="h-7 w-7 p-0 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/20"
                                                             onClick={() => handleDeleteTask(task.id)}
                                                         >
-                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                            <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-red-600" />
                                                         </Button>
                                                     </div>
                                                 </>

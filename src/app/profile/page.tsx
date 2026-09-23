@@ -104,10 +104,10 @@ export default function ProfilePage() {
     }
 
     return (
-        <div className="flex flex-col min-h-screen bg-muted/10">
+        <div className="flex flex-col min-h-screen bg-transparent">
             {/* Header / Cover */}
-            <div className="h-48 bg-gradient-to-r from-blue-600 to-indigo-700 w-full relative">
-                <div className="absolute -bottom-16 left-6 md:left-10">
+            <div className="h-36 sm:h-48 bg-gradient-to-r from-indigo-600 via-purple-600 to-amber-500 w-full relative rounded-b-3xl shadow-md">
+                <div className="absolute -bottom-12 sm:-bottom-16 left-4 sm:left-10">
                     {profile && (
                         <AvatarUpload
                             url={profile.photoURL}
@@ -117,7 +117,7 @@ export default function ProfilePage() {
                 </div>
             </div>
 
-            <main className="container mx-auto p-6 pt-20 max-w-5xl space-y-8">
+            <main className="container mx-auto p-4 sm:p-6 pt-16 sm:pt-20 max-w-5xl space-y-6 sm:space-y-8">
                 {error && (
                     <Alert variant="destructive">
                         <AlertCircle className="h-4 w-4" />
@@ -132,9 +132,9 @@ export default function ProfilePage() {
                     <>
 
                         {/* Header Info */}
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                             <div>
-                                <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+                                <h1 className="text-xl sm:text-3xl font-bold tracking-tight font-headline flex items-center gap-3 text-foreground">
                                     {profile.displayName || 'User'}
                                     <EditFieldDialog
                                         field="displayName"

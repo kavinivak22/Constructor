@@ -1,10 +1,10 @@
-"use server";
+// Client action module
 import {
   getMaterialEstimationStream,
   type MaterialEstimationInput
 } from "@/ai/flows/material-estimation-from-project-specs";
 import { parseEstimationText, type ParsedMaterial } from "@/ai/flows/parse-estimation";
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/utils/supabase/client";
 import { z } from "zod";
 
 const FormSchema = z.object({

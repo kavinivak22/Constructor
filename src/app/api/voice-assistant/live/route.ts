@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import { CONSTRUCTOR_AI_TOOLS } from '@/lib/ai-tools/registry';
 import { executeVoiceQueryAction } from '@/app/actions/voice-assistant';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const dynamic = 'force-static';
 
 /**
  * Gemini Live Native Multimodal Audio Gateway

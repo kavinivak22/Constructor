@@ -21,38 +21,39 @@ export function InventoryCard({ material }: InventoryCardProps) {
   const level = getLevel();
 
   const levelVariant = {
-    high: 'bg-green-100 text-green-700 border-green-200',
-    medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    low: 'bg-red-100 text-red-700 border-red-200',
+    high: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+    medium: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+    low: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
   };
   
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
+      maximumFractionDigits: 0,
     }).format(amount);
   }
 
   return (
-    <Card className="glass-card">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-orange-100 p-2 rounded-lg">
-              <Package className="h-5 w-5 text-orange-600" />
+    <Card className="glass-card rounded-2xl border border-white/10 dark:border-white/5 transition-all duration-200 hover:shadow-md">
+      <CardContent className="p-3.5 sm:p-5">
+        <div className="flex items-start justify-between mb-3 gap-2">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="bg-primary/15 p-2 rounded-xl text-primary shrink-0">
+              <Package className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
-            <h3 className="font-bold text-md">{material.name}</h3>
+            <h3 className="font-bold text-sm sm:text-base truncate text-foreground">{material.name}</h3>
           </div>
            <Badge
             className={cn(
-              'capitalize text-xs font-semibold',
+              'capitalize text-[10px] sm:text-xs font-semibold shrink-0 rounded-full px-2 py-0.5 border',
               levelVariant[level]
             )}
           >
             {level} Stock
           </Badge>
         </div>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+        <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-xs sm:text-sm border-t border-border/40 pt-2.5">
           {(material.siteName || material.projectName) && (
             <>
               <div className="text-muted-foreground">Site:</div>
@@ -61,10 +62,10 @@ export function InventoryCard({ material }: InventoryCardProps) {
           )}
 
           <div className="text-muted-foreground">Category:</div>
-          <div className="font-medium text-right">{material.category}</div>
+          <div className="font-medium text-right truncate">{material.category}</div>
 
           <div className="text-muted-foreground">Current Stock:</div>
-          <div className="font-medium text-right">
+          <div className="font-bold text-right text-foreground">
             {material.currentStock} {material.unit}
           </div>
 
@@ -74,10 +75,14 @@ export function InventoryCard({ material }: InventoryCardProps) {
           </div>
 
           <div className="text-muted-foreground">Unit Cost:</div>
-          <div className="font-medium text-right">{formatCurrency(material.costPerUnit)}</div>
+          <div className="font-semibold text-right">{formatCurrency(material.costPerUnit)}</div>
           
-          <div className="text-muted-foreground">Supplier:</div>
-          <div className="font-medium text-right">{material.supplier}</div>
+          {material.supplier && (
+            <>
+              <div className="text-muted-foreground">Supplier:</div>
+              <div className="font-medium text-right truncate">{material.supplier}</div>
+            </>
+          )}
         </div>
       </CardContent>
     </Card>

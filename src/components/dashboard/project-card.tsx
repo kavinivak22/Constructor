@@ -38,46 +38,46 @@ export function ProjectCard({ project }: ProjectCardProps) {
     : null;
 
   return (
-    <Link href={`/projects/${project.id}`} className="block">
-      <Card className="glass-card flex flex-col overflow-hidden h-full">
-        <div className="p-4">
+    <Link href={`/projects/${project.id}`} className="block group">
+      <Card className="glass-card flex flex-col overflow-hidden h-full transition-all duration-300 group-hover:shadow-lg group-hover:-translate-y-0.5 border border-white/10 dark:border-white/5 rounded-2xl">
+        <div className="p-3.5 sm:p-4">
           <div className="flex items-start justify-between mb-1 gap-2 min-w-0">
             <div className="min-w-0 flex-1">
-              <h3 className="font-bold text-md leading-tight truncate">{project.name}</h3>
+              <h3 className="font-bold text-sm sm:text-base leading-tight truncate text-foreground group-hover:text-primary transition-colors">{project.name}</h3>
               {(project.client_name || project.clientName) && (
-                <p className="text-sm text-muted-foreground truncate">{project.client_name || project.clientName}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">{project.client_name || project.clientName}</p>
               )}
             </div>
-            <Badge variant="outline" className="capitalize text-xs font-semibold border-green-300 bg-green-50 text-green-700 shrink-0">
+            <Badge variant="outline" className="capitalize text-[10px] sm:text-xs font-semibold border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0 rounded-full px-2 py-0.5">
               {project.status}
             </Badge>
           </div>
         </div>
-        <div className="relative h-40 w-full">
+        <div className="relative h-36 sm:h-44 w-full overflow-hidden bg-muted">
           <Image
             src={imageUrl}
             alt={project.name}
             fill
-            className="object-cover"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
             data-ai-hint={imageHint}
           />
         </div>
-        <CardContent className="flex-grow p-4 space-y-3 flex flex-col">
-          <div className="space-y-1 flex-grow">
-            <div className="flex justify-between items-center text-sm font-medium text-muted-foreground">
-              <p>Progress</p>
-              <p className="font-semibold text-foreground">{project.progress ?? 0}%</p>
+        <CardContent className="flex-grow p-3.5 sm:p-4 space-y-3 flex flex-col justify-between">
+          <div className="space-y-1.5 flex-grow">
+            <div className="flex justify-between items-center text-xs sm:text-sm font-medium text-muted-foreground">
+              <span>Progress</span>
+              <span className="font-semibold text-foreground">{project.progress ?? 0}%</span>
             </div>
-            <Progress value={project.progress ?? 0} aria-label={`${project.progress ?? 0}% complete`} className="h-2" />
+            <Progress value={project.progress ?? 0} aria-label={`${project.progress ?? 0}% complete`} className="h-1.5 sm:h-2" />
           </div>
-          <div className='flex items-center justify-between text-sm text-muted-foreground pt-2'>
-            <div className='flex items-center gap-2'>
-              <Calendar className="h-4 w-4" />
+          <div className='flex items-center justify-between text-xs sm:text-sm text-muted-foreground pt-1.5 border-t border-border/40'>
+            <div className='flex items-center gap-1.5'>
+              <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary/80" />
               <span>{formattedDate}</span>
             </div>
             {budgetDisplay && (
               <div className='flex items-center gap-1'>
-                <span className='font-semibold'>{budgetDisplay}</span>
+                <span className='font-bold text-foreground'>{budgetDisplay}</span>
               </div>
             )}
           </div>

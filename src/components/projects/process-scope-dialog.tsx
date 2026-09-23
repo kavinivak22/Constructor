@@ -39,7 +39,9 @@ import {
   CheckSquare,
   Layers,
   Loader2,
-  Copy
+  Copy,
+  Cloud,
+  RotateCcw
 } from 'lucide-react';
 import {
   getHabitProfiles,
@@ -72,10 +74,24 @@ export function ProcessScopeDialog({ projectId, projectName, onSuccess, trigger 
   const [newProfileName, setNewProfileName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [generatingChecklistTaskId, setGeneratingChecklistTaskId] = useState<string | null>(null);
+  const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
+  const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
+  const isInitialMount = React.useRef(true);
+  const draftKey = `draft_building_plan_${projectId}`;
+
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem(draftKey);
+    } catch (e) {}
+    setDraftStatus('idle');
+    setLastSavedTime(null);
+    setHasRestoredDraft(false);
+  };
 
   const loadData = async () => {
     setIsLoading(true);
+    isInitialMount.current = true;
     const [profilesRes, scopeRes] = await Promise.all([
       getHabitProfiles(),
       getProjectScope(projectId)
@@ -91,6 +107,27 @@ export function ProcessScopeDialog({ projectId, projectName, onSuccess, trigger 
         setSelectedProfileId(scopeRes.appliedProfileId);
       }
     }
+
+    // Check if an unsaved draft exists in localStorage
+    try {
+      const savedDraftRaw = localStorage.getItem(draftKey);
+      if (savedDraftRaw) {
+        const parsedDraft = JSON.parse(savedDraftRaw);
+        if (parsedDraft.processes && parsedDraft.processes.length > 0) {
+          setProcesses(parsedDraft.processes);
+          if (parsedDraft.selectedProfileId) setSelectedProfileId(parsedDraft.selectedProfileId);
+          if (parsedDraft.newProfileName) setNewProfileName(parsedDraft.newProfileName);
+          setHasRestoredDraft(true);
+          setDraftStatus('saved');
+          if (parsedDraft.updatedAt) {
+            setLastSavedTime(new Date(parsedDraft.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to restore building plan draft from localStorage', e);
+    }
+
     setIsLoading(false);
   };
 
@@ -99,6 +136,37 @@ export function ProcessScopeDialog({ projectId, projectName, onSuccess, trigger 
       loadData();
     }
   }, [isOpen]);
+
+  // Debounced Auto-Save Effect
+  useEffect(() => {
+    if (!isOpen || isLoading) return;
+
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    setDraftStatus('saving');
+    const timer = setTimeout(() => {
+      try {
+        const now = new Date();
+        const draftData = {
+          processes,
+          selectedProfileId,
+          newProfileName,
+          updatedAt: now.toISOString()
+        };
+        localStorage.setItem(draftKey, JSON.stringify(draftData));
+        setDraftStatus('saved');
+        setLastSavedTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      } catch (e) {
+        console.error('Failed to auto-save building plan draft', e);
+        setDraftStatus('idle');
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [processes, selectedProfileId, newProfileName, isOpen, isLoading, projectId]);
 
   const handleSelectProfile = async (profileId: string) => {
     setSelectedProfileId(profileId);
@@ -228,6 +296,7 @@ export function ProcessScopeDialog({ projectId, projectName, onSuccess, trigger 
     setIsSubmitting(false);
 
     if (res.success) {
+      clearDraft();
       toast({
         title: 'Construction Scope Saved',
         description: `Project progress updated to ${res.progress}%.${syncToMaster ? ` Master profile '${selectedProfile?.name}' synced!` : ''}`,
@@ -264,6 +333,7 @@ export function ProcessScopeDialog({ projectId, projectName, onSuccess, trigger 
     setIsSubmitting(false);
 
     if (res.success && res.data) {
+      clearDraft();
       toast({
         title: 'New Habit Profile Created!',
         description: `'${res.data.name}' has been saved to your company standards.`,
@@ -287,15 +357,49 @@ export function ProcessScopeDialog({ projectId, projectName, onSuccess, trigger 
       </DialogTrigger>
       <DialogContent className="w-full sm:w-[95vw] h-[92vh] sm:h-[90vh] min-h-[500px] max-w-5xl flex flex-col p-0 gap-0 overflow-hidden rounded-2xl glass border border-white/10 dark:border-white/5 shadow-2xl">
         <DialogHeader className="p-4 md:p-6 border-b border-white/10 dark:border-white/5 bg-white/5 dark:bg-black/20 shrink-0 text-left">
-          <DialogTitle className="text-lg sm:text-xl font-bold font-headline flex items-center gap-2">
-            <Layers className="h-5 w-5 text-primary" /> Construction Building Plan & Quality Checklists
-          </DialogTitle>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <DialogTitle className="text-lg sm:text-xl font-bold font-headline flex items-center gap-2">
+              <Layers className="h-5 w-5 text-primary" /> Construction Building Plan & Quality Checklists
+            </DialogTitle>
+            <div className="flex items-center gap-2">
+              {draftStatus === 'saving' && (
+                <Badge variant="secondary" className="text-[10px] bg-amber-500/15 text-amber-400 border border-amber-500/30 font-medium px-2 py-0.5 animate-pulse">
+                  <Loader2 className="h-3 w-3 animate-spin mr-1 text-amber-400" /> Saving draft...
+                </Badge>
+              )}
+              {draftStatus === 'saved' && (
+                <Badge variant="secondary" className="text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-medium px-2 py-0.5 flex items-center">
+                  <Cloud className="h-3 w-3 mr-1 text-emerald-400" /> Draft saved {lastSavedTime ? `at ${lastSavedTime}` : '(auto)'}
+                </Badge>
+              )}
+            </div>
+          </div>
           <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-            Select or customize construction stages, tasks, and quality checklists for {projectName}.
+            Select or customize construction stages, tasks, and quality checklists for {projectName}. Changes auto-save as you type.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
+          {hasRestoredDraft && (
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex flex-wrap items-center justify-between gap-2 shadow-sm">
+              <div className="flex items-center gap-2">
+                <RotateCcw className="h-4 w-4 shrink-0 text-amber-400" />
+                <span>Restored unsaved building plan draft from your previous session {lastSavedTime ? `(${lastSavedTime})` : ''}.</span>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  clearDraft();
+                  loadData();
+                }}
+                className="h-7 text-[11px] text-amber-400 hover:bg-amber-500/20 hover:text-amber-200 font-semibold px-2.5"
+              >
+                Discard Draft
+              </Button>
+            </div>
+          )}
+
           {isLoading ? (
             <div className="py-16 flex justify-center items-center text-muted-foreground">
               <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading construction building plans...

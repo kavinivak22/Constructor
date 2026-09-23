@@ -1,7 +1,6 @@
-'use server'
+// Client action module
 
-import { createClient } from '@/utils/supabase/server';
-import { cookies } from 'next/headers';
+import { createClient } from '@/utils/supabase/client';
 import { PurchaseOrder } from '@/lib/data';
 
 export async function getPurchaseOrders(projectId?: string) {

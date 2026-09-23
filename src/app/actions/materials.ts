@@ -1,11 +1,9 @@
-'use server'
+// Client action module
 
-import { createClient } from '@/utils/supabase/server';
-import { cookies } from 'next/headers'
+import { createClient } from '@/utils/supabase/client';
 import { createNotification } from './notifications'
 
 export async function getProjectMaterials(projectId: string) {
-    const cookieStore = cookies()
     const supabase = await createClient();
 
     try {
@@ -52,7 +50,6 @@ export async function getProjectMaterials(projectId: string) {
 }
 
 export async function updateMaterialStock(materialId: string, newQuantity: number, purpose: string) {
-    const cookieStore = cookies()
     const supabase = await createClient();
 
     try {
@@ -123,7 +120,6 @@ export async function updateMaterialStock(materialId: string, newQuantity: numbe
 }
 
 export async function getMaterialLogs(materialId: string) {
-    const cookieStore = cookies()
     const supabase = await createClient();
 
     try {

@@ -1,6 +1,6 @@
-'use server';
+// Client action module
 
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@/utils/supabase/client';
 
 export interface ProjectCostMetric {
   projectName: string;

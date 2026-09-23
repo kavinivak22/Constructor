@@ -116,9 +116,9 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                 <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-gradient-to-br from-amber-500/15 to-orange-500/20 dark:from-amber-600/10 dark:to-orange-500/15 blur-[80px] animate-blob-2" />
                 <div className="absolute top-[40%] right-[15%] w-[50vw] h-[50vw] rounded-full bg-gradient-to-tl from-cyan-500/15 to-emerald-500/15 dark:from-cyan-500/10 dark:to-emerald-500/10 blur-[80px] animate-blob-3" />
               </div>
-              <div className="relative z-10 flex flex-col flex-1">
+              <div className="relative z-10 flex flex-col flex-1 min-h-screen">
                 <AppHeader />
-                <main className="flex-1 pb-20">{children}</main>
+                <main className="flex-1 pb-28 px-3.5 sm:px-6 py-4">{children}</main>
                 <MobileBottomNav />
               </div>
               <Toaster />

@@ -1,7 +1,6 @@
-'use server';
+// Client action module
 
-import { createClient } from '@/utils/supabase/server';
-import { cookies } from 'next/headers';
+import { createClient } from '@/utils/supabase/client';
 
 export type TransferRecord = {
   id: string;

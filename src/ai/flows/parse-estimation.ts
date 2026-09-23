@@ -1,4 +1,4 @@
-'use server';
+// Client flow module
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';

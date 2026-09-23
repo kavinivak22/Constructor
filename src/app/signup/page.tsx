@@ -28,6 +28,9 @@ const getFriendlyErrorMessage = (error: any): string => {
       if (error.message.includes('password should be at least 6 characters')) {
         return 'Password must be at least 6 characters long.';
       }
+      if (error.message.includes('Database error saving new user') || error.message.includes('saving new user')) {
+        return 'Database setup issue saving new user. Please run FIX_SIGNUP_DATABASE_ERROR.sql in your Supabase SQL Editor.';
+      }
       if (error.message.includes('Failed to send a request to the Edge Function')) {
         return "A server-side error occurred during signup. Please try again later.";
       }
@@ -76,10 +79,12 @@ export default function SignupPage() {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
-          // This data is passed to the 'on_auth_user_created' trigger
+          // Pass data for 'on_auth_user_created' trigger under all common key naming conventions
           data: {
             full_name: displayName,
-            // You can add other metadata here if needed
+            displayName: displayName,
+            display_name: displayName,
+            name: displayName
           }
         }
       });
