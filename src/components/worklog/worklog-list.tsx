@@ -357,115 +357,117 @@ export function WorklogList({ projectId, refreshTrigger, highlightWorklogId }: W
     return (
         <div className="space-y-6 pb-10">
             {/* Filters Bar & View Mode Toggle */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                {/* Search, Contractor & Date filters */}
-                <div className="flex flex-wrap items-center gap-2 flex-1">
-                    {/* Search Input */}
-                    <div className="relative min-w-[180px] flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Search logs, scope, contractors..."
-                            className="pl-9 glass border-white/10 dark:border-white/5 focus-visible:ring-primary h-9 text-xs sm:text-sm"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-
-                    {/* Contractor Filter Dropdown */}
-                    {availableContractors.length > 0 && (
-                        <Select value={selectedContractor} onValueChange={setSelectedContractor}>
-                            <SelectTrigger className="w-[140px] sm:w-[170px] h-9 text-xs glass border-white/10 dark:border-white/5 bg-transparent">
-                                <SelectValue placeholder="All Contractors" />
-                            </SelectTrigger>
-                            <SelectContent className="glass border-white/10 dark:border-white/5">
-                                <SelectItem value="all" className="focus:bg-white/10">All Contractors</SelectItem>
-                                {availableContractors.map((cName) => (
-                                    <SelectItem key={cName} value={cName} className="focus:bg-white/10">
-                                        {cName}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    )}
-
-                    {/* Date Filter */}
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant={"outline"}
-                                className={cn(
-                                    "justify-center text-left font-normal glass border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5 h-9 text-xs",
-                                    "w-9 px-0 sm:w-auto sm:px-3 sm:justify-start",
-                                    !date && "text-muted-foreground"
-                                )}
-                            >
-                                <CalendarIcon className={cn("h-3.5 w-3.5", "sm:mr-1.5")} />
-                                <span className="hidden sm:inline">
-                                    {date ? format(date, "PPP") : "Date"}
-                                </span>
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 glass border-white/10 dark:border-white/5" align="end">
-                            <Calendar
-                                mode="single"
-                                selected={date}
-                                onSelect={setDate}
-                                initialFocus
-                                className="bg-transparent"
-                            />
-                        </PopoverContent>
-                    </Popover>
-
-                    {/* Clear Filters Button */}
-                    {(searchTerm || date || selectedContractor !== 'all') && (
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                                setSearchTerm('');
-                                setDate(undefined);
-                                setSelectedContractor('all');
-                            }}
-                            title="Clear filters"
-                            className="h-9 w-9 glass border-white/10 dark:border-white/5 hover:bg-white/10"
-                        >
-                            <X className="h-4 w-4" />
-                        </Button>
-                    )}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+                {/* Search Input: full width on mobile, flexible on desktop */}
+                <div className="relative flex-1 min-w-0">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search logs, scope, contractors..."
+                        className="pl-9 glass border-white/10 dark:border-white/5 focus-visible:ring-primary h-9 text-xs sm:text-sm w-full"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                 </div>
 
-                {/* View Mode Toggle Button Group */}
-                <div className="flex items-center gap-1 p-1 rounded-xl glass border border-white/10 dark:border-white/5 self-end sm:self-auto shrink-0 bg-white/5">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleToggleViewMode('cards')}
-                        className={cn(
-                            "h-7 px-2.5 text-xs font-medium rounded-lg gap-1.5 transition-all",
-                            viewMode === 'cards' 
-                                ? "bg-primary text-primary-foreground shadow-sm" 
-                                : "text-muted-foreground hover:text-foreground hover:bg-white/10"
+                {/* Second row on mobile / inline right controls on desktop */}
+                <div className="flex items-center justify-between sm:justify-start gap-2 shrink-0">
+                    <div className="flex items-center gap-2 flex-1 sm:flex-none">
+                        {/* Contractor Filter Dropdown */}
+                        {availableContractors.length > 0 && (
+                            <Select value={selectedContractor} onValueChange={setSelectedContractor}>
+                                <SelectTrigger className="w-[130px] sm:w-[160px] h-9 text-xs glass border-white/10 dark:border-white/5 bg-transparent">
+                                    <SelectValue placeholder="All Contractors" />
+                                </SelectTrigger>
+                                <SelectContent className="glass border-white/10 dark:border-white/5">
+                                    <SelectItem value="all" className="focus:bg-white/10">All Contractors</SelectItem>
+                                    {availableContractors.map((cName) => (
+                                        <SelectItem key={cName} value={cName} className="focus:bg-white/10">
+                                            {cName}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         )}
-                        title="Card Feed View"
-                    >
-                        <LayoutGrid className="h-3.5 w-3.5" />
-                        <span className="hidden xs:inline">Cards</span>
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleToggleViewMode('table')}
-                        className={cn(
-                            "h-7 px-2.5 text-xs font-medium rounded-lg gap-1.5 transition-all",
-                            viewMode === 'table' 
-                                ? "bg-primary text-primary-foreground shadow-sm" 
-                                : "text-muted-foreground hover:text-foreground hover:bg-white/10"
+
+                        {/* Date Filter */}
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                        "justify-center text-left font-normal glass border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5 h-9 text-xs",
+                                        "w-9 px-0 sm:w-auto sm:px-3 sm:justify-start",
+                                        !date && "text-muted-foreground"
+                                    )}
+                                >
+                                    <CalendarIcon className={cn("h-3.5 w-3.5", "sm:mr-1.5")} />
+                                    <span className="hidden sm:inline">
+                                        {date ? format(date, "PPP") : "Date"}
+                                    </span>
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0 glass border-white/10 dark:border-white/5" align="end">
+                                <Calendar
+                                    mode="single"
+                                    selected={date}
+                                    onSelect={setDate}
+                                    initialFocus
+                                    className="bg-transparent"
+                                />
+                            </PopoverContent>
+                        </Popover>
+
+                        {/* Clear Filters Button */}
+                        {(searchTerm || date || selectedContractor !== 'all') && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                    setSearchTerm('');
+                                    setDate(undefined);
+                                    setSelectedContractor('all');
+                                }}
+                                title="Clear filters"
+                                className="h-9 w-9 glass border-white/10 dark:border-white/5 hover:bg-white/10 shrink-0"
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
                         )}
-                        title="Table Ledger View"
-                    >
-                        <TableIcon className="h-3.5 w-3.5" />
-                        <span className="hidden xs:inline">Table</span>
-                    </Button>
+                    </div>
+
+                    {/* View Mode Toggle Button Group */}
+                    <div className="flex items-center gap-1 p-1 rounded-xl glass border border-white/10 dark:border-white/5 shrink-0 bg-white/5">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleToggleViewMode('cards')}
+                            className={cn(
+                                "h-7 px-2 sm:px-2.5 text-xs font-medium rounded-lg gap-1.5 transition-all",
+                                viewMode === 'cards' 
+                                    ? "bg-primary text-primary-foreground shadow-sm" 
+                                    : "text-muted-foreground hover:text-foreground hover:bg-white/10"
+                            )}
+                            title="Card Feed View"
+                        >
+                            <LayoutGrid className="h-3.5 w-3.5" />
+                            <span className="hidden md:inline">Cards</span>
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleToggleViewMode('table')}
+                            className={cn(
+                                "h-7 px-2 sm:px-2.5 text-xs font-medium rounded-lg gap-1.5 transition-all",
+                                viewMode === 'table' 
+                                    ? "bg-primary text-primary-foreground shadow-sm" 
+                                    : "text-muted-foreground hover:text-foreground hover:bg-white/10"
+                            )}
+                            title="Table Ledger View"
+                        >
+                            <TableIcon className="h-3.5 w-3.5" />
+                            <span className="hidden md:inline">Table</span>
+                        </Button>
+                    </div>
                 </div>
             </div>
 
