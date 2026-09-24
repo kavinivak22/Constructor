@@ -414,14 +414,14 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
 
   return (
     <Card className="glass-card border-primary/30 bg-gradient-to-r from-primary/10 via-background/80 to-primary/5 shadow-xl relative overflow-hidden">
-      <CardHeader className="p-4 sm:p-5 pb-2 space-y-2">
+      <CardHeader className="p-3.5 sm:p-5 pb-1.5 space-y-1.5">
         {/* Top Row: NEXT TASK badge / Status + Clean Manual Navigation Pill */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Badge 
               variant="outline" 
               className={cn(
-                "text-xs px-2.5 py-0.5 font-bold uppercase tracking-wider shrink-0",
+                "text-[11px] sm:text-xs px-2 sm:px-2.5 py-0.5 font-bold uppercase tracking-wider shrink-0",
                 isCompleted 
                   ? "bg-emerald-500/15 text-emerald-500 border-emerald-500/30" 
                   : "bg-primary/15 text-primary border-primary/30"
@@ -439,13 +439,13 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
           </div>
 
           {/* Clean Manual Task Navigation Controls */}
-          <div className="flex items-center gap-1 bg-background/80 px-2 py-0.5 rounded-xl border border-border/50 shadow-sm shrink-0">
+          <div className="flex items-center gap-1 bg-background/80 px-2 py-0.5 rounded-lg border border-border/50 shadow-sm shrink-0">
             <Button
               variant="ghost"
               size="icon"
               disabled={currentTaskIndex === 0}
               onClick={() => setCurrentTaskIndex(prev => Math.max(0, prev - 1))}
-              className="h-6 w-6 rounded-lg p-0 hover:bg-muted"
+              className="h-5 w-5 rounded-md p-0 hover:bg-muted"
               title="Previous Task Checklist"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
@@ -458,7 +458,7 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
               size="icon"
               disabled={currentTaskIndex === flatTaskList.length - 1}
               onClick={() => setCurrentTaskIndex(prev => Math.min(flatTaskList.length - 1, prev + 1))}
-              className="h-6 w-6 rounded-lg p-0 hover:bg-muted"
+              className="h-5 w-5 rounded-md p-0 hover:bg-muted"
               title="Next Task Checklist"
             >
               <ChevronRight className="h-3.5 w-3.5" />
@@ -466,38 +466,36 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
           </div>
         </div>
 
-        {/* Stage Title */}
-        <p className="text-xs font-semibold text-muted-foreground/80 tracking-wide">
-          {activeProcessTitle}
-        </p>
-
-        {/* Task Title */}
-        <CardTitle className="text-lg sm:text-xl font-bold font-headline text-foreground leading-snug">
-          {activeTask.title}
-        </CardTitle>
-
-        {/* Quality Checks Progress */}
-        {totalChecks > 0 && (
-          <div className="pt-0.5">
-            <Badge variant="secondary" className="text-xs font-semibold bg-primary/10 text-primary border border-primary/20 px-2.5 py-0.5">
-              {completedChecks} / {totalChecks} Quality Checks Done ({checkProgressPct}%)
-            </Badge>
+        {/* Stage & Task Title with Inline Quality Progress */}
+        <div className="pt-0.5">
+          <p className="text-[11px] font-semibold text-muted-foreground/80 tracking-wide uppercase">
+            {activeProcessTitle}
+          </p>
+          <div className="flex flex-wrap items-center justify-between gap-1.5 mt-0.5">
+            <CardTitle className="text-base sm:text-lg font-bold font-headline text-foreground leading-tight">
+              {activeTask.title}
+            </CardTitle>
+            {totalChecks > 0 && (
+              <Badge variant="secondary" className="text-[10px] sm:text-xs font-semibold bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 shrink-0">
+                {completedChecks}/{totalChecks} Quality Checks ({checkProgressPct}%)
+              </Badge>
+            )}
           </div>
-        )}
+        </div>
       </CardHeader>
 
-      <CardContent className="p-4 sm:p-5 pt-2 space-y-4">
-        {/* Quality Checklist Items */}
+      <CardContent className="p-3.5 sm:p-5 pt-1 space-y-3">
+        {/* Quality Checklist Items (Fully visible, slim padding & gap) */}
         {totalChecks > 0 ? (
-          <div className="space-y-2">
-            <Progress value={checkProgressPct} className="h-1.5 bg-muted" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+          <div className="space-y-1.5">
+            <Progress value={checkProgressPct} className="h-1 bg-muted/60" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-0.5">
               {activeTask.checklists.map((check) => (
                 <div
                   key={check.id}
                   onClick={() => handleToggleChecklist(check.id)}
                   className={cn(
-                    "p-2.5 rounded-xl border transition-all cursor-pointer flex items-start gap-2.5",
+                    "py-1.5 px-2.5 rounded-lg border transition-all cursor-pointer flex items-center gap-2",
                     check.is_completed
                       ? "bg-emerald-500/10 border-emerald-500/30 text-foreground"
                       : "bg-background/60 hover:bg-muted/40 border-border/50 text-foreground"
@@ -507,9 +505,9 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
                     id={check.id}
                     checked={check.is_completed}
                     onCheckedChange={() => handleToggleChecklist(check.id)}
-                    className="mt-0.5"
+                    className="h-3.5 w-3.5 shrink-0"
                   />
-                  <span className={cn("text-xs font-medium leading-tight", check.is_completed && "line-through text-muted-foreground")}>
+                  <span className={cn("text-xs font-medium leading-tight truncate", check.is_completed && "line-through text-muted-foreground")}>
                     {check.title}
                   </span>
                 </div>
@@ -517,31 +515,31 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
             </div>
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground italic">No quality checklist items specified for this task.</p>
+          <p className="text-[11px] text-muted-foreground italic">No quality checklist items specified for this task.</p>
         )}
 
         {/* =============================================================== */}
         {/* LINKED WORKLOGS SECTION (Proof of Work)                         */}
         {/* =============================================================== */}
-        <div className="space-y-2.5 pt-2 border-t border-white/10 dark:border-white/5">
+        <div className="space-y-2 pt-1.5 border-t border-white/10 dark:border-white/5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
               <Link2 className="h-3.5 w-3.5 text-primary" />
-              Proof of Work ({linkedWorklogs.length} Linked)
+              Proof of Work {linkedWorklogs.length > 0 && <span className="text-muted-foreground font-normal text-[11px]">({linkedWorklogs.length} linked)</span>}
             </span>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsLinkDialogOpen(true)}
-              className="h-7 text-xs text-primary hover:text-primary/80 font-semibold px-2 hover:bg-white/10"
+              className="h-6 text-[11px] text-primary hover:text-primary/80 font-semibold px-1.5 hover:bg-white/10"
             >
-              {linkedWorklogs.length > 0 ? "+ Link Another Log" : "🔗 Link Existing Log"}
+              {linkedWorklogs.length > 0 ? "+ Link More" : "🔗 Link Log"}
             </Button>
           </div>
 
           {/* List of currently linked worklogs */}
           {linkedWorklogs.length > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {linkedWorklogs.map((log) => {
                 const totalWorkers = (log.labor || []).reduce((acc: number, entry: any) => {
                   return acc + (entry.workers || []).reduce((wAcc: number, w: any) => wAcc + Number(w.count || 0), 0);
@@ -551,9 +549,9 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
                 return (
                   <div
                     key={log.id}
-                    className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-background/70 border border-emerald-500/30 text-xs shadow-sm"
+                    className="flex items-center justify-between gap-2 p-1.5 px-2.5 rounded-lg bg-background/70 border border-emerald-500/30 text-xs shadow-sm"
                   >
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                       {/* Photo Thumbnail or Date Icon */}
                       {hasPhotos ? (
                         <button
@@ -565,38 +563,29 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
                             setViewerDate(format(new Date(log.date), 'MMM dd, yyyy'));
                             setIsViewerOpen(true);
                           }}
-                          className="relative w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-white/20 hover:scale-105 transition-transform"
+                          className="relative w-7 h-7 rounded-md overflow-hidden shrink-0 border border-white/20 hover:scale-105 transition-transform"
                           title="View site photos"
                         >
                           <Image src={log.photos[0].photo_url} alt="Site" fill className="object-cover" unoptimized />
                           {log.photos.length > 1 && (
-                            <span className="absolute bottom-0 right-0 bg-black/80 text-[8px] text-white px-1 font-bold rounded-tl">
+                            <span className="absolute bottom-0 right-0 bg-black/80 text-[7px] text-white px-0.5 font-bold rounded-tl">
                               +{log.photos.length - 1}
                             </span>
                           )}
                         </button>
                       ) : (
-                        <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                          <CalendarIcon className="h-4 w-4" />
+                        <div className="w-7 h-7 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                          <CalendarIcon className="h-3.5 w-3.5" />
                         </div>
                       )}
 
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-foreground truncate">
-                            {log.title || 'Daily Log'}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                            {format(new Date(log.date), 'dd MMM yyyy')}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-muted-foreground flex items-center gap-2">
-                          <span>{totalWorkers} workers</span>
-                          {log.creator && (
-                            <span className="text-muted-foreground/75 truncate">
-                              • By {log.creator.display_name || log.creator.email?.split('@')[0]}
-                            </span>
-                          )}
+                      <div className="min-w-0 flex-1 flex items-center justify-between gap-2">
+                        <span className="font-semibold text-foreground truncate text-xs">
+                          {log.title || 'Daily Log'}
+                        </span>
+                        <div className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0 flex items-center gap-1.5">
+                          <span>{format(new Date(log.date), 'dd MMM')}</span>
+                          <span>• {totalWorkers}w</span>
                         </div>
                       </div>
                     </div>
@@ -605,72 +594,81 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
                       variant="ghost"
                       size="icon"
                       onClick={() => handleUnlinkWorklog(log.id)}
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg shrink-0"
+                      className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md shrink-0"
                       title="Unlink this worklog"
                     >
-                      <X className="h-3.5 w-3.5" />
+                      <X className="h-3 w-3" />
                     </Button>
                   </div>
                 );
               })}
             </div>
-          ) : (
-            <div className="p-3 rounded-xl border border-dashed border-amber-500/40 bg-amber-500/5 text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold">No worklog assigned to this task yet.</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Link an existing log or log new work to attach proof and unlock completion.
-                </p>
-              </div>
+          ) : autodetectedWorklogs.length === 0 ? (
+            <div className="py-1.5 px-2.5 rounded-lg border border-dashed border-amber-500/40 bg-amber-500/5 text-[11px] text-amber-700 dark:text-amber-300 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 truncate">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                No worklog linked yet (required to complete)
+              </span>
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => setIsLinkDialogOpen(true)}
+                className="h-auto p-0 text-[11px] text-primary font-semibold shrink-0"
+              >
+                Link log
+              </Button>
             </div>
-          )}
+          ) : null}
 
-          {/* Autodetection Suggestion Ribbon */}
+          {/* Autodetection Suggestion Ribbon (Streamlined, no double empty alert) */}
           {autodetectedWorklogs.length > 0 && (
-            <div className="p-3 rounded-xl border border-primary/30 bg-primary/5 space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                Autodetected Matching Worklog:
+            <div className="p-2 rounded-lg border border-primary/25 bg-primary/5 space-y-1.5">
+              <div className="flex items-center justify-between text-[11px] font-bold text-primary">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  Suggested Matching Logs ({autodetectedWorklogs.length}):
+                </span>
               </div>
-              {autodetectedWorklogs.map((log) => (
-                <div key={log.id} className="flex items-center justify-between gap-2 text-xs bg-background/80 p-2 rounded-lg border border-primary/20">
-                  <div className="truncate flex-1">
-                    <strong className="text-foreground">{log.title}</strong>
-                    <span className="text-muted-foreground ml-2 text-[10px]">
-                      {format(new Date(log.date), 'dd MMM')}
-                    </span>
+              <div className="space-y-1">
+                {autodetectedWorklogs.map((log) => (
+                  <div key={log.id} className="flex items-center justify-between gap-2 text-xs bg-background/80 px-2.5 py-1.5 rounded-md border border-primary/20">
+                    <div className="truncate flex-1 min-w-0">
+                      <strong className="text-foreground text-xs">{log.title}</strong>
+                      <span className="text-muted-foreground ml-2 text-[10px]">
+                        {format(new Date(log.date), 'dd MMM')}
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleLinkWorklog(log.id)}
+                      className="h-6 text-[11px] border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground font-semibold px-2 shrink-0"
+                    >
+                      + Link
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleLinkWorklog(log.id)}
-                    className="h-7 text-xs border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground font-semibold px-2.5"
-                  >
-                    + Link to Task
-                  </Button>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
         </div>
 
         {/* =============================================================== */}
-        {/* BOTTOM ACTIONS: LOG NEW WORK / COMPLETE TASK                   */}
+        {/* BOTTOM ACTIONS: LOG WORK & COMPLETE TASK (Side-by-Side Row)      */}
         {/* =============================================================== */}
-        <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
-          {/* Log New Work Shortcut (automatically links to task upon saving) */}
-          <div className="flex-1">
+        <div className="pt-1 flex flex-row items-center gap-2">
+          {/* Log Work Shortcut */}
+          <div className="flex-1 min-w-0">
             <CreateWorklogDialog
               projectId={projectId}
               initialTitle={activeTask.title}
               trigger={
                 <Button 
                   variant="outline" 
-                  size="default" 
-                  className="w-full glass border-white/10 dark:border-white/5 hover:bg-white/10 text-foreground font-bold h-11 text-xs sm:text-sm rounded-xl"
+                  size="sm" 
+                  className="w-full glass border-white/10 dark:border-white/5 hover:bg-white/10 text-foreground font-bold h-9 text-xs rounded-xl truncate"
                 >
-                  <Plus className="mr-1.5 h-4 w-4" /> Log New Work
+                  <Plus className="mr-1 h-3.5 w-3.5 shrink-0" /> Log Work
                 </Button>
               }
               onSuccess={(newLogId) => {
@@ -683,29 +681,30 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
           </div>
 
           {/* Complete Task & Advance Button */}
-          <div className="flex-1">
+          <div className="flex-[1.3] min-w-0">
             {isCompleted ? (
               <Button
                 variant="outline"
+                size="sm"
                 onClick={handleReopenTask}
-                className="w-full border-white/10 hover:bg-white/10 text-muted-foreground font-medium h-11 text-xs sm:text-sm rounded-xl"
+                className="w-full border-white/10 hover:bg-white/10 text-muted-foreground font-medium h-9 text-xs rounded-xl"
               >
-                <RotateCcw className="mr-1.5 h-4 w-4" /> Reopen Task
+                <RotateCcw className="mr-1 h-3.5 w-3.5 shrink-0" /> Reopen Task
               </Button>
             ) : (
               <Button
-                size="default"
+                size="sm"
                 disabled={linkedWorklogIds.length === 0}
                 onClick={handleCompleteTask}
                 className={cn(
-                  "w-full font-bold shadow-md h-11 text-xs sm:text-sm rounded-xl transition-all",
+                  "w-full font-bold shadow-md h-9 text-xs rounded-xl transition-all truncate",
                   linkedWorklogIds.length > 0 
                     ? "bg-emerald-600 hover:bg-emerald-500 text-white" 
                     : "bg-muted text-muted-foreground opacity-60 cursor-not-allowed"
                 )}
                 title={linkedWorklogIds.length === 0 ? "Link at least one worklog to complete" : "Mark completed and advance"}
               >
-                <CheckCircle2 className="mr-1.5 h-4 w-4" /> Complete & Advance →
+                <CheckCircle2 className="mr-1 h-3.5 w-3.5 shrink-0" /> Complete & Advance →
               </Button>
             )}
           </div>
