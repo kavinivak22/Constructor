@@ -327,41 +327,39 @@ export default function DashboardPage() {
 
                 {/* Tomorrow's Work Prep Card (Minimized to conserve space) */}
                 <Card className="glass-card overflow-hidden border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent shadow-sm">
-                    <CardContent className="p-3.5 sm:p-4 sm:flex sm:items-center sm:min-h-[4.5rem]">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
-                            <div className="flex items-center gap-3">
-                                <div className="h-9 w-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
-                                    <PhoneCall className="h-4 w-4" />
-                                </div>
-                                <div className="space-y-0.5">
-                                    <div className="flex flex-wrap items-center gap-1.5">
-                                        <h3 className="text-sm font-bold text-foreground">
-                                            {t('tomorrowPrepTitle', "Tomorrow's Work Preparation")}
-                                        </h3>
-                                        <Badge variant="outline" className="text-[10px] px-2 py-0.5 h-auto border-primary/30 text-primary bg-primary/10 whitespace-nowrap shrink-0 font-semibold rounded-full">
-                                            {tomorrowDateLabel || t('tomorrow', 'Tomorrow')}
-                                        </Badge>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">
-                                        {tomorrowTasksCount === null ? (
-                                            t('loadingSchedule', "Loading tomorrow's schedule...")
-                                        ) : tomorrowTasksCount > 0 ? (
-                                            `${tomorrowTasksCount} ${t('tasksScheduledShort', 'tasks scheduled for tomorrow. Call assignees and contractors to prepare.')}`
-                                        ) : (
-                                            t('noPlansForTomorrow', 'No plans for tomorrow yet!')
-                                        )}
-                                    </p>
-                                </div>
+                    <div className="p-3.5 sm:px-5 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
+                        <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
+                                <PhoneCall className="h-4 w-4" />
                             </div>
-
-                            <Button asChild size="sm" className="shrink-0 h-8 text-xs rounded-lg px-3 group">
-                                <Link href="/work-prep">
-                                    <PhoneCall className="mr-1.5 h-3.5 w-3.5 transition-transform group-hover:scale-110" />
-                                    {tomorrowTasksCount && tomorrowTasksCount > 0 ? t('viewPrepBoard', 'View Prep Board') : t('startPrep', 'Start Prep')}
-                                </Link>
-                            </Button>
+                            <div className="space-y-0.5">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                    <h3 className="text-sm font-bold text-foreground">
+                                        {t('tomorrowPrepTitle', "Tomorrow's Work Preparation")}
+                                    </h3>
+                                    <Badge variant="outline" className="text-[10px] px-2 py-0.5 h-auto border-primary/30 text-primary bg-primary/10 whitespace-nowrap shrink-0 font-semibold rounded-full">
+                                        {tomorrowDateLabel || t('tomorrow', 'Tomorrow')}
+                                    </Badge>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    {tomorrowTasksCount === null ? (
+                                        t('loadingSchedule', "Loading tomorrow's schedule...")
+                                    ) : tomorrowTasksCount > 0 ? (
+                                        `${tomorrowTasksCount} ${t('tasksScheduledShort', 'tasks scheduled for tomorrow. Call assignees and contractors to prepare.')}`
+                                    ) : (
+                                        t('noPlansForTomorrow', 'No plans for tomorrow yet!')
+                                    )}
+                                </p>
+                            </div>
                         </div>
-                    </CardContent>
+
+                        <Button asChild size="sm" className="shrink-0 h-8 text-xs rounded-lg px-3 group self-start sm:self-center">
+                            <Link href="/work-prep">
+                                <PhoneCall className="mr-1.5 h-3.5 w-3.5 transition-transform group-hover:scale-110" />
+                                {tomorrowTasksCount && tomorrowTasksCount > 0 ? t('viewPrepBoard', 'View Prep Board') : t('startPrep', 'Start Prep')}
+                            </Link>
+                        </Button>
+                    </div>
                 </Card>
 
                 {/* Active Projects Section */}

@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { LucideIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export interface Alert {
     id: string;
@@ -18,6 +18,47 @@ interface AlertFlipperProps {
     alerts: Alert[];
     alertVariants: Record<string, string>;
     autoplayDelay?: number;
+}
+
+function AlertCardBody({
+    alert,
+    variantClass,
+}: {
+    alert: Alert;
+    variantClass: string;
+}) {
+    return (
+        <div
+            className={cn(
+                "h-[120px] w-full flex items-center justify-between px-4 sm:px-6 select-none",
+                variantClass
+            )}
+        >
+            <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                <div className="flex-shrink-0 flex items-center justify-center">
+                    <alert.icon className="h-5 w-5 sm:h-6 sm:w-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-sm sm:font-bold sm:text-base truncate leading-snug">
+                        {alert.title}
+                    </h4>
+                    <p className="text-xs sm:text-sm line-clamp-1 sm:line-clamp-2 leading-relaxed opacity-90">
+                        {alert.description}
+                    </p>
+                    <p className="text-[10px] sm:text-xs opacity-75 mt-0.5">
+                        {alert.time}
+                    </p>
+                </div>
+            </div>
+            <Button
+                size="sm"
+                variant="outline"
+                className="text-current border-current/50 hover:bg-white/20 flex-shrink-0 h-8 sm:h-9 px-3 sm:px-4 text-xs sm:text-sm font-semibold rounded-lg ml-3"
+            >
+                View
+            </Button>
+        </div>
+    );
 }
 
 export function AlertFlipper({
@@ -60,24 +101,6 @@ export function AlertFlipper({
         }
     };
 
-    const AlertCardContent = ({ alert }: { alert: Alert }) => (
-        <div className="flex items-start sm:items-center gap-3 sm:gap-4">
-            <alert.icon className="h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0" />
-            <div className='flex-1 min-w-0'>
-                <h4 className="font-semibold text-sm sm:font-bold sm:text-base truncate">{alert.title}</h4>
-                <p className="text-xs sm:text-sm line-clamp-2 sm:line-clamp-none leading-snug sm:leading-normal">{alert.description}</p>
-                <p className="text-[10px] sm:text-xs opacity-80 mt-0.5 sm:mt-1">{alert.time}</p>
-            </div>
-            <Button
-                size="sm"
-                variant="outline"
-                className="text-current border-current/50 hover:bg-white/20 flex-shrink-0 h-7 px-2 text-xs sm:h-9 sm:px-4 sm:text-sm"
-            >
-                View
-            </Button>
-        </div>
-    );
-
     return (
         <div className="w-full">
             {/* Split-Flap Display Container */}
@@ -106,16 +129,11 @@ export function AlertFlipper({
                             height: '60px',
                             top: '60px',
                             zIndex: 1,
-                            // Removed inset shadow to look flat/single page
                         }}
                     >
-                        <Card className={`${alertVariants[currentAlert.variant]} h-full border-0 rounded-none`}>
-                            <CardContent className='p-4'>
-                                <div style={{ position: 'relative', top: '-60px' }}>
-                                    <AlertCardContent alert={currentAlert} />
-                                </div>
-                            </CardContent>
-                        </Card>
+                        <div style={{ position: 'absolute', top: '-60px', left: 0, right: 0, height: '120px' }}>
+                            <AlertCardBody alert={currentAlert} variantClass={alertVariants[currentAlert.variant]} />
+                        </div>
                     </div>
 
                     {/* 
@@ -128,16 +146,11 @@ export function AlertFlipper({
                         style={{
                             height: '60px',
                             zIndex: 2,
-                            // Removed inset shadow
                         }}
                     >
-                        <Card className={`${alertVariants[nextAlert.variant]} border-0 rounded-none`}>
-                            <CardContent className='p-4'>
-                                <div style={{ height: '60px', overflow: 'hidden' }}>
-                                    <AlertCardContent alert={nextAlert} />
-                                </div>
-                            </CardContent>
-                        </Card>
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '120px' }}>
+                            <AlertCardBody alert={nextAlert} variantClass={alertVariants[nextAlert.variant]} />
+                        </div>
                     </div>
 
                     {/* 
@@ -161,13 +174,9 @@ export function AlertFlipper({
                             className="absolute inset-0 backface-hidden overflow-hidden rounded-t-xl"
                             style={{ zIndex: 2 }}
                         >
-                            <Card className={`${alertVariants[currentAlert.variant]} border-0 rounded-none h-full`}>
-                                <CardContent className='p-4'>
-                                    <div style={{ height: '60px', overflow: 'hidden' }}>
-                                        <AlertCardContent alert={currentAlert} />
-                                    </div>
-                                </CardContent>
-                            </Card>
+                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '120px' }}>
+                                <AlertCardBody alert={currentAlert} variantClass={alertVariants[currentAlert.variant]} />
+                            </div>
                             {/* Shadow overlay for depth during flip */}
                             <div className={`absolute inset-0 bg-black/0 transition-colors duration-300 ${isFlipping ? 'animate-shadow-front' : ''}`} />
                         </div>
@@ -180,13 +189,9 @@ export function AlertFlipper({
                                 zIndex: 1
                             }}
                         >
-                            <Card className={`${alertVariants[nextAlert.variant]} border-0 rounded-none h-full`}>
-                                <CardContent className='p-4'>
-                                    <div style={{ position: 'relative', top: '-60px' }}>
-                                        <AlertCardContent alert={nextAlert} />
-                                    </div>
-                                </CardContent>
-                            </Card>
+                            <div style={{ position: 'absolute', top: '-60px', left: 0, right: 0, height: '120px' }}>
+                                <AlertCardBody alert={nextAlert} variantClass={alertVariants[nextAlert.variant]} />
+                            </div>
                             {/* Highlight overlay for landing */}
                             <div className={`absolute inset-0 bg-white/0 transition-colors duration-300 ${isFlipping ? 'animate-shadow-back' : ''}`} />
                         </div>
