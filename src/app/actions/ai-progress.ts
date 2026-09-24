@@ -14,6 +14,8 @@ export type ProcessTask = {
   description?: string | null;
   status: 'pending' | 'in-progress' | 'completed';
   checklists: QualityCheckItem[];
+  worklog_ids?: string[];
+  worklog_id?: string | null;
 };
 
 export type SubheadingProcess = {

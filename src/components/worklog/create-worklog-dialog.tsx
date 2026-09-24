@@ -109,7 +109,7 @@ type CreateWorklogFormValues = z.infer<typeof createWorklogSchema>;
 
 interface CreateWorklogDialogProps {
     projectId?: string;
-    onSuccess?: () => void;
+    onSuccess?: (worklogId?: string) => void;
     trigger?: React.ReactNode;
     initialData?: any; // For editing
     worklogId?: string; // For editing
@@ -276,7 +276,7 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
                 setActiveTab("details");
                 setSubmitError(null);
                 if (!projectId && !isEditing) setSelectedProjectId(undefined);
-                if (onSuccess) onSuccess();
+                if (onSuccess) onSuccess(result.worklogId || worklogId);
             } else {
                 const errorMessage = result.error || "Failed to save worklog.";
                 setSubmitError(errorMessage);

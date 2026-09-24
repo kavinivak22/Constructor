@@ -289,59 +289,63 @@ export default function ProjectMaterialsPage() {
 
     return (
         <div className="flex flex-col h-full bg-transparent">
-            <header className="flex items-center gap-4 p-4 md:px-6 shrink-0 glass sticky top-0 z-10">
-                <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                    <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <div className="flex-1">
-                    <h1 className="text-xl md:text-2xl font-bold tracking-tight font-headline">
-                        Project Inventory
-                    </h1>
+            <header className="flex items-center justify-between gap-3 p-3.5 sm:p-4 md:px-6 shrink-0 glass sticky top-0 z-10 border-b border-white/10">
+                <div className="flex items-center gap-2.5 min-w-0">
+                    <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-8 w-8 shrink-0 rounded-xl">
+                        <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <div className="min-w-0 flex-1">
+                        <h1 className="text-base sm:text-2xl font-bold tracking-tight font-headline truncate">
+                            Project Inventory
+                        </h1>
+                    </div>
                 </div>
                 <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button>
-                            <Plus className="mr-2 h-4 w-4" />
+                        <Button size="sm" className="h-8 sm:h-9 text-xs sm:text-sm rounded-xl font-semibold gap-1.5 shrink-0">
+                            <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             Add Item
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+                    <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] p-4 sm:p-6 rounded-2xl glass-card border border-white/20 dark:border-white/10 overflow-y-auto">
                         <form onSubmit={handleAddMaterial}>
-                            <DialogHeader>
-                                <DialogTitle className="flex items-center gap-2 text-xl">
-                                    <Package className="h-5 w-5 text-primary" />
+                            <DialogHeader className="space-y-1 pb-2">
+                                <DialogTitle className="flex items-center gap-2 text-base sm:text-xl font-bold font-headline">
+                                    <Package className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                                     Add New Item
                                 </DialogTitle>
-                                <DialogDescription>
+                                <DialogDescription className="text-xs text-muted-foreground">
                                     Add a new material to track in your project inventory.
                                 </DialogDescription>
                             </DialogHeader>
 
-                            <div className="grid gap-6 py-4">
+                            <div className="grid gap-4 sm:gap-6 py-3 sm:py-4">
                                 {/* Section 1: Item Details */}
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                                        <Tag className="h-4 w-4" />
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                                        <Tag className="h-3.5 w-3.5 text-primary" />
                                         Item Details
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="name">Item Name <span className="text-destructive">*</span></Label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="name" className="text-xs sm:text-sm font-semibold">Item Name <span className="text-destructive">*</span></Label>
                                             <Input
                                                 id="name"
                                                 value={newMaterial.name}
                                                 onChange={(e) => setNewMaterial({ ...newMaterial, name: e.target.value })}
                                                 placeholder="e.g. Portland Cement"
+                                                className="h-9 text-xs sm:text-sm rounded-xl bg-background/50"
                                                 required
                                             />
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="category">Category</Label>
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="category" className="text-xs sm:text-sm font-semibold">Category</Label>
                                             <Input
                                                 id="category"
                                                 value={newMaterial.category}
                                                 onChange={(e) => setNewMaterial({ ...newMaterial, category: e.target.value })}
                                                 placeholder="e.g. Structural"
+                                                className="h-9 text-xs sm:text-sm rounded-xl bg-background/50"
                                             />
                                         </div>
                                     </div>
@@ -350,41 +354,44 @@ export default function ProjectMaterialsPage() {
                                 <Separator />
 
                                 {/* Section 2: Inventory Control */}
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                                        <Layers className="h-4 w-4" />
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                                        <Layers className="h-3.5 w-3.5 text-primary" />
                                         Inventory Control
                                     </div>
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="quantity">Initial Stock <span className="text-destructive">*</span></Label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="quantity" className="text-xs sm:text-sm font-semibold">Initial Stock <span className="text-destructive">*</span></Label>
                                             <Input
                                                 id="quantity"
                                                 type="number"
                                                 value={newMaterial.quantity}
                                                 onChange={(e) => setNewMaterial({ ...newMaterial, quantity: e.target.value })}
                                                 placeholder="0"
+                                                className="h-9 text-xs sm:text-sm rounded-xl bg-background/50"
                                                 required
                                             />
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="min_quantity">Min Alert Qty <span className="text-destructive">*</span></Label>
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="min_quantity" className="text-xs sm:text-sm font-semibold">Min Alert Qty <span className="text-destructive">*</span></Label>
                                             <Input
                                                 id="min_quantity"
                                                 type="number"
                                                 value={newMaterial.min_quantity}
                                                 onChange={(e) => setNewMaterial({ ...newMaterial, min_quantity: e.target.value })}
                                                 placeholder="5"
+                                                className="h-9 text-xs sm:text-sm rounded-xl bg-background/50"
                                                 required
                                             />
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="unit">Unit <span className="text-destructive">*</span></Label>
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="unit" className="text-xs sm:text-sm font-semibold">Unit <span className="text-destructive">*</span></Label>
                                             <Input
                                                 id="unit"
                                                 value={newMaterial.unit}
                                                 onChange={(e) => setNewMaterial({ ...newMaterial, unit: e.target.value })}
                                                 placeholder="e.g. bags"
+                                                className="h-9 text-xs sm:text-sm rounded-xl bg-background/50"
                                                 required
                                             />
                                         </div>
@@ -394,29 +401,30 @@ export default function ProjectMaterialsPage() {
                                 <Separator />
 
                                 {/* Section 3: Procurement */}
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                                        <Truck className="h-4 w-4" />
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                                        <Truck className="h-3.5 w-3.5 text-primary" />
                                         Procurement
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="supplier">Supplier Name</Label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="supplier" className="text-xs sm:text-sm font-semibold">Supplier Name</Label>
                                             <Input
                                                 id="supplier"
                                                 value={newMaterial.supplier}
                                                 onChange={(e) => setNewMaterial({ ...newMaterial, supplier: e.target.value })}
                                                 placeholder="e.g. ABC Supplies"
+                                                className="h-9 text-xs sm:text-sm rounded-xl bg-background/50"
                                             />
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="cost">Cost per Unit</Label>
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="cost" className="text-xs sm:text-sm font-semibold">Cost per Unit</Label>
                                             <div className="relative">
                                                 <IndianRupee className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                                 <Input
                                                     id="cost"
                                                     type="number"
-                                                    className="pl-8"
+                                                    className="pl-8 h-9 text-xs sm:text-sm rounded-xl bg-background/50"
                                                     value={newMaterial.cost}
                                                     onChange={(e) => setNewMaterial({ ...newMaterial, cost: e.target.value })}
                                                     placeholder="0.00"
@@ -427,8 +435,8 @@ export default function ProjectMaterialsPage() {
                                 </div>
                             </div>
 
-                            <DialogFooter>
-                                <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
+                            <DialogFooter className="pt-2">
+                                <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto h-9 text-xs sm:text-sm rounded-xl font-semibold">
                                     {isSubmitting ? 'Adding Item...' : 'Add Item'}
                                 </Button>
                             </DialogFooter>
@@ -568,39 +576,41 @@ export default function ProjectMaterialsPage() {
 
             {/* Stock Update Dialog */}
             <Dialog open={isUpdateDialogOpen} onOpenChange={setIsUpdateDialogOpen}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle>{updateType === 'add' ? 'Add Stock' : 'Use Stock'}</DialogTitle>
-                        <DialogDescription>
+                <DialogContent className="w-[92vw] max-w-[425px] p-4 sm:p-6 rounded-2xl glass-card border border-white/20 dark:border-white/10">
+                    <DialogHeader className="space-y-1">
+                        <DialogTitle className="text-base sm:text-lg font-bold font-headline">{updateType === 'add' ? 'Add Stock' : 'Use Stock'}</DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground">
                             {updateType === 'add' ? 'Add new inventory to stock.' : 'Record material consumption.'}
                         </DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleStockUpdateSubmit} className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="amount">Quantity ({selectedMaterial?.unit})</Label>
+                    <form onSubmit={handleStockUpdateSubmit} className="space-y-3.5 py-3">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="amount" className="text-xs sm:text-sm font-semibold">Quantity ({selectedMaterial?.unit})</Label>
                             <Input
                                 id="amount"
                                 type="number"
                                 value={updateAmount}
                                 onChange={(e) => setUpdateAmount(e.target.value)}
                                 placeholder="0"
+                                className="h-9 text-xs sm:text-sm rounded-xl bg-background/50"
                                 required
                                 min="0.01"
                                 step="0.01"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="purpose">Purpose / Reason</Label>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="purpose" className="text-xs sm:text-sm font-semibold">Purpose / Reason</Label>
                             <Input
                                 id="purpose"
                                 value={updatePurpose}
                                 onChange={(e) => setUpdatePurpose(e.target.value)}
                                 placeholder={updateType === 'add' ? "e.g. New shipment from supplier" : "e.g. Foundation work"}
+                                className="h-9 text-xs sm:text-sm rounded-xl bg-background/50"
                                 required
                             />
                         </div>
-                        <DialogFooter>
-                            <Button type="submit" disabled={isUpdating}>
+                        <DialogFooter className="pt-2">
+                            <Button type="submit" disabled={isUpdating} className="w-full sm:w-auto h-9 text-xs sm:text-sm rounded-xl font-semibold">
                                 {isUpdating ? 'Updating...' : 'Confirm Update'}
                             </Button>
                         </DialogFooter>
@@ -610,13 +620,13 @@ export default function ProjectMaterialsPage() {
 
             {/* History Dialog */}
             <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
-                <DialogContent className="sm:max-w-[600px] max-h-[80vh] flex flex-col">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <History className="h-5 w-5" />
+                <DialogContent className="w-[95vw] max-w-[600px] max-h-[85vh] p-4 sm:p-6 rounded-2xl glass-card border border-white/20 dark:border-white/10 flex flex-col">
+                    <DialogHeader className="space-y-1 pb-2">
+                        <DialogTitle className="flex items-center gap-2 text-base sm:text-lg font-bold font-headline">
+                            <History className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                             Stock History: {selectedMaterial?.name}
                         </DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription className="text-xs text-muted-foreground">
                             View the history of stock changes for this item.
                         </DialogDescription>
                     </DialogHeader>
@@ -627,16 +637,16 @@ export default function ProjectMaterialsPage() {
                                 {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full" />)}
                             </div>
                         ) : materialLogs.length === 0 ? (
-                            <div className="text-center py-8 text-muted-foreground">
+                            <div className="text-center py-8 text-muted-foreground text-xs">
                                 No history available for this item.
                             </div>
                         ) : (
-                            <div className="space-y-4 py-4">
+                            <div className="space-y-3 py-3">
                                 {materialLogs.map((log) => (
-                                    <div key={log.id} className="flex items-start justify-between p-4 rounded-lg border border-white/10 dark:border-black/10 bg-white/10 dark:bg-black/10">
+                                    <div key={log.id} className="flex items-start justify-between p-3 sm:p-4 rounded-xl border border-white/10 dark:border-white/5 bg-background/40">
                                         <div className="space-y-1">
-                                            <p className="font-medium">{log.purpose}</p>
-                                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                            <p className="font-semibold text-xs sm:text-sm text-foreground">{log.purpose}</p>
+                                            <div className="flex flex-wrap items-center gap-3 text-[10px] sm:text-xs text-muted-foreground">
                                                 <span className="flex items-center gap-1">
                                                     <Calendar className="h-3 w-3" />
                                                     {format(new Date(log.created_at), 'MMM d, yyyy h:mm a')}
@@ -647,7 +657,7 @@ export default function ProjectMaterialsPage() {
                                                 </span>
                                             </div>
                                         </div>
-                                        <div className={`text-sm font-bold ${log.change_amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        <div className={`text-xs sm:text-sm font-mono font-bold ${log.change_amount > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                                             {log.change_amount > 0 ? '+' : ''}{log.change_amount}
                                         </div>
                                     </div>
