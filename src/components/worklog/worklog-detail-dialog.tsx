@@ -21,6 +21,7 @@ import Image from 'next/image';
 import { FullscreenPhotoViewer } from '@/components/worklog/fullscreen-photo-viewer';
 import { getSalaryProfiles } from '@/app/actions/financials';
 import { getProjectMaterials } from '@/app/actions/materials';
+import { matchesWorkerType } from '@/lib/worklog-helpers';
 
 interface WorklogDetailDialogProps {
   worklog: any | null;
@@ -155,7 +156,7 @@ export function WorklogDetailDialog({ worklog, isOpen, onClose }: WorklogDetailD
         // 1. Check contractor specific rates
         if (profile) {
           const rates = (profile.rates as Record<string, number>) || {};
-          const matchingKey = Object.keys(rates).find(k => k.toLowerCase().trim() === wTypeLower);
+          const matchingKey = Object.keys(rates).find(k => matchesWorkerType(k, wType));
           if (matchingKey && Number(rates[matchingKey]) > 0) {
             rate = Number(rates[matchingKey]);
             hasProfileRate = true;
@@ -169,7 +170,7 @@ export function WorklogDetailDialog({ worklog, isOpen, onClose }: WorklogDetailD
         if (!hasProfileRate && salaryProfiles.length > 0) {
           for (const p of salaryProfiles) {
             const rates = (p.rates as Record<string, number>) || {};
-            const matchingKey = Object.keys(rates).find(k => k.toLowerCase().trim() === wTypeLower);
+            const matchingKey = Object.keys(rates).find(k => matchesWorkerType(k, wType));
             if (matchingKey && Number(rates[matchingKey]) > 0) {
               rate = Number(rates[matchingKey]);
               hasProfileRate = true;

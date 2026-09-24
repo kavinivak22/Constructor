@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { format, isSameDay } from 'date-fns';
-import { Users, Package, Image as ImageIcon, Calendar as CalendarIcon, Clock, ArrowRight, Search, X, MoreVertical, Edit, Trash2, AlertTriangle } from 'lucide-react';
+import { Users, Package, Image as ImageIcon, Calendar as CalendarIcon, Clock, ArrowRight, Search, X, MoreVertical, Edit, Trash2, AlertTriangle, LayoutGrid, Table as TableIcon } from 'lucide-react';
 import { FullscreenPhotoViewer } from '@/components/worklog/fullscreen-photo-viewer';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,15 @@ import { getWorklogs, deleteWorklog } from '@/app/actions/worklogs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { WorklogTableView } from '@/components/worklog/worklog-table-view';
+import { matchesWorkerType, calculateLaborEntryCost } from '@/lib/worklog-helpers';
 import {
     Popover,
     PopoverContent,
@@ -78,11 +87,55 @@ export function WorklogList({ projectId, refreshTrigger, highlightWorklogId }: W
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [date, setDate] = useState<Date | undefined>(undefined);
+    const [selectedContractor, setSelectedContractor] = useState<string>('all');
+    const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
+    const [sortKey, setSortKey] = useState<string>('date');
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
     const [editingWorklog, setEditingWorklog] = useState<any | null>(null);
     const [deletingWorklogId, setDeletingWorklogId] = useState<string | null>(null);
     const [salaryProfiles, setSalaryProfiles] = useState<any[]>([]);
     const [projectMaterials, setProjectMaterials] = useState<any[]>([]);
     const { toast } = useToast();
+
+    // Responsive default: cards on mobile (< 768px), table on desktop (>= 768px)
+    useEffect(() => {
+        const saved = localStorage.getItem('constructor_worklog_view_mode');
+        if (saved === 'cards' || saved === 'table') {
+            setViewMode(saved);
+        } else {
+            if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                setViewMode('cards');
+            } else {
+                setViewMode('table');
+            }
+        }
+    }, []);
+
+    const handleToggleViewMode = (mode: 'cards' | 'table') => {
+        setViewMode(mode);
+        localStorage.setItem('constructor_worklog_view_mode', mode);
+    };
+
+    const handleSort = (key: string) => {
+        if (sortKey === key) {
+            setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortKey(key);
+            setSortDirection(key === 'date' ? 'desc' : 'asc');
+        }
+    };
+
+    // Extract unique available contractor names from worklogs
+    const availableContractors = useMemo(() => {
+        const names = new Set<string>();
+        worklogs.forEach(log => {
+            (log.labor || []).forEach((l: any) => {
+                const name = l.contractor_name || l.contractorName;
+                if (name && name.trim()) names.add(name.trim());
+            });
+        });
+        return Array.from(names).sort();
+    }, [worklogs]);
 
     // Key to force re-render/fetch
     const [fetchKey, setFetchKey] = useState(0);
@@ -128,7 +181,6 @@ export function WorklogList({ projectId, refreshTrigger, highlightWorklogId }: W
             const element = worklogRefs.current[highlightWorklogId];
             if (element) {
                 element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                // Optional: Add a temporary highlight class
                 element.classList.add('ring-2', 'ring-primary');
                 setTimeout(() => {
                     element.classList.remove('ring-2', 'ring-primary');
@@ -156,37 +208,122 @@ export function WorklogList({ projectId, refreshTrigger, highlightWorklogId }: W
     };
 
     const filteredWorklogs = useMemo(() => {
-        let filtered = [...worklogs];
+        let list = [...worklogs];
 
-        // Filter by Date
+        // 1. Filter by Date
         if (date) {
-            filtered = filtered.filter(log => isSameDay(new Date(log.date), date));
+            list = list.filter(log => isSameDay(new Date(log.date), date));
         }
 
-        // Filter by Search Term
+        // 2. Filter by Search Term
         if (searchTerm) {
             const query = searchTerm.toLowerCase();
-            filtered = filtered.filter(log => {
+            list = list.filter(log => {
                 const title = log.title || '';
                 const description = log.labor?.map((l: any) => l.work_description).join(' ') || '';
-                return title.toLowerCase().includes(query) || description.toLowerCase().includes(query);
+                const contractorNames = log.labor?.map((l: any) => l.contractor_name || l.contractorName).join(' ') || '';
+                const materials = log.materials?.map((m: any) => m.material_name || m.materialName).join(' ') || '';
+                return (
+                    title.toLowerCase().includes(query) || 
+                    description.toLowerCase().includes(query) ||
+                    contractorNames.toLowerCase().includes(query) ||
+                    materials.toLowerCase().includes(query)
+                );
             });
         }
 
-        // Secondary Sort: Ensure for logs on the same date, the last updated/created log appears first!
-        filtered.sort((a, b) => {
-            const dateA = new Date(a.date).getTime();
-            const dateB = new Date(b.date).getTime();
-            if (dateA !== dateB) {
-                return dateB - dateA;
+        // 3. Filter by Contractor: strictly isolate to that contractor's labor entries
+        if (selectedContractor !== 'all') {
+            const targetContractor = selectedContractor.toLowerCase().trim();
+            const contractorFiltered: any[] = [];
+
+            for (const log of list) {
+                const matchingLabor = (log.labor || []).filter((l: any) => {
+                    const cName = (l.contractor_name || l.contractorName || '').toLowerCase().trim();
+                    return cName === targetContractor || cName.includes(targetContractor) || targetContractor.includes(cName);
+                });
+
+                // If this worklog contains this contractor, ONLY include this contractor's labor!
+                if (matchingLabor.length > 0) {
+                    contractorFiltered.push({
+                        ...log,
+                        labor: matchingLabor,
+                    });
+                }
             }
-            const updatedA = new Date(a.updated_at || a.created_at || 0).getTime();
-            const updatedB = new Date(b.updated_at || b.created_at || 0).getTime();
-            return updatedB - updatedA;
+
+            list = contractorFiltered;
+        }
+
+        // 4. Sort by Contractor across All Contractors (flatten into 1 row per contractor entry)
+        if (sortKey === 'contractor' && selectedContractor === 'all') {
+            const flattened: any[] = [];
+            for (const log of list) {
+                if (!log.labor || log.labor.length === 0) {
+                    flattened.push({
+                        ...log,
+                        labor: [],
+                        _sortContractor: '—',
+                    });
+                } else {
+                    for (const l of log.labor) {
+                        flattened.push({
+                            ...log,
+                            id: `${log.id}-${l.id || l.contractor_name || Math.random()}`,
+                            labor: [l],
+                            _sortContractor: l.contractor_name || l.contractorName || 'Unknown',
+                        });
+                    }
+                }
+            }
+            flattened.sort((a, b) => {
+                const comp = (a._sortContractor || '').localeCompare(b._sortContractor || '');
+                return sortDirection === 'asc' ? comp : -comp;
+            });
+            return flattened;
+        }
+
+        // 5. Standard Sorting (Date, Cost, Workers, Project)
+        list.sort((a, b) => {
+            if (sortKey === 'date') {
+                const dateA = new Date(a.date).getTime();
+                const dateB = new Date(b.date).getTime();
+                if (dateA !== dateB) {
+                    return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
+                }
+                const updatedA = new Date(a.updated_at || a.created_at || 0).getTime();
+                const updatedB = new Date(b.updated_at || b.created_at || 0).getTime();
+                return sortDirection === 'asc' ? updatedA - updatedB : updatedB - updatedA;
+            }
+
+            if (sortKey === 'project') {
+                const projA = (a.project?.name || '').toLowerCase();
+                const projB = (b.project?.name || '').toLowerCase();
+                const comp = projA.localeCompare(projB);
+                return sortDirection === 'asc' ? comp : -comp;
+            }
+
+            if (sortKey === 'workers') {
+                const workersA = (a.labor || []).reduce((acc: number, entry: any) => 
+                    acc + (entry.workers || []).reduce((wAcc: number, w: any) => wAcc + Number(w.count || 0), 0), 0);
+                const workersB = (b.labor || []).reduce((acc: number, entry: any) => 
+                    acc + (entry.workers || []).reduce((wAcc: number, w: any) => wAcc + Number(w.count || 0), 0), 0);
+                return sortDirection === 'asc' ? workersA - workersB : workersB - workersA;
+            }
+
+            if (sortKey === 'cost') {
+                const costA = (a.labor || []).reduce((acc: number, entry: any) => 
+                    acc + calculateLaborEntryCost(entry, salaryProfiles).entryTotal, 0);
+                const costB = (b.labor || []).reduce((acc: number, entry: any) => 
+                    acc + calculateLaborEntryCost(entry, salaryProfiles).entryTotal, 0);
+                return sortDirection === 'asc' ? costA - costB : costB - costA;
+            }
+
+            return 0;
         });
 
-        return filtered;
-    }, [worklogs, searchTerm, date]);
+        return list;
+    }, [worklogs, date, searchTerm, selectedContractor, sortKey, sortDirection, salaryProfiles]);
 
     if (loading) {
         return (
@@ -219,72 +356,140 @@ export function WorklogList({ projectId, refreshTrigger, highlightWorklogId }: W
 
     return (
         <div className="space-y-6 pb-10">
-            {/* Filters Bar */}
-            <div className="flex items-center gap-2">
-                {/* Search Bar */}
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search logs..."
-                        className="pl-9 glass border-white/10 dark:border-white/5 focus-visible:ring-primary"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+            {/* Filters Bar & View Mode Toggle */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                {/* Search, Contractor & Date filters */}
+                <div className="flex flex-wrap items-center gap-2 flex-1">
+                    {/* Search Input */}
+                    <div className="relative min-w-[180px] flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search logs, scope, contractors..."
+                            className="pl-9 glass border-white/10 dark:border-white/5 focus-visible:ring-primary h-9 text-xs sm:text-sm"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+
+                    {/* Contractor Filter Dropdown */}
+                    {availableContractors.length > 0 && (
+                        <Select value={selectedContractor} onValueChange={setSelectedContractor}>
+                            <SelectTrigger className="w-[140px] sm:w-[170px] h-9 text-xs glass border-white/10 dark:border-white/5 bg-transparent">
+                                <SelectValue placeholder="All Contractors" />
+                            </SelectTrigger>
+                            <SelectContent className="glass border-white/10 dark:border-white/5">
+                                <SelectItem value="all" className="focus:bg-white/10">All Contractors</SelectItem>
+                                {availableContractors.map((cName) => (
+                                    <SelectItem key={cName} value={cName} className="focus:bg-white/10">
+                                        {cName}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
+
+                    {/* Date Filter */}
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn(
+                                    "justify-center text-left font-normal glass border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5 h-9 text-xs",
+                                    "w-9 px-0 sm:w-auto sm:px-3 sm:justify-start",
+                                    !date && "text-muted-foreground"
+                                )}
+                            >
+                                <CalendarIcon className={cn("h-3.5 w-3.5", "sm:mr-1.5")} />
+                                <span className="hidden sm:inline">
+                                    {date ? format(date, "PPP") : "Date"}
+                                </span>
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 glass border-white/10 dark:border-white/5" align="end">
+                            <Calendar
+                                mode="single"
+                                selected={date}
+                                onSelect={setDate}
+                                initialFocus
+                                className="bg-transparent"
+                            />
+                        </PopoverContent>
+                    </Popover>
+
+                    {/* Clear Filters Button */}
+                    {(searchTerm || date || selectedContractor !== 'all') && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                                setSearchTerm('');
+                                setDate(undefined);
+                                setSelectedContractor('all');
+                            }}
+                            title="Clear filters"
+                            className="h-9 w-9 glass border-white/10 dark:border-white/5 hover:bg-white/10"
+                        >
+                            <X className="h-4 w-4" />
+                        </Button>
+                    )}
                 </div>
 
-                {/* Date Filter */}
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Button
-                            variant={"outline"}
-                            className={cn(
-                                "justify-center text-left font-normal glass border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5",
-                                "w-10 px-0 md:w-[240px] md:px-4 md:justify-start", // Mobile vs Desktop styles
-                                !date && "text-muted-foreground"
-                            )}
-                        >
-                            <CalendarIcon className={cn("h-4 w-4", "md:mr-2")} />
-                            <span className="hidden md:inline">
-                                {date ? format(date, "PPP") : "Pick a date"}
-                            </span>
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 glass border-white/10 dark:border-white/5" align="end">
-                        <Calendar
-                            mode="single"
-                            selected={date}
-                            onSelect={setDate}
-                            initialFocus
-                            className="bg-transparent"
-                        />
-                    </PopoverContent>
-                </Popover>
-
-                {/* Clear Filters Button (only show if any filter is active) */}
-                {(searchTerm || date) && (
+                {/* View Mode Toggle Button Group */}
+                <div className="flex items-center gap-1 p-1 rounded-xl glass border border-white/10 dark:border-white/5 self-end sm:self-auto shrink-0 bg-white/5">
                     <Button
                         variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                            setSearchTerm('');
-                            setDate(undefined);
-                        }}
-                        title="Clear filters"
-                        className="glass border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5"
+                        size="sm"
+                        onClick={() => handleToggleViewMode('cards')}
+                        className={cn(
+                            "h-7 px-2.5 text-xs font-medium rounded-lg gap-1.5 transition-all",
+                            viewMode === 'cards' 
+                                ? "bg-primary text-primary-foreground shadow-sm" 
+                                : "text-muted-foreground hover:text-foreground hover:bg-white/10"
+                        )}
+                        title="Card Feed View"
                     >
-                        <X className="h-4 w-4" />
+                        <LayoutGrid className="h-3.5 w-3.5" />
+                        <span className="hidden xs:inline">Cards</span>
                     </Button>
-                )}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleToggleViewMode('table')}
+                        className={cn(
+                            "h-7 px-2.5 text-xs font-medium rounded-lg gap-1.5 transition-all",
+                            viewMode === 'table' 
+                                ? "bg-primary text-primary-foreground shadow-sm" 
+                                : "text-muted-foreground hover:text-foreground hover:bg-white/10"
+                        )}
+                        title="Table Ledger View"
+                    >
+                        <TableIcon className="h-3.5 w-3.5" />
+                        <span className="hidden xs:inline">Table</span>
+                    </Button>
+                </div>
             </div>
 
             {filteredWorklogs.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground border border-white/10 dark:border-white/5 rounded-2xl glass-card p-8">
                     <Search className="h-8 w-8 mb-3 opacity-50 text-foreground" />
                     <p className="text-muted-foreground">No worklogs found matching your filters</p>
-                    <Button variant="link" className="text-primary hover:text-primary/80 font-medium" onClick={() => { setSearchTerm(''); setDate(undefined); }}>
+                    <Button variant="link" className="text-primary hover:text-primary/80 font-medium" onClick={() => { setSearchTerm(''); setDate(undefined); setSelectedContractor('all'); }}>
                         Clear all filters
                     </Button>
                 </div>
+            ) : viewMode === 'table' ? (
+                <WorklogTableView
+                    worklogs={filteredWorklogs}
+                    salaryProfiles={salaryProfiles}
+                    projectMaterials={projectMaterials}
+                    selectedContractor={selectedContractor}
+                    sortKey={sortKey}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    onEdit={(log) => setEditingWorklog(log)}
+                    onDelete={(id) => setDeletingWorklogId(id)}
+                    currentUserProfile={currentUserProfile}
+                />
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredWorklogs.map((log, index) => (
@@ -417,7 +622,7 @@ function WorklogFeedCard({
 
                 if (profile) {
                     const rates = (profile.rates as Record<string, number>) || {};
-                    const matchingKey = Object.keys(rates).find(k => k.toLowerCase().trim() === wTypeLower);
+                    const matchingKey = Object.keys(rates).find(k => matchesWorkerType(k, wType));
                     if (matchingKey && Number(rates[matchingKey]) > 0) {
                         rate = Number(rates[matchingKey]);
                         hasProfileRate = true;
@@ -430,7 +635,7 @@ function WorklogFeedCard({
                 if (!hasProfileRate && salaryProfiles.length > 0) {
                     for (const p of salaryProfiles) {
                         const rates = (p.rates as Record<string, number>) || {};
-                        const matchingKey = Object.keys(rates).find(k => k.toLowerCase().trim() === wTypeLower);
+                        const matchingKey = Object.keys(rates).find(k => matchesWorkerType(k, wType));
                         if (matchingKey && Number(rates[matchingKey]) > 0) {
                             rate = Number(rates[matchingKey]);
                             hasProfileRate = true;

@@ -1,6 +1,7 @@
 // Client action module
 
 import { createClient } from '@/utils/supabase/client'
+import { matchesWorkerType } from '@/lib/worklog-helpers'
 
 // ==========================================
 // Salary Profiles Actions
@@ -299,9 +300,9 @@ export async function createWeeklyPayoutRun(weekStartDate: string, weekEndDate: 
                         let entryDue = 0
                         const entryCounts = workerCounts.filter(wc => wc.labor_entry_id === entry.id)
                         for (const wc of entryCounts) {
-                            const wcTypeLower = (wc.worker_type || '').toLowerCase().trim()
-                            // Find matching rate in profile keys
-                            const matchingKey = Object.keys(rates).find(k => k.toLowerCase().trim() === wcTypeLower)
+                            const wcType = (wc.worker_type || '').trim()
+                            // Find matching rate in profile keys (handles aliases like MC vs MC (Mason Coolie))
+                            const matchingKey = Object.keys(rates).find(k => matchesWorkerType(k, wcType))
                             const rate = matchingKey ? Number(rates[matchingKey]) : 0
                             entryDue += Number(wc.count || 0) * rate
                         }
@@ -330,10 +331,9 @@ export async function createWeeklyPayoutRun(weekStartDate: string, weekEndDate: 
                     // Build standard category count breakdown for UI summary
                     for (const [targetWorkerType, workerRateVal] of Object.entries(rates)) {
                         const workerRate = Number(workerRateVal)
-                        const targetWorkerTypeLower = targetWorkerType.toLowerCase().trim()
 
                         const totalManDays = workerCounts
-                            .filter(wc => matchingLaborEntryIds.includes(wc.labor_entry_id) && (wc.worker_type || '').toLowerCase().trim() === targetWorkerTypeLower)
+                            .filter(wc => matchingLaborEntryIds.includes(wc.labor_entry_id) && matchesWorkerType(targetWorkerType, wc.worker_type || ''))
                             .reduce((sum, wc) => sum + Number(wc.count || 0), 0)
 
                         const categoryAmount = totalManDays * workerRate
