@@ -227,27 +227,43 @@ export async function deleteWorklog(worklogId: string) {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error('Unauthorized')
 
-        // Fetch Worklog to check ownership
+        // Fetch Worklog to check ownership and project relation
         const { data: worklog, error: fetchError } = await supabase
             .from('daily_worklogs')
-            .select('*, project:projects(companyId:company_id)')
+            .select('*, project:projects(company_id)')
             .eq('id', worklogId)
             .single()
 
         if (fetchError || !worklog) throw new Error('Worklog not found')
 
-        // Fetch User Role to check if Admin
+        // Fetch User Role to check if Admin/Manager
         const { data: userData } = await supabase
             .from('users')
-            .select('role, companyId')
+            .select('id, role, company_id')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
-        const isAdmin = userData?.role === 'admin'
+        const projectCompanyId = Array.isArray(worklog.project)
+            ? worklog.project[0]?.company_id
+            : (worklog.project as any)?.company_id
+
         const isOwner = worklog.created_by === user.id
-        const isCompanyAdmin = isAdmin && userData?.companyId === worklog.project.companyId
+        const isAdminOrManager = userData?.role === 'admin' || userData?.role === 'owner' || userData?.role === 'manager'
+        const isCompanyAdmin = isAdminOrManager && !!userData?.company_id && !!projectCompanyId && (userData.company_id === projectCompanyId)
 
-        if (!isOwner && !isCompanyAdmin) {
+        // Check if user is an assigned member of the project
+        let isProjectMember = false
+        if (worklog.project_id) {
+            const { data: member } = await supabase
+                .from('project_members')
+                .select('id')
+                .eq('project_id', worklog.project_id)
+                .eq('user_id', user.id)
+                .maybeSingle()
+            isProjectMember = !!member
+        }
+
+        if (!isOwner && !isCompanyAdmin && !isProjectMember) {
             throw new Error('You do not have permission to delete this worklog.')
         }
 
@@ -280,7 +296,7 @@ export async function updateWorklog(worklogId: string, data: WorklogData) {
         // 1. Permission Check
         const { data: worklog, error: fetchError } = await supabase
             .from('daily_worklogs')
-            .select('*, project:projects(companyId:company_id)')
+            .select('*, project:projects(company_id)')
             .eq('id', worklogId)
             .single()
 
@@ -288,15 +304,31 @@ export async function updateWorklog(worklogId: string, data: WorklogData) {
 
         const { data: userData } = await supabase
             .from('users')
-            .select('role, companyId')
+            .select('id, role, company_id')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
-        const isAdmin = userData?.role === 'admin'
+        const projectCompanyId = Array.isArray(worklog.project)
+            ? worklog.project[0]?.company_id
+            : (worklog.project as any)?.company_id
+
         const isOwner = worklog.created_by === user.id
-        const isCompanyAdmin = isAdmin && userData?.companyId === worklog.project.companyId
+        const isAdminOrManager = userData?.role === 'admin' || userData?.role === 'owner' || userData?.role === 'manager'
+        const isCompanyAdmin = isAdminOrManager && !!userData?.company_id && !!projectCompanyId && (userData.company_id === projectCompanyId)
 
-        if (!isOwner && !isCompanyAdmin) {
+        // Check if user is an assigned member of the project
+        let isProjectMember = false
+        if (worklog.project_id) {
+            const { data: member } = await supabase
+                .from('project_members')
+                .select('id')
+                .eq('project_id', worklog.project_id)
+                .eq('user_id', user.id)
+                .maybeSingle()
+            isProjectMember = !!member
+        }
+
+        if (!isOwner && !isCompanyAdmin && !isProjectMember) {
             throw new Error('Permission denied')
         }
 
