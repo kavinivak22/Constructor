@@ -14,6 +14,7 @@ import { CommandMenu } from './command-menu';
 import { useParams } from 'next/navigation';
 import { useProject } from '@/hooks/queries';
 import Image from 'next/image';
+import { LogoutDialog } from './logout-dialog';
 
 export function AppHeader() {
   const { supabase, user } = useSupabase();
@@ -23,6 +24,7 @@ export function AppHeader() {
   const { data: project } = useProject(projectId);
   const [userProfile, setUserProfile] = useState<AppUser | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -126,7 +128,7 @@ export function AppHeader() {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout}>
+            <DropdownMenuItem onSelect={() => setShowLogoutDialog(true)} className="cursor-pointer text-destructive focus:text-destructive">
               <LogOut className="mr-2 h-4 w-4" />
               <span>Log out</span>
             </DropdownMenuItem>
@@ -134,6 +136,7 @@ export function AppHeader() {
         </DropdownMenu>
 
       </div>
+      <LogoutDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog} />
     </header>
   );
 }

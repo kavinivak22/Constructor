@@ -24,6 +24,7 @@ import {
   Globe,
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n-context';
+import { LogoutDialog } from './logout-dialog';
 import {
   Sidebar,
   SidebarHeader,
@@ -98,6 +99,7 @@ export function AppSidebar() {
 
   const [userProfile, setUserProfile] = useState<AppUser | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -320,13 +322,14 @@ export function AppSidebar() {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout}>
+            <DropdownMenuItem onSelect={() => setShowLogoutDialog(true)} className="cursor-pointer text-destructive focus:text-destructive">
               <LogOut className="mr-2 h-4 w-4" />
               <span>Log out</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarFooter>
+      <LogoutDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog} />
     </Sidebar>
   );
 }
