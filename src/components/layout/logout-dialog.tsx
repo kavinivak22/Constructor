@@ -38,7 +38,7 @@ export function LogoutDialog({ open, onOpenChange }: LogoutDialogProps) {
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="glass-card border-white/20 dark:border-white/10 max-w-sm rounded-2xl">
+      <AlertDialogContent className="max-w-sm rounded-2xl border-white/20 dark:border-white/10 shadow-2xl">
         <AlertDialogHeader>
           <AlertDialogTitle className="text-base font-bold text-foreground flex items-center gap-2">
             <LogOut className="h-4 w-4 text-destructive" />
