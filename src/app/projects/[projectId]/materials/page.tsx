@@ -5,11 +5,16 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSupabase } from '@/supabase/provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Plus, Package, Search, AlertTriangle, ArrowDownToLine, ArrowUpToLine, Filter, Tag, Layers, IndianRupee, Truck, History, Calendar, User } from 'lucide-react';
+import { ArrowLeft, Plus, Package, Search, AlertTriangle, ArrowDownToLine, ArrowUpToLine, Filter, Tag, Layers, IndianRupee, Truck, History, Calendar, User, Edit3, Receipt } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/react-query';
+import { Switch } from '@/components/ui/switch';
+import { SupplierCombobox } from '@/components/materials/supplier-combobox';
+import { EditMaterialDialog, EditableMaterial } from '@/components/materials/edit-material-dialog';
 import {
     Dialog,
     DialogContent,
@@ -62,6 +67,7 @@ export default function ProjectMaterialsPage() {
     const router = useRouter();
     const { supabase } = useSupabase();
     const { toast } = useToast();
+    const queryClient = useQueryClient();
 
     const [materials, setMaterials] = useState<ProjectMaterial[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -81,6 +87,17 @@ export default function ProjectMaterialsPage() {
         cost: ''
     });
 
+    // Expense Logging State for Add Item
+    const [logExpense, setLogExpense] = useState(true);
+    const [totalPurchaseCost, setTotalPurchaseCost] = useState('');
+    const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
+    const [paymentStatus, setPaymentStatus] = useState<'paid' | 'pending'>('paid');
+    const [invoiceNumber, setInvoiceNumber] = useState('');
+
+    // Edit Material Dialog State
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [materialToEdit, setMaterialToEdit] = useState<EditableMaterial | null>(null);
+
     // Stock Update Dialog State
     const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
     const [selectedMaterial, setSelectedMaterial] = useState<ProjectMaterial | null>(null);
@@ -89,10 +106,33 @@ export default function ProjectMaterialsPage() {
     const [updatePurpose, setUpdatePurpose] = useState('');
     const [isUpdating, setIsUpdating] = useState(false);
 
+    // Restock Expense Logging State
+    const [logRestockExpense, setLogRestockExpense] = useState(true);
+    const [restockAmount, setRestockAmount] = useState('');
+    const [restockPaymentStatus, setRestockPaymentStatus] = useState<'paid' | 'pending'>('paid');
+
     // History Dialog State
     const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
     const [materialLogs, setMaterialLogs] = useState<MaterialLog[]>([]);
     const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+
+    // Auto-compute total purchase cost when adding item
+    useEffect(() => {
+        const qty = Number(newMaterial.quantity) || 0;
+        const c = Number(newMaterial.cost) || 0;
+        if (qty > 0 && c > 0) {
+            setTotalPurchaseCost((qty * c).toString());
+        }
+    }, [newMaterial.quantity, newMaterial.cost]);
+
+    // Auto-compute restock amount when restocking
+    useEffect(() => {
+        if (selectedMaterial && updateType === 'add') {
+            const qty = Number(updateAmount) || 0;
+            const c = Number(selectedMaterial.cost) || 0;
+            setRestockAmount(qty > 0 && c > 0 ? (qty * c).toString() : '');
+        }
+    }, [updateAmount, selectedMaterial, updateType]);
 
     const fetchMaterials = async () => {
         if (!projectIdString) return;
@@ -142,6 +182,20 @@ export default function ProjectMaterialsPage() {
         fetchMaterials();
     }, [projectIdString, supabase]);
 
+    const openEditDialog = (mat: ProjectMaterial) => {
+        setMaterialToEdit({
+            id: mat.id,
+            name: mat.name,
+            category: mat.category,
+            quantity: mat.quantity,
+            min_quantity: mat.min_quantity,
+            unit: mat.unit,
+            supplier: mat.supplier,
+            cost: mat.cost,
+        });
+        setIsEditDialogOpen(true);
+    };
+
     const handleAddMaterial = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!projectIdString) return;
@@ -160,7 +214,7 @@ export default function ProjectMaterialsPage() {
             }
             const siteId = project.site_id;
 
-            const { error } = await supabase
+            const { data: insertedMat, error } = await supabase
                 .from('materials')
                 .insert({
                     site_id: siteId,
@@ -171,13 +225,47 @@ export default function ProjectMaterialsPage() {
                     unit_of_measurement: newMaterial.unit,
                     supplier_name: newMaterial.supplier,
                     unit_cost: Number(newMaterial.cost) || 0
-                });
+                })
+                .select()
+                .single();
 
             if (error) throw error;
 
+            // Optional Expense Logging
+            const expenseAmount = Number(totalPurchaseCost) || ((Number(newMaterial.quantity) || 0) * (Number(newMaterial.cost) || 0));
+            let expenseLogged = false;
+
+            if (logExpense && expenseAmount > 0) {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    const { error: expError } = await supabase.from('expenses').insert({
+                        project_id: projectIdString,
+                        user_id: user.id,
+                        created_by: user.id,
+                        amount: expenseAmount,
+                        category: 'materials',
+                        description: `Initial purchase: ${newMaterial.quantity} ${newMaterial.unit} of ${newMaterial.name}${newMaterial.supplier ? ` from ${newMaterial.supplier}` : ''}`,
+                        expense_date: expenseDate || new Date().toISOString().split('T')[0],
+                        payment_status: paymentStatus,
+                        receiver: newMaterial.supplier || null,
+                        notes: invoiceNumber ? `Bill/Inv: ${invoiceNumber}` : null,
+                        created_at: new Date().toISOString(),
+                    });
+
+                    if (expError) {
+                        console.error('Error logging expense for material:', expError);
+                    } else {
+                        expenseLogged = true;
+                        queryClient.invalidateQueries({
+                            queryKey: queryKeys.projectExpenses(projectIdString),
+                        });
+                    }
+                }
+            }
+
             toast({
                 title: "Material Added",
-                description: "The material has been successfully added to the project.",
+                description: `The material has been added to project inventory${expenseLogged ? ` & ₹${expenseAmount.toLocaleString('en-IN')} logged to Expenses.` : '.'}`,
             });
 
             setIsAddDialogOpen(false);
@@ -190,6 +278,8 @@ export default function ProjectMaterialsPage() {
                 supplier: '',
                 cost: ''
             });
+            setTotalPurchaseCost('');
+            setInvoiceNumber('');
             fetchMaterials();
         } catch (error: any) {
             console.error('Error adding material:', error);
@@ -208,6 +298,9 @@ export default function ProjectMaterialsPage() {
         setUpdateType(type);
         setUpdateAmount('');
         setUpdatePurpose('');
+        setLogRestockExpense(true);
+        setRestockPaymentStatus('paid');
+        setRestockAmount('');
         setIsUpdateDialogOpen(true);
     };
 
@@ -241,9 +334,41 @@ export default function ProjectMaterialsPage() {
                 description: result.error
             });
         } else {
+            // Record restock expense if enabled
+            let restockExpenseLogged = false;
+            if (updateType === 'add' && logRestockExpense) {
+                const finalCost = Number(restockAmount) || (amount * Number(selectedMaterial.cost || 0));
+                if (finalCost > 0) {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (user) {
+                        const { error: expError } = await supabase.from('expenses').insert({
+                            project_id: projectIdString,
+                            user_id: user.id,
+                            created_by: user.id,
+                            amount: finalCost,
+                            category: 'materials',
+                            description: `Restock: ${amount} ${selectedMaterial.unit} of ${selectedMaterial.name}${selectedMaterial.supplier ? ` from ${selectedMaterial.supplier}` : ''}${updatePurpose ? ` (${updatePurpose})` : ''}`,
+                            expense_date: new Date().toISOString().split('T')[0],
+                            payment_status: restockPaymentStatus,
+                            receiver: selectedMaterial.supplier || null,
+                            created_at: new Date().toISOString(),
+                        });
+
+                        if (expError) {
+                            console.error('Error logging restock expense:', expError);
+                        } else {
+                            restockExpenseLogged = true;
+                            queryClient.invalidateQueries({
+                                queryKey: queryKeys.projectExpenses(projectIdString),
+                            });
+                        }
+                    }
+                }
+            }
+
             toast({
                 title: "Stock Updated",
-                description: `${updateType === 'add' ? 'Added' : 'Used'} ${amount} ${selectedMaterial.unit}.`,
+                description: `${updateType === 'add' ? 'Added' : 'Used'} ${amount} ${selectedMaterial.unit}${restockExpenseLogged ? ` & logged to Expenses.` : '.'}`,
             });
             setIsUpdateDialogOpen(false);
 
@@ -307,7 +432,7 @@ export default function ProjectMaterialsPage() {
                             Add Item
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] p-4 sm:p-6 rounded-2xl glass-card border border-white/20 dark:border-white/10 overflow-y-auto">
+                    <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] p-4 sm:p-6 rounded-2xl glass border border-white/20 dark:border-white/10 shadow-2xl overflow-y-auto">
                         <form onSubmit={handleAddMaterial}>
                             <DialogHeader className="space-y-1 pb-2">
                                 <DialogTitle className="flex items-center gap-2 text-base sm:text-xl font-bold font-headline">
@@ -370,6 +495,7 @@ export default function ProjectMaterialsPage() {
                                                 placeholder="0"
                                                 className="h-9 text-xs sm:text-sm rounded-xl bg-background/50"
                                                 required
+                                                step="any"
                                             />
                                         </div>
                                         <div className="space-y-1.5">
@@ -382,6 +508,7 @@ export default function ProjectMaterialsPage() {
                                                 placeholder="5"
                                                 className="h-9 text-xs sm:text-sm rounded-xl bg-background/50"
                                                 required
+                                                step="any"
                                             />
                                         </div>
                                         <div className="space-y-1.5">
@@ -400,21 +527,18 @@ export default function ProjectMaterialsPage() {
 
                                 <Separator />
 
-                                {/* Section 3: Procurement */}
+                                {/* Section 3: Procurement & Supplier */}
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                                         <Truck className="h-3.5 w-3.5 text-primary" />
-                                        Procurement
+                                        Procurement & Supplier
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                         <div className="space-y-1.5">
-                                            <Label htmlFor="supplier" className="text-xs sm:text-sm font-semibold">Supplier Name</Label>
-                                            <Input
-                                                id="supplier"
+                                            <Label className="text-xs sm:text-sm font-semibold">Supplier Name</Label>
+                                            <SupplierCombobox
                                                 value={newMaterial.supplier}
-                                                onChange={(e) => setNewMaterial({ ...newMaterial, supplier: e.target.value })}
-                                                placeholder="e.g. ABC Supplies"
-                                                className="h-9 text-xs sm:text-sm rounded-xl bg-background/50"
+                                                onChange={(name) => setNewMaterial({ ...newMaterial, supplier: name })}
                                             />
                                         </div>
                                         <div className="space-y-1.5">
@@ -428,10 +552,102 @@ export default function ProjectMaterialsPage() {
                                                     value={newMaterial.cost}
                                                     onChange={(e) => setNewMaterial({ ...newMaterial, cost: e.target.value })}
                                                     placeholder="0.00"
+                                                    step="any"
                                                 />
                                             </div>
                                         </div>
                                     </div>
+                                </div>
+
+                                <Separator />
+
+                                {/* Section 4: Purchase & Expense Logging */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                                            <Receipt className="h-3.5 w-3.5 text-primary" />
+                                            Expense Logging
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Label htmlFor="log-expense-toggle" className="text-xs text-muted-foreground cursor-pointer">
+                                                Record as Project Expense
+                                            </Label>
+                                            <Switch
+                                                id="log-expense-toggle"
+                                                checked={logExpense}
+                                                onCheckedChange={setLogExpense}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {logExpense && (
+                                        <div className="p-3 sm:p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-3 animate-in fade-in-50 duration-200">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <div className="space-y-1.5">
+                                                    <Label htmlFor="total_cost" className="text-xs font-semibold">
+                                                        Total Purchase Cost (₹)
+                                                    </Label>
+                                                    <div className="relative">
+                                                        <IndianRupee className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                                        <Input
+                                                            id="total_cost"
+                                                            type="number"
+                                                            value={totalPurchaseCost}
+                                                            onChange={(e) => setTotalPurchaseCost(e.target.value)}
+                                                            placeholder="0.00"
+                                                            step="any"
+                                                            className="pl-8 h-9 text-xs sm:text-sm rounded-xl bg-background/50"
+                                                        />
+                                                    </div>
+                                                    <span className="text-[10px] text-muted-foreground">
+                                                        Auto: {newMaterial.quantity || 0} {newMaterial.unit || 'units'} × ₹{newMaterial.cost || 0}
+                                                    </span>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <Label htmlFor="expense_date" className="text-xs font-semibold">
+                                                        Purchase Date
+                                                    </Label>
+                                                    <Input
+                                                        id="expense_date"
+                                                        type="date"
+                                                        value={expenseDate}
+                                                        onChange={(e) => setExpenseDate(e.target.value)}
+                                                        className="h-9 text-xs sm:text-sm rounded-xl bg-background/50"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-xs font-semibold">Payment Status</Label>
+                                                    <Select
+                                                        value={paymentStatus}
+                                                        onValueChange={(val: 'paid' | 'pending') => setPaymentStatus(val)}
+                                                    >
+                                                        <SelectTrigger className="h-9 text-xs sm:text-sm rounded-xl bg-background/50">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="glass rounded-xl">
+                                                            <SelectItem value="paid">Paid (Cash / Bank)</SelectItem>
+                                                            <SelectItem value="pending">Pending (Credit / Due)</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <Label htmlFor="invoice_no" className="text-xs font-semibold">
+                                                        Invoice / Bill # (Optional)
+                                                    </Label>
+                                                    <Input
+                                                        id="invoice_no"
+                                                        placeholder="e.g. INV-2026-081"
+                                                        value={invoiceNumber}
+                                                        onChange={(e) => setInvoiceNumber(e.target.value)}
+                                                        className="h-9 text-xs sm:text-sm rounded-xl bg-background/50"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -508,12 +724,26 @@ export default function ProjectMaterialsPage() {
                                             <CardTitle className="text-lg font-bold truncate pr-2">
                                                 {material.name}
                                             </CardTitle>
-                                            {isLowStock && (
-                                                <Badge variant="destructive" className="shrink-0 animate-pulse">
-                                                    <AlertTriangle className="h-3 w-3 mr-1" />
-                                                    Low Stock
-                                                </Badge>
-                                            )}
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                {isLowStock && (
+                                                    <Badge variant="destructive" className="shrink-0 animate-pulse">
+                                                        <AlertTriangle className="h-3 w-3 mr-1" />
+                                                        Low Stock
+                                                    </Badge>
+                                                )}
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/10"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        openEditDialog(material);
+                                                    }}
+                                                    title="Edit Material"
+                                                >
+                                                    <Edit3 className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
                                         </div>
                                         <p className="text-sm text-muted-foreground capitalize">{material.category || 'Uncategorized'}</p>
                                     </CardHeader>
@@ -576,7 +806,7 @@ export default function ProjectMaterialsPage() {
 
             {/* Stock Update Dialog */}
             <Dialog open={isUpdateDialogOpen} onOpenChange={setIsUpdateDialogOpen}>
-                <DialogContent className="w-[92vw] max-w-[425px] p-4 sm:p-6 rounded-2xl glass-card border border-white/20 dark:border-white/10">
+                <DialogContent className="w-[92vw] max-w-[425px] p-4 sm:p-6 rounded-2xl glass border border-white/20 dark:border-white/10 shadow-2xl">
                     <DialogHeader className="space-y-1">
                         <DialogTitle className="text-base sm:text-lg font-bold font-headline">{updateType === 'add' ? 'Add Stock' : 'Use Stock'}</DialogTitle>
                         <DialogDescription className="text-xs text-muted-foreground">
@@ -595,7 +825,7 @@ export default function ProjectMaterialsPage() {
                                 className="h-9 text-xs sm:text-sm rounded-xl bg-background/50"
                                 required
                                 min="0.01"
-                                step="0.01"
+                                step="any"
                             />
                         </div>
                         <div className="space-y-1.5">
@@ -609,6 +839,57 @@ export default function ProjectMaterialsPage() {
                                 required
                             />
                         </div>
+
+                        {/* Optional Restock Expense Logging */}
+                        {updateType === 'add' && (
+                            <div className="p-3 rounded-xl border border-primary/20 bg-primary/5 space-y-2.5 animate-in fade-in-50">
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="restock-expense-toggle" className="text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                                        <Receipt className="h-3.5 w-3.5 text-primary" />
+                                        Record Purchase as Expense
+                                    </Label>
+                                    <Switch
+                                        id="restock-expense-toggle"
+                                        checked={logRestockExpense}
+                                        onCheckedChange={setLogRestockExpense}
+                                    />
+                                </div>
+                                {logRestockExpense && (
+                                    <div className="grid grid-cols-2 gap-2 pt-1">
+                                        <div className="space-y-1">
+                                            <Label className="text-[11px] font-medium text-muted-foreground">Amount (₹)</Label>
+                                            <div className="relative">
+                                                <IndianRupee className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                                                <Input
+                                                    type="number"
+                                                    value={restockAmount}
+                                                    onChange={(e) => setRestockAmount(e.target.value)}
+                                                    placeholder="0.00"
+                                                    step="any"
+                                                    className="pl-7 h-8 text-xs rounded-lg bg-background/50"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label className="text-[11px] font-medium text-muted-foreground">Payment Status</Label>
+                                            <Select
+                                                value={restockPaymentStatus}
+                                                onValueChange={(val: 'paid' | 'pending') => setRestockPaymentStatus(val)}
+                                            >
+                                                <SelectTrigger className="h-8 text-xs rounded-lg bg-background/50">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent className="glass rounded-xl">
+                                                    <SelectItem value="paid">Paid</SelectItem>
+                                                    <SelectItem value="pending">Pending</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         <DialogFooter className="pt-2">
                             <Button type="submit" disabled={isUpdating} className="w-full sm:w-auto h-9 text-xs sm:text-sm rounded-xl font-semibold">
                                 {isUpdating ? 'Updating...' : 'Confirm Update'}
@@ -620,7 +901,7 @@ export default function ProjectMaterialsPage() {
 
             {/* History Dialog */}
             <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
-                <DialogContent className="w-[95vw] max-w-[600px] max-h-[85vh] p-4 sm:p-6 rounded-2xl glass-card border border-white/20 dark:border-white/10 flex flex-col">
+                <DialogContent className="w-[95vw] max-w-[600px] max-h-[85vh] p-4 sm:p-6 rounded-2xl glass border border-white/20 dark:border-white/10 flex flex-col shadow-2xl">
                     <DialogHeader className="space-y-1 pb-2">
                         <DialogTitle className="flex items-center gap-2 text-base sm:text-lg font-bold font-headline">
                             <History className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
@@ -667,6 +948,14 @@ export default function ProjectMaterialsPage() {
                     </ScrollArea>
                 </DialogContent>
             </Dialog>
+
+            {/* Edit Material Dialog */}
+            <EditMaterialDialog
+                open={isEditDialogOpen}
+                onOpenChange={setIsEditDialogOpen}
+                material={materialToEdit}
+                onSuccess={fetchMaterials}
+            />
         </div>
     );
 }
