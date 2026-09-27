@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSupabase } from '@/supabase/provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Plus, Package, Search, AlertTriangle, ArrowDownToLine, ArrowUpToLine, Filter, Tag, Layers, IndianRupee, Truck, History, Calendar, User, Edit3, Receipt } from 'lucide-react';
+import { ArrowLeft, Plus, Package, Search, AlertTriangle, ArrowDownToLine, ArrowUpToLine, Filter, Tag, Layers, IndianRupee, Truck, History, Calendar, User, Edit3, Receipt, TrendingUp, TrendingDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/react-query';
 import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
 import { SupplierCombobox } from '@/components/materials/supplier-combobox';
 import { EditMaterialDialog, EditableMaterial } from '@/components/materials/edit-material-dialog';
 import {
@@ -32,7 +33,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Label } from "@/components/ui/label";
-import { updateMaterialStock, getMaterialLogs } from '@/app/actions/materials';
+import { updateMaterialStock, getMaterialLogs, getMaterialsPurchaseStats, MaterialPurchaseStats, ParsedMaterialLog } from '@/app/actions/materials';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -40,6 +41,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 type ProjectMaterial = {
     id: string;
     project_id: string;
+    site_id?: string;
     name: string;
     category: string;
     quantity: number;
@@ -50,16 +52,7 @@ type ProjectMaterial = {
     created_at: string;
 };
 
-type MaterialLog = {
-    id: string;
-    change_amount: number;
-    purpose: string;
-    created_at: string;
-    users: {
-        displayName: string;
-        email: string;
-    };
-};
+type MaterialLog = ParsedMaterialLog;
 
 export default function ProjectMaterialsPage() {
     const { projectId } = useParams();
@@ -111,6 +104,15 @@ export default function ProjectMaterialsPage() {
     const [restockAmount, setRestockAmount] = useState('');
     const [restockPaymentStatus, setRestockPaymentStatus] = useState<'paid' | 'pending'>('paid');
 
+    // Purchase Stats State (Latest Rate vs Weighted Avg)
+    const [purchaseStats, setPurchaseStats] = useState<Record<string, MaterialPurchaseStats>>({});
+
+    // Additional Restock State
+    const [restockUnitRate, setRestockUnitRate] = useState('');
+    const [updateActiveRate, setUpdateActiveRate] = useState(true);
+    const [restockSupplier, setRestockSupplier] = useState('');
+    const [restockInvoice, setRestockInvoice] = useState('');
+
     // History Dialog State
     const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
     const [materialLogs, setMaterialLogs] = useState<MaterialLog[]>([]);
@@ -129,10 +131,10 @@ export default function ProjectMaterialsPage() {
     useEffect(() => {
         if (selectedMaterial && updateType === 'add') {
             const qty = Number(updateAmount) || 0;
-            const c = Number(selectedMaterial.cost) || 0;
-            setRestockAmount(qty > 0 && c > 0 ? (qty * c).toString() : '');
+            const rate = Number(restockUnitRate) || Number(selectedMaterial.cost) || 0;
+            setRestockAmount(qty > 0 && rate > 0 ? (qty * rate).toString() : '');
         }
-    }, [updateAmount, selectedMaterial, updateType]);
+    }, [updateAmount, restockUnitRate, selectedMaterial, updateType]);
 
     const fetchMaterials = async () => {
         if (!projectIdString) return;
@@ -171,6 +173,13 @@ export default function ProjectMaterialsPage() {
             }));
 
             setMaterials(mappedData);
+
+            if (mappedData.length > 0) {
+                const stats = await getMaterialsPurchaseStats(mappedData.map(m => m.id));
+                setPurchaseStats(stats);
+            } else {
+                setPurchaseStats({});
+            }
         } catch (error) {
             console.error('Error fetching materials:', error);
         } finally {
@@ -230,6 +239,27 @@ export default function ProjectMaterialsPage() {
                 .single();
 
             if (error) throw error;
+
+            // Record initial purchase into material_logs
+            if (Number(newMaterial.quantity) > 0) {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    await supabase.from('material_logs').insert({
+                        material_id: insertedMat.id,
+                        user_id: user.id,
+                        change_amount: Number(newMaterial.quantity),
+                        purpose: JSON.stringify({
+                            action: 'purchase',
+                            isInitial: true,
+                            unitCost: Number(newMaterial.cost) || 0,
+                            totalCost: expenseAmount,
+                            supplier: newMaterial.supplier || '',
+                            invoiceNo: invoiceNumber || '',
+                            note: 'Initial inventory purchase'
+                        })
+                    });
+                }
+            }
 
             // Optional Expense Logging
             const expenseAmount = Number(totalPurchaseCost) || ((Number(newMaterial.quantity) || 0) * (Number(newMaterial.cost) || 0));
@@ -301,6 +331,10 @@ export default function ProjectMaterialsPage() {
         setLogRestockExpense(true);
         setRestockPaymentStatus('paid');
         setRestockAmount('');
+        setRestockUnitRate(material.cost > 0 ? material.cost.toString() : '');
+        setUpdateActiveRate(true);
+        setRestockSupplier(material.supplier || '');
+        setRestockInvoice('');
         setIsUpdateDialogOpen(true);
     };
 
@@ -323,7 +357,20 @@ export default function ProjectMaterialsPage() {
         // Optimistic update
         setMaterials(prev => prev.map(m => m.id === selectedMaterial.id ? { ...m, quantity: newQuantity } : m));
 
-        const result = await updateMaterialStock(selectedMaterial.id, newQuantity, updatePurpose);
+        const purchaseDetails = updateType === 'add' ? {
+            unitCost: Number(restockUnitRate) || Number(selectedMaterial.cost) || 0,
+            totalCost: Number(restockAmount) || (amount * (Number(restockUnitRate) || Number(selectedMaterial.cost) || 0)),
+            supplier: restockSupplier || selectedMaterial.supplier || '',
+            invoiceNo: restockInvoice || '',
+            updateMaterialUnitCost: updateActiveRate
+        } : undefined;
+
+        const result = await updateMaterialStock(
+            selectedMaterial.id, 
+            newQuantity, 
+            updatePurpose,
+            purchaseDetails
+        );
 
         if (!result.success) {
             // Revert on failure
@@ -337,7 +384,7 @@ export default function ProjectMaterialsPage() {
             // Record restock expense if enabled
             let restockExpenseLogged = false;
             if (updateType === 'add' && logRestockExpense) {
-                const finalCost = Number(restockAmount) || (amount * Number(selectedMaterial.cost || 0));
+                const finalCost = purchaseDetails ? purchaseDetails.totalCost : (amount * Number(selectedMaterial.cost || 0));
                 if (finalCost > 0) {
                     const { data: { user } } = await supabase.auth.getUser();
                     if (user) {
@@ -347,10 +394,11 @@ export default function ProjectMaterialsPage() {
                             created_by: user.id,
                             amount: finalCost,
                             category: 'materials',
-                            description: `Restock: ${amount} ${selectedMaterial.unit} of ${selectedMaterial.name}${selectedMaterial.supplier ? ` from ${selectedMaterial.supplier}` : ''}${updatePurpose ? ` (${updatePurpose})` : ''}`,
+                            description: `Restock: ${amount} ${selectedMaterial.unit} of ${selectedMaterial.name}${purchaseDetails?.supplier ? ` from ${purchaseDetails.supplier}` : ''}${updatePurpose ? ` (${updatePurpose})` : ''}`,
                             expense_date: new Date().toISOString().split('T')[0],
                             payment_status: restockPaymentStatus,
-                            receiver: selectedMaterial.supplier || null,
+                            receiver: purchaseDetails?.supplier || selectedMaterial.supplier || null,
+                            notes: restockInvoice ? `Bill/Inv: ${restockInvoice}` : null,
                             created_at: new Date().toISOString(),
                         });
 
@@ -371,6 +419,7 @@ export default function ProjectMaterialsPage() {
                 description: `${updateType === 'add' ? 'Added' : 'Used'} ${amount} ${selectedMaterial.unit}${restockExpenseLogged ? ` & logged to Expenses.` : '.'}`,
             });
             setIsUpdateDialogOpen(false);
+            fetchMaterials();
 
             if (newQuantity <= selectedMaterial.min_quantity && currentQty > selectedMaterial.min_quantity) {
                 toast({
@@ -787,14 +836,69 @@ export default function ProjectMaterialsPage() {
                                                 </Button>
                                             </div>
 
-                                            <div className="text-xs text-muted-foreground flex justify-between items-center pt-2 border-t">
-                                                <span className="truncate max-w-[120px]" title={material.supplier}>
-                                                    {material.supplier ? `Supplier: ${material.supplier}` : 'No Supplier'}
-                                                </span>
-                                                <span className="whitespace-nowrap">
-                                                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(material.cost)} / unit
-                                                </span>
-                                            </div>
+                                            {/* Price Comparison & Supplier */}
+                                            {(() => {
+                                                const stats = purchaseStats[material.id];
+                                                const latestRate = stats ? stats.latestPurchaseRate : material.cost;
+                                                const avgRate = stats ? stats.avgPurchaseCost : material.cost;
+                                                const rateState = stats ? stats.rateState : 'normal';
+                                                const diff = stats ? stats.percentageDiff : 0;
+                                                const hasMultiple = stats ? stats.purchaseCount > 1 : false;
+
+                                                return (
+                                                    <div className="pt-2 border-t space-y-1.5">
+                                                        <div className="flex items-center justify-between text-xs">
+                                                            <span className="truncate max-w-[110px] text-muted-foreground" title={material.supplier}>
+                                                                {material.supplier ? `Supplier: ${material.supplier}` : 'No Supplier'}
+                                                            </span>
+                                                            <div className="flex items-center gap-1.5">
+                                                                {rateState === 'higher' && (
+                                                                    <span
+                                                                        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+                                                                        title={`Latest purchase rate is +${diff}% higher than average purchase cost (₹${avgRate.toFixed(2)})`}
+                                                                    >
+                                                                        <TrendingUp className="h-3 w-3" />
+                                                                        +{diff}%
+                                                                    </span>
+                                                                )}
+                                                                {rateState === 'lower' && (
+                                                                    <span
+                                                                        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                                                                        title={`Latest purchase rate is ${diff}% lower than average purchase cost (₹${avgRate.toFixed(2)})`}
+                                                                    >
+                                                                        <TrendingDown className="h-3 w-3" />
+                                                                        {diff}%
+                                                                    </span>
+                                                                )}
+                                                                {rateState === 'normal' && hasMultiple && (
+                                                                    <span
+                                                                        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-muted text-muted-foreground border border-border/50"
+                                                                        title="Latest purchase rate is at average purchase cost"
+                                                                    >
+                                                                        At avg
+                                                                    </span>
+                                                                )}
+                                                                <span className={cn(
+                                                                    "font-semibold whitespace-nowrap",
+                                                                    rateState === 'higher' ? "text-rose-600 dark:text-rose-400 font-bold" :
+                                                                    rateState === 'lower' ? "text-emerald-600 dark:text-emerald-400 font-bold" :
+                                                                    "text-foreground"
+                                                                )}>
+                                                                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(latestRate)} / {material.unit || 'unit'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        {hasMultiple && (
+                                                            <div className="flex items-center justify-between text-[11px] text-muted-foreground/80">
+                                                                <span>Weighted Avg:</span>
+                                                                <span className="font-mono">
+                                                                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(avgRate)} / {material.unit || 'unit'}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -806,28 +910,62 @@ export default function ProjectMaterialsPage() {
 
             {/* Stock Update Dialog */}
             <Dialog open={isUpdateDialogOpen} onOpenChange={setIsUpdateDialogOpen}>
-                <DialogContent className="w-[92vw] max-w-[425px] p-4 sm:p-6 rounded-2xl glass border border-white/20 dark:border-white/10 shadow-2xl">
+                <DialogContent className="w-[92vw] max-w-[440px] p-4 sm:p-6 rounded-2xl glass border border-white/20 dark:border-white/10 shadow-2xl">
                     <DialogHeader className="space-y-1">
                         <DialogTitle className="text-base sm:text-lg font-bold font-headline">{updateType === 'add' ? 'Add Stock' : 'Use Stock'}</DialogTitle>
                         <DialogDescription className="text-xs text-muted-foreground">
-                            {updateType === 'add' ? 'Add new inventory to stock.' : 'Record material consumption.'}
+                            {updateType === 'add' ? 'Add new inventory to stock and log purchase rate.' : 'Record material consumption.'}
                         </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleStockUpdateSubmit} className="space-y-3.5 py-3">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="amount" className="text-xs sm:text-sm font-semibold">Quantity ({selectedMaterial?.unit})</Label>
-                            <Input
-                                id="amount"
-                                type="number"
-                                value={updateAmount}
-                                onChange={(e) => setUpdateAmount(e.target.value)}
-                                placeholder="0"
-                                className="h-9 text-xs sm:text-sm rounded-xl bg-background/50"
-                                required
-                                min="0.01"
-                                step="any"
-                            />
+                        <div className={cn("grid gap-3", updateType === 'add' ? "grid-cols-2" : "grid-cols-1")}>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="amount" className="text-xs sm:text-sm font-semibold">Quantity ({selectedMaterial?.unit})</Label>
+                                <Input
+                                    id="amount"
+                                    type="number"
+                                    value={updateAmount}
+                                    onChange={(e) => setUpdateAmount(e.target.value)}
+                                    placeholder="0"
+                                    className="h-9 text-xs sm:text-sm rounded-xl bg-background/50"
+                                    required
+                                    min="0.01"
+                                    step="any"
+                                />
+                            </div>
+
+                            {updateType === 'add' && (
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="restock_rate" className="text-xs sm:text-sm font-semibold">Unit Rate (₹)</Label>
+                                    <div className="relative">
+                                        <IndianRupee className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                                        <Input
+                                            id="restock_rate"
+                                            type="number"
+                                            value={restockUnitRate}
+                                            onChange={(e) => setRestockUnitRate(e.target.value)}
+                                            placeholder="0.00"
+                                            step="any"
+                                            className="pl-7 h-9 text-xs sm:text-sm rounded-xl bg-background/50"
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
+
+                        {updateType === 'add' && (
+                            <div className="flex items-center justify-between px-1 py-1">
+                                <Label htmlFor="update-active-rate" className="text-xs text-muted-foreground cursor-pointer">
+                                    Update active inventory price to this rate
+                                </Label>
+                                <Switch
+                                    id="update-active-rate"
+                                    checked={updateActiveRate}
+                                    onCheckedChange={setUpdateActiveRate}
+                                />
+                            </div>
+                        )}
+
                         <div className="space-y-1.5">
                             <Label htmlFor="purpose" className="text-xs sm:text-sm font-semibold">Purpose / Reason</Label>
                             <Input
@@ -840,7 +978,7 @@ export default function ProjectMaterialsPage() {
                             />
                         </div>
 
-                        {/* Optional Restock Expense Logging */}
+                        {/* Restock Purchase Details & Expense Logging */}
                         {updateType === 'add' && (
                             <div className="p-3 rounded-xl border border-primary/20 bg-primary/5 space-y-2.5 animate-in fade-in-50">
                                 <div className="flex items-center justify-between">
@@ -854,39 +992,59 @@ export default function ProjectMaterialsPage() {
                                         onCheckedChange={setLogRestockExpense}
                                     />
                                 </div>
-                                {logRestockExpense && (
-                                    <div className="grid grid-cols-2 gap-2 pt-1">
-                                        <div className="space-y-1">
-                                            <Label className="text-[11px] font-medium text-muted-foreground">Amount (₹)</Label>
-                                            <div className="relative">
-                                                <IndianRupee className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
-                                                <Input
-                                                    type="number"
-                                                    value={restockAmount}
-                                                    onChange={(e) => setRestockAmount(e.target.value)}
-                                                    placeholder="0.00"
-                                                    step="any"
-                                                    className="pl-7 h-8 text-xs rounded-lg bg-background/50"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Label className="text-[11px] font-medium text-muted-foreground">Payment Status</Label>
-                                            <Select
-                                                value={restockPaymentStatus}
-                                                onValueChange={(val: 'paid' | 'pending') => setRestockPaymentStatus(val)}
-                                            >
-                                                <SelectTrigger className="h-8 text-xs rounded-lg bg-background/50">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent className="glass rounded-xl">
-                                                    <SelectItem value="paid">Paid</SelectItem>
-                                                    <SelectItem value="pending">Pending</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+
+                                <div className="grid grid-cols-2 gap-2 pt-1">
+                                    <div className="space-y-1">
+                                        <Label className="text-[11px] font-medium text-muted-foreground">Total Bill (₹)</Label>
+                                        <div className="relative">
+                                            <IndianRupee className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                                            <Input
+                                                type="number"
+                                                value={restockAmount}
+                                                onChange={(e) => setRestockAmount(e.target.value)}
+                                                placeholder="0.00"
+                                                step="any"
+                                                className="pl-7 h-8 text-xs rounded-lg bg-background/50"
+                                            />
                                         </div>
                                     </div>
-                                )}
+                                    <div className="space-y-1">
+                                        <Label className="text-[11px] font-medium text-muted-foreground">Payment Status</Label>
+                                        <Select
+                                            value={restockPaymentStatus}
+                                            onValueChange={(val: 'paid' | 'pending') => setRestockPaymentStatus(val)}
+                                        >
+                                            <SelectTrigger className="h-8 text-xs rounded-lg bg-background/50">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent className="glass rounded-xl">
+                                                <SelectItem value="paid">Paid</SelectItem>
+                                                <SelectItem value="pending">Pending</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <Label className="text-[11px] font-medium text-muted-foreground">Supplier (Optional)</Label>
+                                        <Input
+                                            value={restockSupplier}
+                                            onChange={(e) => setRestockSupplier(e.target.value)}
+                                            placeholder="Supplier name"
+                                            className="h-8 text-xs rounded-lg bg-background/50"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[11px] font-medium text-muted-foreground">Bill / Inv # (Optional)</Label>
+                                        <Input
+                                            value={restockInvoice}
+                                            onChange={(e) => setRestockInvoice(e.target.value)}
+                                            placeholder="e.g. INV-102"
+                                            className="h-8 text-xs rounded-lg bg-background/50"
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         )}
 
@@ -901,18 +1059,72 @@ export default function ProjectMaterialsPage() {
 
             {/* History Dialog */}
             <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
-                <DialogContent className="w-[95vw] max-w-[600px] max-h-[85vh] p-4 sm:p-6 rounded-2xl glass border border-white/20 dark:border-white/10 flex flex-col shadow-2xl">
-                    <DialogHeader className="space-y-1 pb-2">
+                <DialogContent className="w-[95vw] max-w-[620px] max-h-[85vh] p-4 sm:p-6 rounded-2xl glass border border-white/20 dark:border-white/10 flex flex-col shadow-2xl">
+                    <DialogHeader className="space-y-1 pb-1">
                         <DialogTitle className="flex items-center gap-2 text-base sm:text-lg font-bold font-headline">
                             <History className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                            Stock History: {selectedMaterial?.name}
+                            Stock & Purchase History: {selectedMaterial?.name}
                         </DialogTitle>
                         <DialogDescription className="text-xs text-muted-foreground">
-                            View the history of stock changes for this item.
+                            View the history of stock replenishment, purchase rates, and site usage.
                         </DialogDescription>
                     </DialogHeader>
 
-                    <ScrollArea className="flex-1 pr-4 -mr-4">
+                    {/* Top Summary Banner */}
+                    {selectedMaterial && (() => {
+                        const selStats = purchaseStats[selectedMaterial.id];
+                        const latestRate = selStats ? selStats.latestPurchaseRate : (selectedMaterial.cost || 0);
+                        const avgRate = selStats ? selStats.avgPurchaseCost : (selectedMaterial.cost || 0);
+                        const rateState = selStats ? selStats.rateState : 'normal';
+                        const diff = selStats ? selStats.percentageDiff : 0;
+
+                        return (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 p-3 rounded-xl bg-white/5 border border-white/10 dark:border-white/5">
+                                <div className="space-y-0.5">
+                                    <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Latest Rate</span>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className={cn(
+                                            "text-sm sm:text-base font-bold font-mono",
+                                            rateState === 'higher' ? "text-rose-600 dark:text-rose-400" :
+                                            rateState === 'lower' ? "text-emerald-600 dark:text-emerald-400" :
+                                            "text-foreground"
+                                        )}>
+                                            ₹{latestRate.toLocaleString('en-IN')}
+                                        </span>
+                                        {rateState === 'higher' && (
+                                            <Badge variant="outline" className="px-1 py-0 text-[10px] text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/20">
+                                                <TrendingUp className="h-2.5 w-2.5 mr-0.5" />+{diff}%
+                                            </Badge>
+                                        )}
+                                        {rateState === 'lower' && (
+                                            <Badge variant="outline" className="px-1 py-0 text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20">
+                                                <TrendingDown className="h-2.5 w-2.5 mr-0.5" />{diff}%
+                                            </Badge>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="space-y-0.5">
+                                    <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Weighted Avg</span>
+                                    <p className="text-sm sm:text-base font-semibold font-mono text-muted-foreground">
+                                        ₹{avgRate.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                                    </p>
+                                </div>
+                                <div className="col-span-2 sm:col-span-1 space-y-0.5">
+                                    <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Total Purchased</span>
+                                    <p className="text-xs sm:text-sm font-medium text-foreground">
+                                        {selStats?.totalPurchasedQty ? `${selStats.totalPurchasedQty} ${selectedMaterial.unit}` : `${selectedMaterial.quantity} ${selectedMaterial.unit}`}
+                                        {selStats?.totalPurchasedCost ? (
+                                            <span className="text-muted-foreground text-[11px] block">
+                                                (₹{selStats.totalPurchasedCost.toLocaleString('en-IN')})
+                                            </span>
+                                        ) : null}
+                                    </p>
+                                </div>
+                            </div>
+                        );
+                    })()}
+
+                    <ScrollArea className="flex-1 pr-4 -mr-4 mt-2">
                         {isLoadingLogs ? (
                             <div className="space-y-4 py-4">
                                 {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full" />)}
@@ -923,26 +1135,63 @@ export default function ProjectMaterialsPage() {
                             </div>
                         ) : (
                             <div className="space-y-3 py-3">
-                                {materialLogs.map((log) => (
-                                    <div key={log.id} className="flex items-start justify-between p-3 sm:p-4 rounded-xl border border-white/10 dark:border-white/5 bg-background/40">
-                                        <div className="space-y-1">
-                                            <p className="font-semibold text-xs sm:text-sm text-foreground">{log.purpose}</p>
-                                            <div className="flex flex-wrap items-center gap-3 text-[10px] sm:text-xs text-muted-foreground">
-                                                <span className="flex items-center gap-1">
-                                                    <Calendar className="h-3 w-3" />
-                                                    {format(new Date(log.created_at), 'MMM d, yyyy h:mm a')}
-                                                </span>
-                                                <span className="flex items-center gap-1">
-                                                    <User className="h-3 w-3" />
-                                                    {log.users?.displayName || 'Unknown User'}
-                                                </span>
+                                {materialLogs.map((log) => {
+                                    const isPurchase = log.isPurchase || log.change_amount > 0;
+                                    return (
+                                        <div key={log.id} className="p-3 sm:p-4 rounded-xl border border-white/10 dark:border-white/5 bg-background/40 space-y-2">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="space-y-1 flex-1">
+                                                    <div className="flex flex-wrap items-center gap-1.5">
+                                                        {isPurchase ? (
+                                                            <Badge variant="outline" className="px-1.5 py-0.5 text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                                                                Purchase / Restock
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge variant="outline" className="px-1.5 py-0.5 text-[10px] font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20">
+                                                                Usage / Consumption
+                                                            </Badge>
+                                                        )}
+                                                        <span className="font-semibold text-xs sm:text-sm text-foreground">
+                                                            {log.purpose}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Detailed purchase metrics if recorded */}
+                                                    {isPurchase && (log.unitCost !== undefined || log.supplier || log.invoiceNo) && (
+                                                        <div className="text-[11px] text-muted-foreground bg-white/5 dark:bg-black/10 p-2 rounded-lg space-y-0.5 border border-white/5">
+                                                            {log.unitCost !== undefined && (
+                                                                <div className="flex justify-between items-center">
+                                                                    <span>Rate: <strong className="text-foreground">₹{log.unitCost.toLocaleString('en-IN')} / {selectedMaterial?.unit || 'unit'}</strong></span>
+                                                                    {log.totalCost !== undefined && (
+                                                                        <span>Total: <strong className="text-foreground">₹{log.totalCost.toLocaleString('en-IN')}</strong></span>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] pt-0.5">
+                                                                {log.supplier && <span>Supplier: <span className="text-foreground">{log.supplier}</span></span>}
+                                                                {log.invoiceNo && <span>Bill/Inv: <span className="text-foreground">#{log.invoiceNo}</span></span>}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground pt-0.5">
+                                                        <span className="flex items-center gap-1">
+                                                            <Calendar className="h-3 w-3" />
+                                                            {format(new Date(log.created_at), 'MMM d, yyyy h:mm a')}
+                                                        </span>
+                                                        <span className="flex items-center gap-1">
+                                                            <User className="h-3 w-3" />
+                                                            {log.users?.displayName || 'Unknown User'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className={`text-xs sm:text-sm font-mono font-bold shrink-0 ${log.change_amount > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                                    {log.change_amount > 0 ? '+' : ''}{log.change_amount} {selectedMaterial?.unit}
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className={`text-xs sm:text-sm font-mono font-bold ${log.change_amount > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                            {log.change_amount > 0 ? '+' : ''}{log.change_amount}
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </ScrollArea>

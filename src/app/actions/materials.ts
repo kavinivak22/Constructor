@@ -49,7 +49,47 @@ export async function getProjectMaterials(projectId: string) {
     }
 }
 
-export async function updateMaterialStock(materialId: string, newQuantity: number, purpose: string) {
+export interface MaterialPurchaseDetails {
+    unitCost?: number;
+    totalCost?: number;
+    supplier?: string;
+    invoiceNo?: string;
+    updateMaterialUnitCost?: boolean;
+}
+
+export interface ParsedMaterialLog {
+    id: string;
+    change_amount: number;
+    purpose: string;
+    raw_purpose: string;
+    created_at: string;
+    users?: {
+        displayName: string;
+        email: string;
+    };
+    isPurchase?: boolean;
+    unitCost?: number;
+    totalCost?: number;
+    supplier?: string;
+    invoiceNo?: string;
+}
+
+export interface MaterialPurchaseStats {
+    latestPurchaseRate: number;
+    avgPurchaseCost: number;
+    totalPurchasedQty: number;
+    totalPurchasedCost: number;
+    purchaseCount: number;
+    rateState: 'higher' | 'normal' | 'lower';
+    percentageDiff: number;
+}
+
+export async function updateMaterialStock(
+    materialId: string, 
+    newQuantity: number, 
+    purpose: string,
+    purchaseDetails?: MaterialPurchaseDetails
+) {
     const supabase = await createClient();
 
     try {
@@ -68,22 +108,44 @@ export async function updateMaterialStock(materialId: string, newQuantity: numbe
         const currentQuantity = Number(material.current_stock || 0)
         const changeAmount = newQuantity - currentQuantity
 
-        // 2. Update the quantity
+        // 2. Update the quantity & optionally unit_cost / supplier
+        const updatePayload: Record<string, any> = { current_stock: newQuantity };
+        if (purchaseDetails && purchaseDetails.updateMaterialUnitCost !== false && purchaseDetails.unitCost !== undefined && Number(purchaseDetails.unitCost) > 0) {
+            updatePayload.unit_cost = Number(purchaseDetails.unitCost);
+        }
+        if (purchaseDetails?.supplier && purchaseDetails.supplier.trim()) {
+            updatePayload.supplier_name = purchaseDetails.supplier.trim();
+        }
+
         const { error: updateError } = await supabase
             .from('materials')
-            .update({ current_stock: newQuantity })
+            .update(updatePayload)
             .eq('id', materialId)
 
         if (updateError) throw updateError
 
-        // 3. Log the change
+        // 3. Log the change with purchase metadata if restock/add
+        let logPurpose = purpose;
+        if (purchaseDetails && (purchaseDetails.unitCost !== undefined || purchaseDetails.totalCost !== undefined)) {
+            const unitCost = Number(purchaseDetails.unitCost || 0);
+            const totalCost = Number(purchaseDetails.totalCost !== undefined ? purchaseDetails.totalCost : (Math.max(0, changeAmount) * unitCost));
+            logPurpose = JSON.stringify({
+                action: 'purchase',
+                unitCost,
+                totalCost,
+                supplier: purchaseDetails.supplier || material.supplier_name || '',
+                invoiceNo: purchaseDetails.invoiceNo || '',
+                note: purpose || 'Restock purchase'
+            });
+        }
+
         const { error: logError } = await supabase
             .from('material_logs')
             .insert({
                 material_id: materialId,
                 user_id: user.id,
                 change_amount: changeAmount,
-                purpose: purpose
+                purpose: logPurpose
             })
 
         if (logError) {
@@ -134,10 +196,116 @@ export async function getMaterialLogs(materialId: string) {
 
         if (error) throw error
 
-        return { success: true, data }
+        const mappedLogs: ParsedMaterialLog[] = (data || []).map((log: any) => {
+            let parsed: any = null;
+            if (typeof log.purpose === 'string' && log.purpose.trim().startsWith('{')) {
+                try {
+                    parsed = JSON.parse(log.purpose);
+                } catch {
+                    parsed = null;
+                }
+            }
+            return {
+                id: log.id,
+                change_amount: log.change_amount,
+                purpose: parsed?.note || log.purpose,
+                raw_purpose: log.purpose,
+                created_at: log.created_at,
+                users: log.users,
+                isPurchase: parsed?.action === 'purchase' || (parsed && parsed.unitCost !== undefined),
+                unitCost: parsed?.unitCost !== undefined ? Number(parsed.unitCost) : undefined,
+                totalCost: parsed?.totalCost !== undefined ? Number(parsed.totalCost) : undefined,
+                supplier: parsed?.supplier,
+                invoiceNo: parsed?.invoiceNo,
+            };
+        });
+
+        return { success: true, data: mappedLogs }
     } catch (error: any) {
         console.error('Error fetching material logs:', error)
         return { success: false, error: error.message }
+    }
+}
+
+export async function getMaterialsPurchaseStats(materialIds: string[]): Promise<Record<string, MaterialPurchaseStats>> {
+    if (!materialIds || materialIds.length === 0) return {};
+    const supabase = await createClient();
+
+    try {
+        const { data: logs, error } = await supabase
+            .from('material_logs')
+            .select('material_id, change_amount, purpose, created_at')
+            .in('material_id', materialIds)
+            .order('created_at', { ascending: true }); // chronological
+
+        if (error) {
+            console.error('Error fetching material logs for stats:', error);
+            return {};
+        }
+
+        const statsMap: Record<string, MaterialPurchaseStats> = {};
+        const logsByMat: Record<string, any[]> = {};
+        for (const log of logs || []) {
+            if (!logsByMat[log.material_id]) logsByMat[log.material_id] = [];
+            logsByMat[log.material_id].push(log);
+        }
+
+        for (const mId of materialIds) {
+            const mLogs = logsByMat[mId] || [];
+            let totalQty = 0;
+            let totalCost = 0;
+            let latestRate: number | null = null;
+            let purchaseCount = 0;
+
+            for (const log of mLogs) {
+                let parsed: any = null;
+                if (typeof log.purpose === 'string' && log.purpose.trim().startsWith('{')) {
+                    try {
+                        parsed = JSON.parse(log.purpose);
+                    } catch {
+                        parsed = null;
+                    }
+                }
+
+                if (parsed && (parsed.action === 'purchase' || parsed.unitCost !== undefined)) {
+                    const qty = Number(log.change_amount || 0);
+                    const uCost = Number(parsed.unitCost || 0);
+                    const batchCost = Number(parsed.totalCost !== undefined ? parsed.totalCost : qty * uCost);
+
+                    if (qty > 0 && uCost > 0) {
+                        totalQty += qty;
+                        totalCost += batchCost;
+                        latestRate = uCost;
+                        purchaseCount++;
+                    }
+                }
+            }
+
+            if (purchaseCount > 0 && totalQty > 0) {
+                const avgCost = totalCost / totalQty;
+                const finalLatestRate = latestRate ?? avgCost;
+                const diff = avgCost > 0 ? ((finalLatestRate - avgCost) / avgCost) * 100 : 0;
+
+                let rateState: 'higher' | 'normal' | 'lower' = 'normal';
+                if (diff > 2.0) rateState = 'higher';
+                else if (diff < -2.0) rateState = 'lower';
+
+                statsMap[mId] = {
+                    latestPurchaseRate: finalLatestRate,
+                    avgPurchaseCost: avgCost,
+                    totalPurchasedQty: totalQty,
+                    totalPurchasedCost: totalCost,
+                    purchaseCount,
+                    rateState,
+                    percentageDiff: Math.round(diff * 10) / 10
+                };
+            }
+        }
+
+        return statsMap;
+    } catch (err) {
+        console.error('Error computing purchase stats:', err);
+        return {};
     }
 }
 

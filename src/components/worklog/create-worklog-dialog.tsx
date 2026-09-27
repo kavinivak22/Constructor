@@ -88,6 +88,7 @@ const materialEntrySchema = z.object({
     materialName: z.string().min(1, "Material name is required"),
     quantityConsumed: z.coerce.number().min(0, "Quantity must be non-negative"),
     unit: z.string().optional(),
+    unitCost: z.coerce.number().optional(),
 });
 
 const photoEntrySchema = z.object({
@@ -161,10 +162,11 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
         workers: l.workers?.map((w: any) => ({ workerType: w.worker_type, count: w.count })) || []
     })) || [];
     const defaultMaterials = initialData?.materials?.map((m: any) => ({
-        projectMaterialId: m.project_material_id,
-        materialName: m.material_name,
-        quantityConsumed: m.quantity_consumed,
-        unit: m.unit
+        projectMaterialId: m.project_material_id || m.projectMaterialId,
+        materialName: m.material_name || m.materialName,
+        quantityConsumed: m.quantity_consumed !== undefined ? m.quantity_consumed : (m.quantityConsumed !== undefined ? m.quantityConsumed : m.quantity),
+        unit: m.unit,
+        unitCost: m.unit_cost !== undefined ? m.unit_cost : (m.unitCost !== undefined ? m.unitCost : undefined)
     })) || [];
     const defaultPhotos = initialData?.photos?.map((p: any) => ({
         photoUrl: p.photo_url,
@@ -250,12 +252,28 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
         }
 
         try {
+            const enrichedMaterials = (data.materials || []).map((mat: any) => {
+                let unitCost = mat.unitCost;
+                if (unitCost === undefined || unitCost === null || isNaN(Number(unitCost)) || Number(unitCost) <= 0) {
+                    const mName = (mat.materialName || '').toLowerCase().trim();
+                    const mId = mat.projectMaterialId;
+                    const match = projectMaterials.find((pm: any) => (mId && pm.id === mId) || (pm.name && pm.name.toLowerCase().trim() === mName));
+                    if (match && match.cost) {
+                        unitCost = Number(match.cost);
+                    }
+                }
+                return {
+                    ...mat,
+                    unitCost: Number(unitCost || 0)
+                };
+            });
+
             const formattedData = {
                 projectId: selectedProjectId,
                 title: data.title,
                 date: format(data.date, 'yyyy-MM-dd'),
                 labor: data.labor,
-                materials: data.materials,
+                materials: enrichedMaterials,
                 photos: data.photos,
             };
 
@@ -851,7 +869,7 @@ function MaterialEntryForm({ index, form, remove, materials }: any) {
         <div className="overflow-hidden border-l-4 border-l-orange-500/50 glass-card bg-transparent rounded-2xl border-t border-r border-b border-white/10 dark:border-white/5">
             <div className="p-4 flex flex-col md:flex-row gap-4 items-end">
                 <FormField control={form.control} name={`materials.${index}.projectMaterialId`} render={({ field }) => (
-                    <FormItem className="w-full md:flex-1"><FormLabel className="text-foreground">Select Material</FormLabel><Select onValueChange={(val) => { field.onChange(val); const m = materials.find((mat: any) => mat.id === val); if (m) { form.setValue(`materials.${index}.materialName`, m.name); form.setValue(`materials.${index}.unit`, m.unit); } }} value={field.value}><FormControl><SelectTrigger className="glass border-white/10 dark:border-white/5 bg-transparent text-foreground"><SelectValue placeholder="Inventory" /></SelectTrigger></FormControl><SelectContent className="glass border-white/10 dark:border-white/5 text-foreground">{materials.map((m: any) => <SelectItem key={m.id} value={m.id} className="focus:bg-white/10 dark:focus:bg-white/5">{m.name}</SelectItem>)}</SelectContent></Select></FormItem>
+                    <FormItem className="w-full md:flex-1"><FormLabel className="text-foreground">Select Material</FormLabel><Select onValueChange={(val) => { field.onChange(val); const m = materials.find((mat: any) => mat.id === val); if (m) { form.setValue(`materials.${index}.materialName`, m.name); form.setValue(`materials.${index}.unit`, m.unit); form.setValue(`materials.${index}.unitCost`, Number(m.cost || 0)); } }} value={field.value}><FormControl><SelectTrigger className="glass border-white/10 dark:border-white/5 bg-transparent text-foreground"><SelectValue placeholder="Inventory" /></SelectTrigger></FormControl><SelectContent className="glass border-white/10 dark:border-white/5 text-foreground">{materials.map((m: any) => <SelectItem key={m.id} value={m.id} className="focus:bg-white/10 dark:focus:bg-white/5">{m.name}</SelectItem>)}</SelectContent></Select></FormItem>
                 )} />
                 <FormField control={form.control} name={`materials.${index}.materialName`} render={({ field }) => (
                     <FormItem className="w-full md:flex-1"><FormLabel className="text-foreground">Name</FormLabel><FormControl><Input {...field} placeholder="Name" className="glass border-white/10 dark:border-white/5 bg-transparent focus-visible:ring-primary text-foreground" /></FormControl></FormItem>

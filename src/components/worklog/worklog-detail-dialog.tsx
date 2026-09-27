@@ -126,8 +126,18 @@ export function WorklogDetailDialog({ worklog, isOpen, onClose }: WorklogDetailD
     });
   };
 
-  // Helper to find unit cost from project materials
+  // Helper to find unit cost from project materials (prefers snapshot if present)
   const getMaterialUnitCost = (m: any, materialsList: any[]) => {
+    const snapshotCost = (m?.unitCost !== undefined && m?.unitCost !== null && !isNaN(Number(m.unitCost)) && Number(m.unitCost) > 0)
+      ? Number(m.unitCost)
+      : ((m?.unit_cost !== undefined && m?.unit_cost !== null && !isNaN(Number(m.unit_cost)) && Number(m.unit_cost) > 0)
+        ? Number(m.unit_cost)
+        : null);
+
+    if (snapshotCost !== null) {
+      return snapshotCost;
+    }
+
     const mName = (m.material_name || m.materialName || '').toLowerCase().trim();
     const mId = m.project_material_id || m.projectMaterialId;
     const match = materialsList.find(pm => (mId && pm.id === mId) || (pm.name && pm.name.toLowerCase().trim() === mName));

@@ -60,8 +60,18 @@ export function findContractorProfile(contractorName: string, profiles: any[]): 
     });
 }
 
-// Find material unit cost from project materials list
+// Find material unit cost from project materials list (prefers historical snapshot if present)
 export function getMaterialUnitCost(m: any, materialsList: any[]): number {
+    const snapshotCost = (m?.unitCost !== undefined && m?.unitCost !== null && !isNaN(Number(m.unitCost)) && Number(m.unitCost) > 0)
+        ? Number(m.unitCost)
+        : ((m?.unit_cost !== undefined && m?.unit_cost !== null && !isNaN(Number(m.unit_cost)) && Number(m.unit_cost) > 0)
+            ? Number(m.unit_cost)
+            : null);
+
+    if (snapshotCost !== null) {
+        return snapshotCost;
+    }
+
     const mName = (m.material_name || m.materialName || '').toLowerCase().trim();
     const mId = m.project_material_id || m.projectMaterialId;
     const match = materialsList.find(pm => (mId && pm.id === mId) || (pm.name && pm.name.toLowerCase().trim() === mName));
