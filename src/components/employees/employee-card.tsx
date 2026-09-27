@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { type Project, type User as AppUser } from "@/lib/data";
 import { cn } from "@/lib/utils";
-import { Edit, FolderKanban, Mail, Phone, UserMinus } from "lucide-react";
+import { Edit, FolderKanban, Mail, Phone, UserMinus, Wallet, Landmark } from "lucide-react";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -21,6 +21,16 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
+export interface SalaryProfileInfo {
+    id: string;
+    user_id: string | null;
+    payment_type: 'monthly' | 'daily_wage' | 'hourly';
+    rate: number;
+    bank_name: string | null;
+    account_number: string | null;
+    ifsc_code: string | null;
+}
+
 interface EmployeeCardProps {
     employee: AppUser;
     projects: Project[];
@@ -28,9 +38,22 @@ interface EmployeeCardProps {
     onStatusChange?: (employee: AppUser, newStatus: 'active' | 'inactive') => void;
     onRemove?: (employee: AppUser) => void;
     isCurrentUser: boolean;
+    salaryProfile?: SalaryProfileInfo | null;
+    onManageSalary?: (employee: AppUser) => void;
+    isAdmin?: boolean;
 }
 
-export function EmployeeCard({ employee, projects, onEdit, onStatusChange, onRemove, isCurrentUser }: EmployeeCardProps) {
+export function EmployeeCard({
+    employee,
+    projects,
+    onEdit,
+    onStatusChange,
+    onRemove,
+    isCurrentUser,
+    salaryProfile,
+    onManageSalary,
+    isAdmin = false
+}: EmployeeCardProps) {
 
     const roleVariant: { [key: string]: 'default' | 'secondary' | 'outline' } = {
         admin: 'default',
@@ -72,6 +95,47 @@ export function EmployeeCard({ employee, projects, onEdit, onStatusChange, onRem
                         </div>
                     )}
                 </div>
+
+                {/* Salary & Payout Profile Section */}
+                {isAdmin && (
+                    <div className="p-2 sm:p-2.5 rounded-xl bg-muted/30 border border-border/40 space-y-1 text-xs">
+                        <div className="flex items-center justify-between">
+                            <span className="font-semibold text-foreground flex items-center gap-1 text-[10px] sm:text-[11px] uppercase tracking-wider text-muted-foreground">
+                                <Wallet className="w-3 h-3 text-primary" />
+                                Salary & Payout
+                            </span>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onManageSalary?.(employee)}
+                                className="h-5 px-1.5 text-[10px] text-primary hover:text-primary hover:bg-primary/10 rounded"
+                            >
+                                {salaryProfile ? 'Edit' : '+ Add'}
+                            </Button>
+                        </div>
+                        {salaryProfile ? (
+                            <div className="flex items-baseline justify-between pt-0.5">
+                                <span className="font-bold text-foreground text-xs sm:text-sm">
+                                    ₹{Number(salaryProfile.rate || 0).toLocaleString('en-IN')}
+                                    <span className="text-[10px] text-muted-foreground font-normal ml-0.5">
+                                        /{salaryProfile.payment_type === 'monthly' ? 'mo' : salaryProfile.payment_type === 'hourly' ? 'hr' : 'day'}
+                                    </span>
+                                </span>
+                                {salaryProfile.account_number ? (
+                                    <span className="text-[10px] text-muted-foreground truncate max-w-[130px] flex items-center gap-1">
+                                        <Landmark className="w-2.5 h-2.5 shrink-0" />
+                                        <span>{salaryProfile.bank_name || 'Bank'} (••{salaryProfile.account_number.slice(-4)})</span>
+                                    </span>
+                                ) : (
+                                    <span className="text-[10px] text-muted-foreground italic">No bank linked</span>
+                                )}
+                            </div>
+                        ) : (
+                            <p className="text-[10px] text-muted-foreground italic">No salary profile configured.</p>
+                        )}
+                    </div>
+                )}
+
                 <div className="space-y-1.5">
                     <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold">
                         <FolderKanban className="w-3.5 h-3.5 text-muted-foreground" />

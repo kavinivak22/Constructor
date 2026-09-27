@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, Plus, Edit2, Trash2, Search, Building2, CreditCard, User, Landmark, Users, X, DollarSign } from 'lucide-react'
+import Link from 'next/link'
 
 interface SalaryProfile {
     id: string
@@ -359,6 +360,28 @@ export default function SalaryProfilesPage() {
                     <Button onClick={() => handleOpenDialog()} className="bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 transition-all font-medium self-start sm:self-auto">
                         <Plus className="mr-2 h-4 w-4" /> Add Wage Profile
                     </Button>
+                </div>
+
+                {/* Workflow Guidance Banner */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 rounded-xl bg-primary/10 border border-primary/20 text-xs">
+                    <div className="flex items-center gap-2.5">
+                        <Users className="h-4 w-4 text-primary shrink-0" />
+                        <span className="text-foreground">
+                            <strong>Streamlined Structure:</strong> Staff salaries can now be managed directly in <Link href="/employees" className="underline font-semibold text-primary">Employees</Link>, and contractor rates & bank accounts in <Link href="/financials/contractors" className="underline font-semibold text-primary">Contractor Accounts</Link>.
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <Link href="/employees">
+                            <Button size="sm" variant="outline" className="h-7 text-xs rounded-lg">
+                                Employees
+                            </Button>
+                        </Link>
+                        <Link href="/financials/contractors">
+                            <Button size="sm" variant="outline" className="h-7 text-xs rounded-lg">
+                                Contractors
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
 
                 {/* Main View Cards */}

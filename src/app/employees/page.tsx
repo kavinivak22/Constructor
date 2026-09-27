@@ -1,18 +1,20 @@
-
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Search, Users } from 'lucide-react';
+import { PlusCircle, Search, Users, Wallet, Landmark, Loader2, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { EmployeeCard } from '@/components/employees/employee-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { type User as AppUser, type Project } from '@/lib/data';
 import { AddEmployeeSheet } from '@/components/employees/add-employee-sheet';
 import { useSupabase } from '@/supabase/provider';
-import { useEffect } from 'react';
 import { getPendingInvites } from '@/app/actions/employees';
+import { getSalaryProfiles, saveSalaryProfile } from '@/app/actions/financials';
 import { PendingInvitesList, PendingInvite } from '@/components/employees/pending-invites-list';
 
 export default function EmployeesPage() {
@@ -32,6 +34,17 @@ export default function EmployeesPage() {
 
     const [activeTab, setActiveTab] = useState<'current' | 'ex'>('current');
     const [exEmployees, setExEmployees] = useState<any[]>([]);
+
+    // Salary & Payout Management State
+    const [salaryProfiles, setSalaryProfiles] = useState<any[]>([]);
+    const [selectedSalaryEmployee, setSelectedSalaryEmployee] = useState<AppUser | null>(null);
+    const [isSalaryModalOpen, setIsSalaryModalOpen] = useState(false);
+    const [salaryPaymentType, setSalaryPaymentType] = useState<'monthly' | 'daily_wage' | 'hourly'>('monthly');
+    const [salaryRate, setSalaryRate] = useState('');
+    const [salaryBankName, setSalaryBankName] = useState('');
+    const [salaryAccountNumber, setSalaryAccountNumber] = useState('');
+    const [salaryIfscCode, setSalaryIfscCode] = useState('');
+    const [isSavingSalary, setIsSavingSalary] = useState(false);
 
     useEffect(() => {
         if (activeTab === 'ex' && currentUserProfile?.role === 'admin') {
@@ -138,6 +151,10 @@ export default function EmployeesPage() {
                         // Fetch pending invites
                         const invites = await getPendingInvites();
                         setPendingInvites(invites as PendingInvite[]);
+
+                        // Fetch salary profiles
+                        const profiles = await getSalaryProfiles();
+                        setSalaryProfiles(profiles || []);
                     }
                 }
             } catch (error) {
@@ -167,6 +184,77 @@ export default function EmployeesPage() {
         setIsSheetOpen(true);
     };
 
+    const handleOpenSalaryModal = (employee: AppUser) => {
+        setSelectedSalaryEmployee(employee);
+        const existing = salaryProfiles.find(p => p.user_id === employee.id);
+        if (existing) {
+            setSalaryPaymentType(existing.payment_type || 'monthly');
+            setSalaryRate(existing.rate ? existing.rate.toString() : '');
+            setSalaryBankName(existing.bank_name || '');
+            setSalaryAccountNumber(existing.account_number || '');
+            setSalaryIfscCode(existing.ifsc_code || '');
+        } else {
+            setSalaryPaymentType('monthly');
+            setSalaryRate('');
+            setSalaryBankName('');
+            setSalaryAccountNumber('');
+            setSalaryIfscCode('');
+        }
+        setIsSalaryModalOpen(true);
+    };
+
+    const handleSaveSalary = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedSalaryEmployee) return;
+
+        if (!salaryRate || isNaN(Number(salaryRate)) || Number(salaryRate) <= 0) {
+            toast({
+                title: 'Error',
+                description: 'Please enter a valid salary amount greater than 0.',
+                variant: 'destructive'
+            });
+            return;
+        }
+
+        setIsSavingSalary(true);
+        try {
+            const existing = salaryProfiles.find(p => p.user_id === selectedSalaryEmployee.id);
+            const res = await saveSalaryProfile({
+                id: existing?.id,
+                user_id: selectedSalaryEmployee.id,
+                payment_type: salaryPaymentType,
+                rate: Number(salaryRate),
+                bank_name: salaryBankName.trim() || undefined,
+                account_number: salaryAccountNumber.trim() || undefined,
+                ifsc_code: salaryIfscCode.trim() || undefined
+            });
+
+            if (res.success) {
+                toast({
+                    title: 'Salary Profile Saved',
+                    description: `${selectedSalaryEmployee.displayName}'s salary and payout details updated.`
+                });
+                setIsSalaryModalOpen(false);
+                const updatedProfiles = await getSalaryProfiles();
+                setSalaryProfiles(updatedProfiles || []);
+            } else {
+                toast({
+                    title: 'Error',
+                    description: res.error || 'Failed to save salary profile.',
+                    variant: 'destructive'
+                });
+            }
+        } catch (err: any) {
+            toast({
+                title: 'Error',
+                description: err.message || 'Something went wrong.',
+                variant: 'destructive'
+            });
+        } finally {
+            setIsSavingSalary(false);
+        }
+    };
+
     const handleStatusChange = async (employee: AppUser, newStatus: 'active' | 'inactive') => {
         try {
             const { error } = await supabase
@@ -181,72 +269,86 @@ export default function EmployeesPage() {
             ));
 
             toast({
-                title: 'Status Updated',
-                description: `${employee.displayName}'s status has been updated to ${newStatus}.`,
+                title: "Status Updated",
+                description: `${employee.displayName} is now ${newStatus}.`,
             });
         } catch (error) {
+            console.error('Error updating status:', error);
             toast({
-                title: 'Error',
-                description: 'Failed to update status.',
-                variant: 'destructive',
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to update employee status.",
             });
         }
     };
 
     const handleRemove = async (employee: AppUser) => {
         try {
-            const { removeEmployee } = await import('@/app/actions/employees');
-            const result = await removeEmployee(employee.id);
+            const { error } = await supabase
+                .from('users')
+                .update({ company_id: null, status: 'inactive' })
+                .eq('id', employee.id);
 
-            if (result.success) {
-                setEmployees(employees.filter(e => e.id !== employee.id));
-                setRefreshTrigger(prev => prev + 1);
-                toast({
-                    title: 'Employee Removed',
-                    description: `${employee.displayName} has been removed from the company.`,
-                });
-                // Refresh ex-employees if tab is active (though we are on current tab here)
-            } else {
-                throw new Error(result.error);
-            }
-        } catch (error: any) {
+            if (error) throw error;
+
+            setEmployees(employees.filter(e => e.id !== employee.id));
+
             toast({
-                title: 'Error',
-                description: error.message || 'Failed to remove employee.',
-                variant: 'destructive',
+                title: "Employee Removed",
+                description: `${employee.displayName} has been removed from the company.`,
+            });
+        } catch (error) {
+            console.error('Error removing employee:', error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to remove employee.",
             });
         }
     };
 
     const filteredUsers = employees.filter(employee =>
-        (employee.displayName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-        (employee.email?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+        employee.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        employee.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        employee.role.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     if (isLoading) {
         return (
-            <div className="flex flex-col h-full">
-                <header className="flex items-center justify-between gap-4 p-4 border-b md:px-6 shrink-0 bg-background sticky top-0 z-10">
-                    <h1 className="text-2xl font-bold tracking-tight font-headline">Employees</h1>
-                    <Skeleton className="h-10 w-32" />
-                </header>
-                <main className="flex-1 p-4 overflow-y-auto md:p-6">
-                    <div className="space-y-4">
-                        <Skeleton className="h-10 w-full max-w-sm" />
-                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-64" />)}
-                        </div>
+            <div className="flex-1 p-4 md:p-6 space-y-6">
+                <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <Skeleton className="h-8 w-48" />
+                    <div className="flex items-center gap-2">
+                        <Skeleton className="h-9 w-64" />
+                        <Skeleton className="h-9 w-32" />
                     </div>
-                </main>
+                </header>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {[1, 2, 3, 4, 5, 6].map(i => (
+                        <div key={i} className="flex flex-col space-y-3 p-4 border rounded-xl">
+                            <div className="flex items-center space-x-4">
+                                <Skeleton className="h-12 w-12 rounded-full" />
+                                <div className="space-y-2">
+                                    <Skeleton className="h-4 w-32" />
+                                    <Skeleton className="h-4 w-20" />
+                                </div>
+                            </div>
+                            <div className="space-y-2 pt-4">
+                                <Skeleton className="h-4 w-full" />
+                                <Skeleton className="h-4 w-3/4" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
         );
     }
 
     return (
         <>
-            <div className="flex flex-col h-full">
-                <header className="flex flex-col gap-4 p-4 border-b bg-background sticky top-0 z-10">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col flex-1 h-full overflow-hidden">
+                <header className="p-4 border-b md:p-6 bg-background/95 backdrop-blur-xs sticky top-0 z-10">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div className="flex items-center justify-between">
                             <h1 className="text-2xl font-bold tracking-tight font-headline">
                                 {isAdmin ? 'Employee Management' : 'My Colleagues'}
@@ -256,13 +358,13 @@ export default function EmployeesPage() {
                                 <div className="md:hidden flex items-center bg-muted rounded-lg p-1">
                                     <button
                                         onClick={() => setActiveTab('current')}
-                                        className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeTab === 'current' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                        className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeTab === 'current' ? 'bg-background shadow-xs text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                                     >
                                         Current
                                     </button>
                                     <button
                                         onClick={() => setActiveTab('ex')}
-                                        className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeTab === 'ex' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                        className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeTab === 'ex' ? 'bg-background shadow-xs text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                                     >
                                         Ex
                                     </button>
@@ -275,13 +377,13 @@ export default function EmployeesPage() {
                             <div className="hidden md:flex items-center bg-muted rounded-lg p-1">
                                 <button
                                     onClick={() => setActiveTab('current')}
-                                    className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${activeTab === 'current' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                    className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${activeTab === 'current' ? 'bg-background shadow-xs text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                                 >
                                     Current
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('ex')}
-                                    className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${activeTab === 'ex' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                    className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${activeTab === 'ex' ? 'bg-background shadow-xs text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                                 >
                                     Ex-Employees
                                 </button>
@@ -325,6 +427,9 @@ export default function EmployeesPage() {
                                             onStatusChange={isAdmin ? handleStatusChange : undefined}
                                             onRemove={isAdmin ? handleRemove : undefined}
                                             isCurrentUser={currentUserProfile?.id === employee.id}
+                                            salaryProfile={salaryProfiles.find(p => p.user_id === employee.id)}
+                                            onManageSalary={isAdmin ? handleOpenSalaryModal : undefined}
+                                            isAdmin={isAdmin}
                                         />
                                     ))}
                                 </div>
@@ -395,6 +500,124 @@ export default function EmployeesPage() {
                 onSuccess={() => setRefreshTrigger(prev => prev + 1)}
                 editingUser={editingUser}
             />
+
+            {/* Manage Employee Salary & Payout Modal */}
+            <Dialog open={isSalaryModalOpen} onOpenChange={setIsSalaryModalOpen}>
+                <DialogContent className="max-w-md rounded-2xl p-4 sm:p-5 glass-card border border-white/20 shadow-2xl">
+                    <DialogHeader className="pb-2 border-b border-border/40">
+                        <DialogTitle className="text-base sm:text-lg font-bold font-headline text-foreground flex items-center gap-2">
+                            <Wallet className="h-4 w-4 text-primary" />
+                            <span>Salary & Bank Account</span>
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground">
+                            Configure salary rate and payout bank details for {selectedSalaryEmployee?.displayName}.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <form onSubmit={handleSaveSalary} className="space-y-3.5 pt-1">
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <Label className="text-[11px] font-semibold text-foreground">Payment Type</Label>
+                                <Select
+                                    value={salaryPaymentType}
+                                    onValueChange={(val: any) => setSalaryPaymentType(val)}
+                                >
+                                    <SelectTrigger className="h-8 text-xs rounded-lg bg-background/50 mt-1">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="monthly" className="text-xs">Monthly Salary</SelectItem>
+                                        <SelectItem value="daily_wage" className="text-xs">Daily Wage</SelectItem>
+                                        <SelectItem value="hourly" className="text-xs">Hourly Rate</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div>
+                                <Label className="text-[11px] font-semibold text-foreground">
+                                    Amount (₹)
+                                </Label>
+                                <Input
+                                    type="number"
+                                    placeholder={salaryPaymentType === 'monthly' ? 'e.g. 45000' : 'e.g. 1200'}
+                                    value={salaryRate}
+                                    onChange={(e) => setSalaryRate(e.target.value)}
+                                    className="h-8 text-xs rounded-lg bg-background/50 font-mono mt-1"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Bank Details */}
+                        <div className="space-y-2 pt-2 border-t border-border/40 text-xs">
+                            <Label className="text-[11px] font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                <Landmark className="h-3.5 w-3.5 text-primary" />
+                                Bank Payout Details
+                            </Label>
+
+                            <div>
+                                <Label className="text-[10px] text-muted-foreground">Bank Name</Label>
+                                <Input
+                                    placeholder="e.g. HDFC Bank, SBI, ICICI"
+                                    value={salaryBankName}
+                                    onChange={(e) => setSalaryBankName(e.target.value)}
+                                    className="h-8 text-xs rounded-lg bg-background/50 mt-0.5"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <Label className="text-[10px] text-muted-foreground">Account Number</Label>
+                                    <Input
+                                        placeholder="A/C Number"
+                                        value={salaryAccountNumber}
+                                        onChange={(e) => setSalaryAccountNumber(e.target.value)}
+                                        className="h-8 text-xs rounded-lg bg-background/50 font-mono mt-0.5"
+                                    />
+                                </div>
+                                <div>
+                                    <Label className="text-[10px] text-muted-foreground">IFSC Code</Label>
+                                    <Input
+                                        placeholder="IFSC Code"
+                                        value={salaryIfscCode}
+                                        onChange={(e) => setSalaryIfscCode(e.target.value.toUpperCase())}
+                                        className="h-8 text-xs rounded-lg bg-background/50 uppercase font-mono mt-0.5"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <DialogFooter className="flex-row items-center justify-end gap-2 pt-2 border-t border-border/30">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setIsSalaryModalOpen(false)}
+                                className="h-8 text-xs rounded-lg"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="submit"
+                                size="sm"
+                                disabled={isSavingSalary}
+                                className="h-8 text-xs rounded-lg gap-1"
+                            >
+                                {isSavingSalary ? (
+                                    <>
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                        <span>Saving...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Check className="h-3 w-3" />
+                                        <span>Save Salary</span>
+                                    </>
+                                )}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

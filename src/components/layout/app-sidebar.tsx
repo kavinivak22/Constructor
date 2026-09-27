@@ -69,7 +69,6 @@ const personalLinks = [
 ]
 
 const financialLinks = [
-  { href: '/financials/salary-profiles', key: 'salaryProfiles', label: 'Salary Profiles', icon: Wallet },
   { href: '/financials/payday', key: 'weeklyPayday', label: 'Weekly Pay-Day', icon: Coins },
   { href: '/financials/contractors', key: 'contractorAccounts', label: 'Contractor Accounts', icon: Building2 },
   { href: '/expenses', key: 'projectExpenses', label: 'Project Expenses', icon: Briefcase },
