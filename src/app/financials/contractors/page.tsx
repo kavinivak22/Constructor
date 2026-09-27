@@ -4,12 +4,11 @@ import { useEffect, useState, useMemo } from 'react';
 import { getContractorAccounts } from '@/app/actions/contractors';
 import { getProjects } from '@/app/actions/financials';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useI18n } from '@/lib/i18n-context';
@@ -22,9 +21,12 @@ import {
     Phone,
     User,
     UserPlus,
-    Wallet,
     ArrowRight,
-    Edit3
+    Edit3,
+    X,
+    ChevronRight,
+    Coins,
+    Hammer
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -174,56 +176,150 @@ export default function ContractorAccountsPage() {
         setIsEditOpen(true);
     };
 
-    return (
-        <main className="flex-1 p-3.5 sm:p-4 md:p-6 overflow-y-auto bg-transparent">
-            <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
+    const currentRateDue = viewMode === 'contractors' ? stats.totalRateOutstanding : (selectedBuildingId === 'all' ? 0 : buildingStats.rateOutstanding);
+    const currentRatePaid = viewMode === 'contractors' ? stats.totalRateSettled : (selectedBuildingId === 'all' ? 0 : buildingStats.rateSettled);
+    const currentNmrDue = viewMode === 'contractors' ? stats.totalNmrOutstanding : (selectedBuildingId === 'all' ? 0 : buildingStats.nmrOutstanding);
+    const currentNmrPaid = viewMode === 'contractors' ? stats.totalNmrSettled : (selectedBuildingId === 'all' ? 0 : buildingStats.nmrSettled);
 
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border/40 pb-4">
-                    <div>
-                        <h1 className="text-xl sm:text-3xl font-bold tracking-tight font-headline text-foreground">
-                            {t('contractorAccounts', 'Contractor Accounts & Ledgers')}
+    return (
+        <main className="flex-1 p-2.5 sm:p-4 md:p-5 overflow-y-auto bg-transparent">
+            <div className="max-w-6xl mx-auto space-y-2.5 sm:space-y-3.5">
+
+                {/* Compact Header */}
+                <div className="flex items-center justify-between gap-2 pb-1">
+                    <div className="min-w-0">
+                        <h1 className="text-base sm:text-xl font-bold tracking-tight font-headline text-foreground truncate">
+                            {t('contractorAccounts', 'Contractor Accounts')}
                         </h1>
-                        <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-                            Track Rate contract settlements & NMR daily wage accounts across sites.
+                        <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
+                            Rate contracts & NMR daily wage ledgers
                         </p>
                     </div>
                     <Button
                         onClick={() => setIsCreateOpen(true)}
                         size="sm"
-                        className="gap-2 rounded-xl h-9 text-xs sm:text-sm font-semibold shrink-0 self-start sm:self-auto shadow-sm"
+                        className="gap-1 rounded-lg h-7 sm:h-8 text-xs font-semibold shrink-0 shadow-2xs px-2.5 sm:px-3"
                     >
-                        <UserPlus className="h-4 w-4" />
-                        <span>{t('addContractor', 'Add Contractor')}</span>
+                        <UserPlus className="h-3.5 w-3.5" />
+                        <span className="hidden xs:inline">{t('addContractor', 'Add Contractor')}</span>
+                        <span className="xs:hidden">Add</span>
                     </Button>
                 </div>
 
-                {/* View Switcher & Building Filter Bar */}
-                <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 p-2 sm:p-3 glass-card rounded-2xl border border-white/10">
-                    <Tabs value={viewMode} onValueChange={(val) => setViewMode(val as 'contractors' | 'buildings')} className="w-full sm:w-auto">
-                        <TabsList className="grid grid-cols-2 w-full sm:w-auto bg-muted/30 p-1 rounded-xl">
-                            <TabsTrigger value="contractors" className="text-xs font-semibold px-3 py-1.5 rounded-lg">
-                                By Contractor
-                            </TabsTrigger>
-                            <TabsTrigger value="buildings" className="text-xs font-semibold px-3 py-1.5 rounded-lg">
-                                By Building / Site
-                            </TabsTrigger>
-                        </TabsList>
-                    </Tabs>
+                {/* Compact 2-Tile KPI Summary Strip (Saves ~50% vertical space on mobile) */}
+                <div className="grid grid-cols-2 gap-2">
+                    {/* Rate Contract Card */}
+                    <div className="glass-card rounded-xl p-2 sm:p-2.5 border border-purple-500/20 bg-purple-500/[0.03]">
+                        <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-purple-600 dark:text-purple-300 flex items-center gap-1">
+                                <Coins className="w-3 h-3 text-purple-500" />
+                                Rate (Sq.Ft)
+                            </span>
+                        </div>
+                        <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-0.5">
+                            <div>
+                                <span className="text-sm sm:text-lg font-bold font-headline text-purple-600 dark:text-purple-400 block leading-tight">
+                                    ₹{currentRateDue.toLocaleString('en-IN')}
+                                </span>
+                                <span className="text-[9px] text-muted-foreground">Due</span>
+                            </div>
+                            <div className="sm:text-right">
+                                <span className="text-xs sm:text-sm font-semibold text-emerald-600 dark:text-emerald-400 block leading-tight">
+                                    ₹{currentRatePaid.toLocaleString('en-IN')}
+                                </span>
+                                <span className="text-[9px] text-muted-foreground">Cleared</span>
+                            </div>
+                        </div>
+                    </div>
 
+                    {/* NMR Labor Card */}
+                    <div className="glass-card rounded-xl p-2 sm:p-2.5 border border-teal-500/20 bg-teal-500/[0.03]">
+                        <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-teal-600 dark:text-teal-300 flex items-center gap-1">
+                                <Hammer className="w-3 h-3 text-teal-500" />
+                                NMR (Labor)
+                            </span>
+                        </div>
+                        <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-0.5">
+                            <div>
+                                <span className="text-sm sm:text-lg font-bold font-headline text-amber-600 dark:text-amber-400 block leading-tight">
+                                    ₹{currentNmrDue.toLocaleString('en-IN')}
+                                </span>
+                                <span className="text-[9px] text-muted-foreground">Due</span>
+                            </div>
+                            <div className="sm:text-right">
+                                <span className="text-xs sm:text-sm font-semibold text-emerald-600 dark:text-emerald-400 block leading-tight">
+                                    ₹{currentNmrPaid.toLocaleString('en-IN')}
+                                </span>
+                                <span className="text-[9px] text-muted-foreground">Cleared</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Compact Single Unified Toolbar (Search + View Switcher + Building Selector) */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 p-1.5 sm:p-2 glass-card rounded-xl border border-white/10">
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                        {/* Search Input with quick clear */}
+                        <div className="relative flex-1 min-w-0">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                            <Input
+                                placeholder="Search contractor or trade..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-8 pr-7 h-7 sm:h-8 text-xs rounded-lg bg-background/50 border-border/40 w-full"
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery('')}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                >
+                                    <X className="h-3.5 w-3.5" />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Segmented View Toggle Pills */}
+                        <div className="flex items-center bg-muted/40 p-0.5 rounded-lg shrink-0 border border-border/30">
+                            <button
+                                onClick={() => setViewMode('contractors')}
+                                className={`text-[11px] px-2 py-1 rounded-md font-medium transition-colors ${
+                                    viewMode === 'contractors'
+                                        ? 'bg-background shadow-xs text-foreground font-semibold'
+                                        : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                            >
+                                Contractors
+                            </button>
+                            <button
+                                onClick={() => setViewMode('buildings')}
+                                className={`text-[11px] px-2 py-1 rounded-md font-medium transition-colors ${
+                                    viewMode === 'buildings'
+                                        ? 'bg-background shadow-xs text-foreground font-semibold'
+                                        : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                            >
+                                By Site
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Site Dropdown when in By Site view */}
                     {viewMode === 'buildings' && projects.length > 0 && (
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
-                            <span className="text-xs text-muted-foreground whitespace-nowrap font-medium hidden sm:inline">Building:</span>
+                        <div className="flex items-center gap-1.5 w-full sm:w-auto shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-border/30">
+                            <span className="text-[11px] text-muted-foreground font-medium shrink-0">Site:</span>
                             <Select
                                 value={selectedBuildingId}
                                 onValueChange={(val) => setSelectedBuildingId(val)}
                             >
-                                <SelectTrigger className="w-full sm:w-[220px] h-9 text-xs rounded-xl bg-background/50">
+                                <SelectTrigger className="w-full sm:w-[180px] h-7 sm:h-8 text-xs rounded-lg bg-background/50">
                                     <SelectValue placeholder="Choose a building" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {projects.map(proj => (
-                                        <SelectItem key={proj.id} value={proj.id}>{proj.name}</SelectItem>
+                                        <SelectItem key={proj.id} value={proj.id} className="text-xs">
+                                            {proj.name}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -231,167 +327,103 @@ export default function ContractorAccountsPage() {
                     )}
                 </div>
 
-                {/* Summary Stat Cards (2x2 Grid on Mobile) */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-                    <Card className="glass-card rounded-2xl border border-white/10 dark:border-white/5 transition-all duration-200">
-                        <CardContent className="p-3 sm:p-4 flex flex-col justify-between">
-                            <span className="text-[10px] sm:text-xs text-muted-foreground uppercase font-semibold tracking-wider">Rate Outstanding</span>
-                            <span className="text-lg sm:text-2xl font-bold font-headline text-purple-600 dark:text-purple-400 mt-1">
-                                ₹{(viewMode === 'contractors' ? stats.totalRateOutstanding : (selectedBuildingId === 'all' ? 0 : buildingStats.rateOutstanding)).toLocaleString('en-IN')}
-                            </span>
-                            <span className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">Pending sq.ft rates</span>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="glass-card rounded-2xl border border-white/10 dark:border-white/5 transition-all duration-200">
-                        <CardContent className="p-3 sm:p-4 flex flex-col justify-between">
-                            <span className="text-[10px] sm:text-xs text-muted-foreground uppercase font-semibold tracking-wider">Rate Settled</span>
-                            <span className="text-lg sm:text-2xl font-bold font-headline text-emerald-600 dark:text-emerald-400 mt-1">
-                                ₹{(viewMode === 'contractors' ? stats.totalRateSettled : (selectedBuildingId === 'all' ? 0 : buildingStats.rateSettled)).toLocaleString('en-IN')}
-                            </span>
-                            <span className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">Cleared contract payouts</span>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="glass-card rounded-2xl border border-white/10 dark:border-white/5 transition-all duration-200">
-                        <CardContent className="p-3 sm:p-4 flex flex-col justify-between">
-                            <span className="text-[10px] sm:text-xs text-muted-foreground uppercase font-semibold tracking-wider">NMR Outstanding</span>
-                            <span className="text-lg sm:text-2xl font-bold font-headline text-amber-600 dark:text-amber-400 mt-1">
-                                ₹{(viewMode === 'contractors' ? stats.totalNmrOutstanding : (selectedBuildingId === 'all' ? 0 : buildingStats.nmrOutstanding)).toLocaleString('en-IN')}
-                            </span>
-                            <span className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">Pending labor wages</span>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="glass-card rounded-2xl border border-white/10 dark:border-white/5 transition-all duration-200">
-                        <CardContent className="p-3 sm:p-4 flex flex-col justify-between">
-                            <span className="text-[10px] sm:text-xs text-muted-foreground uppercase font-semibold tracking-wider">NMR Settled</span>
-                            <span className="text-lg sm:text-2xl font-bold font-headline text-sky-600 dark:text-sky-400 mt-1">
-                                ₹{(viewMode === 'contractors' ? stats.totalNmrSettled : (selectedBuildingId === 'all' ? 0 : buildingStats.nmrSettled)).toLocaleString('en-IN')}
-                            </span>
-                            <span className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">Cleared labor wages</span>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Accounts Container */}
-                <Card className="glass-card rounded-2xl border border-white/10 dark:border-white/5 overflow-hidden shadow-xl">
-                    <CardHeader className="p-3.5 sm:p-5 border-b border-border/40">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div>
-                                <CardTitle className="text-base sm:text-xl font-bold font-headline text-foreground">
-                                    {viewMode === 'contractors' ? 'Active Contractor Accounts' : 'Active Contractors on Site'}
-                                </CardTitle>
-                                <CardDescription className="text-xs sm:text-sm">
-                                    Consolidated ledger showing Rate contracts vs NMR daily wages.
-                                </CardDescription>
-                            </div>
-
-                            <div className="relative w-full sm:w-72">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="Search contractor..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-9 w-full h-9 text-xs sm:text-sm rounded-xl bg-background/50"
-                                />
-                            </div>
-                        </div>
-                    </CardHeader>
-
+                {/* Accounts Content Container */}
+                <Card className="glass-card rounded-xl border border-white/10 dark:border-white/5 overflow-hidden shadow-xs">
                     <CardContent className="p-0">
                         {isLoading ? (
-                            <div className="flex flex-col items-center justify-center py-16 gap-3">
-                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                                <p className="text-xs text-muted-foreground">Loading contractor accounts...</p>
+                            <div className="flex flex-col items-center justify-center py-10 gap-2">
+                                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                                <p className="text-xs text-muted-foreground">Loading accounts...</p>
                             </div>
                         ) : viewMode === 'contractors' ? (
                             filteredAccounts.length === 0 ? (
-                                <div className="text-center py-12 px-4">
-                                    <Building2 className="h-10 w-10 text-muted-foreground/40 mx-auto mb-2" />
-                                    <h3 className="text-base font-bold text-foreground">No Contractor Accounts Found</h3>
-                                    <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1 mb-4">
-                                        {searchQuery ? 'No contractors match your search criteria.' : 'Add your first contractor to start tracking rate contracts and NMR ledgers.'}
+                                <div className="text-center py-8 px-4">
+                                    <Building2 className="h-7 w-7 text-muted-foreground/40 mx-auto mb-1" />
+                                    <h3 className="text-xs sm:text-sm font-bold text-foreground">No Contractors Found</h3>
+                                    <p className="text-[11px] text-muted-foreground max-w-sm mx-auto mt-0.5 mb-2.5">
+                                        {searchQuery ? 'No contractors match your search criteria.' : 'Add your first contractor to start tracking ledgers.'}
                                     </p>
                                     {!searchQuery && (
                                         <Button
                                             onClick={() => setIsCreateOpen(true)}
                                             size="sm"
-                                            className="gap-2 rounded-xl text-xs font-semibold"
+                                            className="gap-1 rounded-lg text-xs font-semibold h-7 px-3"
                                         >
-                                            <UserPlus className="h-4 w-4" />
+                                            <UserPlus className="h-3 w-3" />
                                             <span>Add Contractor</span>
                                         </Button>
                                     )}
                                 </div>
                             ) : (
                                 <>
-                                    {/* Desktop Table View */}
+                                    {/* Desktop Compact Table */}
                                     <div className="hidden md:block overflow-x-auto">
-                                        <Table className="text-xs sm:text-sm">
+                                        <Table className="text-xs">
                                             <TableHeader className="bg-muted/30">
                                                 <TableRow className="border-border/40">
-                                                    <TableHead className="font-semibold">Contractor</TableHead>
-                                                    <TableHead className="font-semibold">Category</TableHead>
-                                                    <TableHead className="text-center font-semibold bg-purple-500/5">Rate Contract (Sq.Ft)</TableHead>
-                                                    <TableHead className="text-center font-semibold bg-teal-500/5">NMR Account (Labor)</TableHead>
-                                                    <TableHead className="text-right font-semibold">Actions</TableHead>
+                                                    <TableHead className="font-semibold py-2 px-3">Contractor</TableHead>
+                                                    <TableHead className="font-semibold py-2 px-3">Category</TableHead>
+                                                    <TableHead className="text-center font-semibold bg-purple-500/5 py-2 px-3">Rate Contract (Sq.Ft)</TableHead>
+                                                    <TableHead className="text-center font-semibold bg-teal-500/5 py-2 px-3">NMR Labor (Daily)</TableHead>
+                                                    <TableHead className="text-right font-semibold py-2 px-3">Action</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
                                                 {filteredAccounts.map((account) => (
                                                     <TableRow key={account.contractor.id} className="border-border/30 hover:bg-muted/20 transition-colors">
-                                                        <TableCell className="font-medium">
+                                                        <TableCell className="font-medium py-2 px-3">
                                                             <div className="flex flex-col">
-                                                                <span className="font-bold text-foreground text-sm">{account.contractor.name}</span>
+                                                                <span className="font-bold text-foreground text-xs sm:text-sm">{account.contractor.name}</span>
                                                                 {account.contractor.contactPerson && (
-                                                                    <span className="text-[11px] text-muted-foreground font-normal">Contact: {account.contractor.contactPerson}</span>
+                                                                    <span className="text-[10px] text-muted-foreground font-normal">Contact: {account.contractor.contactPerson}</span>
                                                                 )}
                                                             </div>
                                                         </TableCell>
 
-                                                        <TableCell>
-                                                            <Badge variant="secondary" className="text-[11px] rounded-full px-2 py-0.5">
-                                                                {account.contractor.category || 'General Contractor'}
+                                                        <TableCell className="py-2 px-3">
+                                                            <Badge variant="secondary" className="text-[10px] rounded-full px-2 py-0">
+                                                                {account.contractor.category || 'General'}
                                                             </Badge>
                                                         </TableCell>
 
-                                                        <TableCell className="bg-purple-500/5 text-center py-2.5">
-                                                            <div className="flex flex-col items-center space-y-0.5">
-                                                                <span className="text-xs font-semibold text-foreground">
-                                                                    ₹{account.rateAccount.totalPaid.toLocaleString('en-IN')} <span className="text-[10px] text-emerald-500 font-normal">(Cleared)</span>
+                                                        <TableCell className="bg-purple-500/5 text-center py-2 px-3">
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                <span className="text-[11px] font-bold text-purple-600 dark:text-purple-400">
+                                                                    ₹{account.rateAccount.totalPending.toLocaleString('en-IN')} <span className="text-[9px] font-normal text-muted-foreground">Due</span>
                                                                 </span>
-                                                                <span className="text-xs font-bold text-purple-600 dark:text-purple-400">
-                                                                    ₹{account.rateAccount.totalPending.toLocaleString('en-IN')} <span className="text-[10px] text-muted-foreground font-normal">(Due)</span>
-                                                                </span>
-                                                            </div>
-                                                        </TableCell>
-
-                                                        <TableCell className="bg-teal-500/5 text-center py-2.5">
-                                                            <div className="flex flex-col items-center space-y-0.5">
-                                                                <span className="text-xs font-semibold text-foreground">
-                                                                    ₹{account.nmrAccount.totalPaid.toLocaleString('en-IN')} <span className="text-[10px] text-emerald-500 font-normal">(Cleared)</span>
-                                                                </span>
-                                                                <span className="text-xs font-bold text-teal-600 dark:text-teal-400">
-                                                                    ₹{account.nmrAccount.totalPending.toLocaleString('en-IN')} <span className="text-[10px] text-muted-foreground font-normal">(Due)</span>
+                                                                <span className="text-muted-foreground/30">•</span>
+                                                                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                                                                    ₹{account.rateAccount.totalPaid.toLocaleString('en-IN')} <span className="text-[9px] font-normal text-muted-foreground">Paid</span>
                                                                 </span>
                                                             </div>
                                                         </TableCell>
 
-                                                        <TableCell className="text-right">
-                                                            <div className="flex items-center justify-end gap-1.5">
+                                                        <TableCell className="bg-teal-500/5 text-center py-2 px-3">
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400">
+                                                                    ₹{account.nmrAccount.totalPending.toLocaleString('en-IN')} <span className="text-[9px] font-normal text-muted-foreground">Due</span>
+                                                                </span>
+                                                                <span className="text-muted-foreground/30">•</span>
+                                                                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                                                                    ₹{account.nmrAccount.totalPaid.toLocaleString('en-IN')} <span className="text-[9px] font-normal text-muted-foreground">Paid</span>
+                                                                </span>
+                                                            </div>
+                                                        </TableCell>
+
+                                                        <TableCell className="text-right py-2 px-3">
+                                                            <div className="flex items-center justify-end gap-1">
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="icon"
                                                                     onClick={(e) => handleEditClick(e, account.contractor)}
-                                                                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                                                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
                                                                 >
-                                                                    <Edit3 className="h-4 w-4" />
+                                                                    <Edit3 className="h-3.5 w-3.5" />
                                                                 </Button>
                                                                 <Link href={`/financials/contractors/${account.contractor.id}`}>
-                                                                    <Button size="sm" variant="outline" className="h-8 text-xs rounded-xl gap-1">
-                                                                        <span>View Ledger</span>
-                                                                        <ArrowRight className="h-3.5 w-3.5" />
+                                                                    <Button size="sm" variant="outline" className="h-7 text-xs rounded-lg gap-1 px-2.5">
+                                                                        <span>Ledger</span>
+                                                                        <ArrowRight className="h-3 w-3" />
                                                                     </Button>
                                                                 </Link>
                                                             </div>
@@ -402,64 +434,85 @@ export default function ContractorAccountsPage() {
                                         </Table>
                                     </div>
 
-                                    {/* Mobile Contractor Account Cards */}
-                                    <div className="block md:hidden p-3.5 space-y-3">
+                                    {/* Mobile Compact High-Density Cards */}
+                                    <div className="block md:hidden divide-y divide-border/30">
                                         {filteredAccounts.map((account) => (
                                             <div
                                                 key={account.contractor.id}
-                                                className="glass-card rounded-2xl p-3.5 border border-white/10 dark:border-white/5 space-y-3"
+                                                className="p-2.5 hover:bg-muted/10 transition-colors space-y-1.5"
                                             >
-                                                <div className="flex items-start justify-between gap-2">
-                                                    <div className="min-w-0 flex-1">
-                                                        <h3 className="font-bold text-sm text-foreground truncate">{account.contractor.name}</h3>
-                                                        {account.contractor.contactPerson && (
-                                                            <p className="text-[11px] text-muted-foreground truncate">Contact: {account.contractor.contactPerson}</p>
-                                                        )}
+                                                {/* Header row: Name + Category + Edit + Arrow Link */}
+                                                <div className="flex items-center justify-between gap-1.5">
+                                                    <div className="min-w-0 flex-1 flex items-center gap-1.5">
+                                                        <Link
+                                                            href={`/financials/contractors/${account.contractor.id}`}
+                                                            className="font-bold text-xs text-foreground truncate hover:text-primary transition-colors"
+                                                        >
+                                                            {account.contractor.name}
+                                                        </Link>
+                                                        <Badge variant="outline" className="text-[9px] font-medium bg-muted/40 text-muted-foreground rounded-full px-1.5 py-0 shrink-0">
+                                                            {account.contractor.category || 'General'}
+                                                        </Badge>
                                                     </div>
 
-                                                    <div className="flex items-center gap-1">
+                                                    <div className="flex items-center gap-0.5 shrink-0">
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={(e) => handleEditClick(e, account.contractor)}
-                                                            className="h-7 w-7 text-muted-foreground"
+                                                            className="h-6 w-6 text-muted-foreground"
                                                         >
-                                                            <Edit3 className="h-3.5 w-3.5" />
+                                                            <Edit3 className="h-3 w-3" />
                                                         </Button>
-                                                        <Badge variant="outline" className="text-[10px] font-semibold bg-primary/10 border-primary/20 text-primary rounded-full px-2 py-0.5 shrink-0">
-                                                            {account.contractor.category || 'General'}
-                                                        </Badge>
+                                                        <Link href={`/financials/contractors/${account.contractor.id}`}>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-6 w-6 text-primary"
+                                                            >
+                                                                <ChevronRight className="h-4 w-4" />
+                                                            </Button>
+                                                        </Link>
                                                     </div>
                                                 </div>
 
-                                                <div className="grid grid-cols-2 gap-2 text-xs border-t border-b border-border/30 py-2.5">
-                                                    <div className="bg-purple-500/10 p-2 rounded-xl flex flex-col justify-center">
-                                                        <span className="text-[10px] text-muted-foreground font-semibold uppercase">Rate Contract</span>
-                                                        <span className="font-bold text-purple-600 dark:text-purple-300 mt-0.5 text-xs">
-                                                            ₹{account.rateAccount.totalPending.toLocaleString('en-IN')} <span className="text-[9px] font-normal text-muted-foreground">Due</span>
-                                                        </span>
-                                                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400">
-                                                            ₹{account.rateAccount.totalPaid.toLocaleString('en-IN')} <span className="text-[9px] font-normal text-muted-foreground">Cleared</span>
-                                                        </span>
+                                                {/* Contact info subtext if present */}
+                                                {account.contractor.contactPerson && (
+                                                    <div className="text-[10px] text-muted-foreground truncate flex items-center gap-1">
+                                                        <User className="h-2.5 w-2.5 shrink-0" />
+                                                        <span className="truncate">{account.contractor.contactPerson}</span>
+                                                        {account.contractor.phone && (
+                                                            <>
+                                                                <span>•</span>
+                                                                <Phone className="h-2.5 w-2.5 shrink-0" />
+                                                                <span>{account.contractor.phone}</span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {/* Compact Dual-Tone Pill Row: Rate vs NMR */}
+                                                <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+                                                    <div className="bg-purple-500/10 px-2 py-1 rounded-md flex items-center justify-between">
+                                                        <span className="text-purple-700 dark:text-purple-300 font-semibold">Rate</span>
+                                                        <div className="text-right">
+                                                            <span className="font-bold text-purple-600 dark:text-purple-300">
+                                                                ₹{account.rateAccount.totalPending.toLocaleString('en-IN')}
+                                                            </span>
+                                                            <span className="text-[8px] text-muted-foreground ml-1">Due</span>
+                                                        </div>
                                                     </div>
 
-                                                    <div className="bg-teal-500/10 p-2 rounded-xl flex flex-col justify-center">
-                                                        <span className="text-[10px] text-muted-foreground font-semibold uppercase">NMR Labor</span>
-                                                        <span className="font-bold text-teal-600 dark:text-teal-300 mt-0.5 text-xs">
-                                                            ₹{account.nmrAccount.totalPending.toLocaleString('en-IN')} <span className="text-[9px] font-normal text-muted-foreground">Due</span>
-                                                        </span>
-                                                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400">
-                                                            ₹{account.nmrAccount.totalPaid.toLocaleString('en-IN')} <span className="text-[9px] font-normal text-muted-foreground">Cleared</span>
-                                                        </span>
+                                                    <div className="bg-teal-500/10 px-2 py-1 rounded-md flex items-center justify-between">
+                                                        <span className="text-teal-700 dark:text-teal-300 font-semibold">NMR</span>
+                                                        <div className="text-right">
+                                                            <span className="font-bold text-teal-600 dark:text-teal-300">
+                                                                ₹{account.nmrAccount.totalPending.toLocaleString('en-IN')}
+                                                            </span>
+                                                            <span className="text-[8px] text-muted-foreground ml-1">Due</span>
+                                                        </div>
                                                     </div>
                                                 </div>
-
-                                                <Link href={`/financials/contractors/${account.contractor.id}`} className="block">
-                                                    <Button size="sm" variant="outline" className="w-full h-8 text-xs rounded-xl gap-1.5 justify-center">
-                                                        <span>View Ledger Statement</span>
-                                                        <ArrowRight className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                </Link>
                                             </div>
                                         ))}
                                     </div>
@@ -468,68 +521,70 @@ export default function ContractorAccountsPage() {
                         ) : (
                             /* Building View */
                             contractorsForSelectedBuilding.length === 0 ? (
-                                <div className="text-center py-12 px-4">
-                                    <Building2 className="h-10 w-10 text-muted-foreground/40 mx-auto mb-2" />
-                                    <h3 className="text-base font-bold text-foreground">No Contractors Found on Site</h3>
-                                    <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1">
-                                        No transactions logged for this building yet.
+                                <div className="text-center py-8 px-4">
+                                    <Building2 className="h-7 w-7 text-muted-foreground/40 mx-auto mb-1" />
+                                    <h3 className="text-xs sm:text-sm font-bold text-foreground">No Contractors Found on Site</h3>
+                                    <p className="text-[11px] text-muted-foreground max-w-sm mx-auto mt-0.5">
+                                        No transactions logged for this site yet.
                                     </p>
                                 </div>
                             ) : (
                                 <>
                                     {/* Desktop Table */}
                                     <div className="hidden md:block overflow-x-auto">
-                                        <Table className="text-xs sm:text-sm">
+                                        <Table className="text-xs">
                                             <TableHeader className="bg-muted/30">
                                                 <TableRow className="border-border/40">
-                                                    <TableHead className="font-semibold">Contractor</TableHead>
-                                                    <TableHead className="font-semibold">Category</TableHead>
-                                                    <TableHead className="text-center font-semibold bg-purple-500/5">Rate Contract (Sq.Ft)</TableHead>
-                                                    <TableHead className="text-center font-semibold bg-teal-500/5">NMR Account (Labor)</TableHead>
-                                                    <TableHead className="text-right font-semibold">Actions</TableHead>
+                                                    <TableHead className="font-semibold py-2 px-3">Contractor</TableHead>
+                                                    <TableHead className="font-semibold py-2 px-3">Category</TableHead>
+                                                    <TableHead className="text-center font-semibold bg-purple-500/5 py-2 px-3">Rate Contract (Sq.Ft)</TableHead>
+                                                    <TableHead className="text-center font-semibold bg-teal-500/5 py-2 px-3">NMR Labor (Daily)</TableHead>
+                                                    <TableHead className="text-right font-semibold py-2 px-3">Action</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
                                                 {contractorsForSelectedBuilding.map((account) => (
                                                     <TableRow key={account.contractor.id} className="border-border/30 hover:bg-muted/20 transition-colors">
-                                                        <TableCell className="font-medium">
+                                                        <TableCell className="font-medium py-2 px-3">
                                                             <div className="flex flex-col">
-                                                                <span className="font-bold text-foreground text-sm">{account.contractor.name}</span>
+                                                                <span className="font-bold text-foreground text-xs sm:text-sm">{account.contractor.name}</span>
                                                                 {account.contractor.contactPerson && (
-                                                                    <span className="text-[11px] text-muted-foreground font-normal">Contact: {account.contractor.contactPerson}</span>
+                                                                    <span className="text-[10px] text-muted-foreground font-normal">Contact: {account.contractor.contactPerson}</span>
                                                                 )}
                                                             </div>
                                                         </TableCell>
-                                                        <TableCell>
-                                                            <Badge variant="secondary" className="text-[11px] rounded-full px-2 py-0.5">
-                                                                {account.contractor.category || 'General Contractor'}
+                                                        <TableCell className="py-2 px-3">
+                                                            <Badge variant="secondary" className="text-[10px] rounded-full px-2 py-0">
+                                                                {account.contractor.category || 'General'}
                                                             </Badge>
                                                         </TableCell>
-                                                        <TableCell className="bg-purple-500/5 text-center py-2.5">
-                                                            <div className="flex flex-col items-center space-y-0.5">
-                                                                <span className="text-xs font-semibold text-foreground">
-                                                                    ₹{account.buildingStats.ratePaid.toLocaleString('en-IN')} <span className="text-[10px] text-emerald-500 font-normal">(Cleared)</span>
+                                                        <TableCell className="bg-purple-500/5 text-center py-2 px-3">
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                <span className="text-[11px] font-bold text-purple-600 dark:text-purple-400">
+                                                                    ₹{account.buildingStats.ratePending.toLocaleString('en-IN')} <span className="text-[9px] font-normal text-muted-foreground">Due</span>
                                                                 </span>
-                                                                <span className="text-xs font-bold text-purple-600 dark:text-purple-400">
-                                                                    ₹{account.buildingStats.ratePending.toLocaleString('en-IN')} <span className="text-[10px] text-muted-foreground font-normal">(Due)</span>
-                                                                </span>
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell className="bg-teal-500/5 text-center py-2.5">
-                                                            <div className="flex flex-col items-center space-y-0.5">
-                                                                <span className="text-xs font-semibold text-foreground">
-                                                                    ₹{account.buildingStats.nmrPaid.toLocaleString('en-IN')} <span className="text-[10px] text-emerald-500 font-normal">(Cleared)</span>
-                                                                </span>
-                                                                <span className="text-xs font-bold text-teal-600 dark:text-teal-400">
-                                                                    ₹{account.buildingStats.nmrPending.toLocaleString('en-IN')} <span className="text-[10px] text-muted-foreground font-normal">(Due)</span>
+                                                                <span className="text-muted-foreground/30">•</span>
+                                                                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                                                                    ₹{account.buildingStats.ratePaid.toLocaleString('en-IN')} <span className="text-[9px] font-normal text-muted-foreground">Paid</span>
                                                                 </span>
                                                             </div>
                                                         </TableCell>
-                                                        <TableCell className="text-right">
+                                                        <TableCell className="bg-teal-500/5 text-center py-2 px-3">
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400">
+                                                                    ₹{account.buildingStats.nmrPending.toLocaleString('en-IN')} <span className="text-[9px] font-normal text-muted-foreground">Due</span>
+                                                                </span>
+                                                                <span className="text-muted-foreground/30">•</span>
+                                                                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                                                                    ₹{account.buildingStats.nmrPaid.toLocaleString('en-IN')} <span className="text-[9px] font-normal text-muted-foreground">Paid</span>
+                                                                </span>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="text-right py-2 px-3">
                                                             <Link href={`/financials/contractors/${account.contractor.id}`}>
-                                                                <Button size="sm" variant="outline" className="h-8 text-xs rounded-xl gap-1">
-                                                                    <span>View Site Ledger</span>
-                                                                    <ArrowRight className="h-3.5 w-3.5" />
+                                                                <Button size="sm" variant="outline" className="h-7 text-xs rounded-lg gap-1 px-2.5">
+                                                                    <span>Ledger</span>
+                                                                    <ArrowRight className="h-3 w-3" />
                                                                 </Button>
                                                             </Link>
                                                         </TableCell>
@@ -540,52 +595,56 @@ export default function ContractorAccountsPage() {
                                     </div>
 
                                     {/* Mobile Cards for Building View */}
-                                    <div className="block md:hidden p-3.5 space-y-3">
+                                    <div className="block md:hidden divide-y divide-border/30">
                                         {contractorsForSelectedBuilding.map((account) => (
                                             <div
                                                 key={account.contractor.id}
-                                                className="glass-card rounded-2xl p-3.5 border border-white/10 dark:border-white/5 space-y-3"
+                                                className="p-2.5 hover:bg-muted/10 transition-colors space-y-1.5"
                                             >
-                                                <div className="flex items-start justify-between gap-2">
-                                                    <div className="min-w-0 flex-1">
-                                                        <h3 className="font-bold text-sm text-foreground truncate">{account.contractor.name}</h3>
-                                                        {account.contractor.contactPerson && (
-                                                            <p className="text-[11px] text-muted-foreground truncate">Contact: {account.contractor.contactPerson}</p>
-                                                        )}
+                                                <div className="flex items-center justify-between gap-1.5">
+                                                    <div className="min-w-0 flex-1 flex items-center gap-1.5">
+                                                        <Link
+                                                            href={`/financials/contractors/${account.contractor.id}`}
+                                                            className="font-bold text-xs text-foreground truncate hover:text-primary transition-colors"
+                                                        >
+                                                            {account.contractor.name}
+                                                        </Link>
+                                                        <Badge variant="outline" className="text-[9px] font-medium bg-muted/40 text-muted-foreground rounded-full px-1.5 py-0 shrink-0">
+                                                            {account.contractor.category || 'General'}
+                                                        </Badge>
                                                     </div>
-                                                    <Badge variant="outline" className="text-[10px] font-semibold bg-primary/10 border-primary/20 text-primary rounded-full px-2 py-0.5 shrink-0">
-                                                        {account.contractor.category || 'General'}
-                                                    </Badge>
+                                                    <Link href={`/financials/contractors/${account.contractor.id}`}>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-6 w-6 text-primary shrink-0"
+                                                        >
+                                                            <ChevronRight className="h-4 w-4" />
+                                                        </Button>
+                                                    </Link>
                                                 </div>
 
-                                                <div className="grid grid-cols-2 gap-2 text-xs border-t border-b border-border/30 py-2.5">
-                                                    <div className="bg-purple-500/10 p-2 rounded-xl flex flex-col justify-center">
-                                                        <span className="text-[10px] text-muted-foreground font-semibold uppercase">Rate Contract</span>
-                                                        <span className="font-bold text-purple-600 dark:text-purple-300 mt-0.5 text-xs">
-                                                            ₹{account.buildingStats.ratePending.toLocaleString('en-IN')} <span className="text-[9px] font-normal text-muted-foreground">Due</span>
-                                                        </span>
-                                                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400">
-                                                            ₹{account.buildingStats.ratePaid.toLocaleString('en-IN')} <span className="text-[9px] font-normal text-muted-foreground">Cleared</span>
-                                                        </span>
+                                                <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+                                                    <div className="bg-purple-500/10 px-2 py-1 rounded-md flex items-center justify-between">
+                                                        <span className="text-purple-700 dark:text-purple-300 font-semibold">Rate</span>
+                                                        <div className="text-right">
+                                                            <span className="font-bold text-purple-600 dark:text-purple-300">
+                                                                ₹{account.buildingStats.ratePending.toLocaleString('en-IN')}
+                                                            </span>
+                                                            <span className="text-[8px] text-muted-foreground ml-1">Due</span>
+                                                        </div>
                                                     </div>
 
-                                                    <div className="bg-teal-500/10 p-2 rounded-xl flex flex-col justify-center">
-                                                        <span className="text-[10px] text-muted-foreground font-semibold uppercase">NMR Labor</span>
-                                                        <span className="font-bold text-teal-600 dark:text-teal-300 mt-0.5 text-xs">
-                                                            ₹{account.buildingStats.nmrPending.toLocaleString('en-IN')} <span className="text-[9px] font-normal text-muted-foreground">Due</span>
-                                                        </span>
-                                                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400">
-                                                            ₹{account.buildingStats.nmrPaid.toLocaleString('en-IN')} <span className="text-[9px] font-normal text-muted-foreground">Cleared</span>
-                                                        </span>
+                                                    <div className="bg-teal-500/10 px-2 py-1 rounded-md flex items-center justify-between">
+                                                        <span className="text-teal-700 dark:text-teal-300 font-semibold">NMR</span>
+                                                        <div className="text-right">
+                                                            <span className="font-bold text-teal-600 dark:text-teal-300">
+                                                                ₹{account.buildingStats.nmrPending.toLocaleString('en-IN')}
+                                                            </span>
+                                                            <span className="text-[8px] text-muted-foreground ml-1">Due</span>
+                                                        </div>
                                                     </div>
                                                 </div>
-
-                                                <Link href={`/financials/contractors/${account.contractor.id}`} className="block">
-                                                    <Button size="sm" variant="outline" className="w-full h-8 text-xs rounded-xl gap-1.5 justify-center">
-                                                        <span>View Site Ledger</span>
-                                                        <ArrowRight className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                </Link>
                                             </div>
                                         ))}
                                     </div>
