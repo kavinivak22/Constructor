@@ -197,23 +197,11 @@ export function EditMaterialDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="w-[95vw] max-w-[580px] max-h-[90vh] p-4 sm:p-6 rounded-2xl glass border border-white/20 dark:border-white/10 shadow-2xl overflow-y-auto">
           <form onSubmit={handleSubmit}>
-            <DialogHeader className="space-y-1 pb-2">
-              <div className="flex items-center justify-between">
-                <DialogTitle className="flex items-center gap-2 text-base sm:text-xl font-bold font-headline">
-                  <Edit3 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                  Edit Material Details
-                </DialogTitle>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-xl"
-                  onClick={() => setShowDeleteConfirm(true)}
-                  title="Delete material"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
+            <DialogHeader className="space-y-1 pb-2 pr-8 sm:pr-10">
+              <DialogTitle className="flex items-center gap-2 text-base sm:text-xl font-bold font-headline">
+                <Edit3 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                Edit Material Details
+              </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
                 Correct item specifications, unit costs, supplier info, or thresholds.
               </DialogDescription>
@@ -350,30 +338,42 @@ export function EditMaterialDialog({
               </div>
             </div>
 
-            <DialogFooter className="pt-2 flex flex-col-reverse sm:flex-row gap-2">
+            <DialogFooter className="pt-3 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 border-t border-white/10 dark:border-white/5 mt-3">
               <Button
                 type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
+                variant="ghost"
+                onClick={() => setShowDeleteConfirm(true)}
                 disabled={isSaving}
-                className="h-9 text-xs sm:text-sm rounded-xl"
+                className="h-9 text-xs sm:text-sm text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl gap-1.5 justify-center sm:justify-start px-2 font-medium"
               >
-                Cancel
+                <Trash2 className="h-4 w-4" />
+                Delete Material
               </Button>
-              <Button
-                type="submit"
-                disabled={isSaving}
-                className="h-9 text-xs sm:text-sm rounded-xl font-semibold"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                    Saving Changes...
-                  </>
-                ) : (
-                  'Save Changes'
-                )}
-              </Button>
+              <div className="flex items-center gap-2 justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isSaving}
+                  className="h-9 text-xs sm:text-sm rounded-xl flex-1 sm:flex-initial px-4"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSaving}
+                  className="h-9 text-xs sm:text-sm rounded-xl font-semibold flex-1 sm:flex-initial px-4"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      Saving Changes...
+                    </>
+                  ) : (
+                    'Save Changes'
+                  )}
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         </DialogContent>
