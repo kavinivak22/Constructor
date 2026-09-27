@@ -63,29 +63,29 @@ function AlertCardBody({
     return (
         <div
             className={cn(
-                "h-[120px] w-full flex items-center justify-between px-4 sm:px-6 select-none cursor-pointer transition-colors",
+                "h-[86px] w-full flex items-center justify-between px-3.5 sm:px-5 select-none cursor-pointer transition-colors",
                 variantClass
             )}
             onClick={onView}
         >
-            <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
-                <div className="flex-shrink-0 flex items-center justify-center p-2 rounded-xl bg-white/40 dark:bg-black/20 shadow-xs">
-                    <IconComponent className="h-5 w-5 sm:h-6 sm:w-6" />
+            <div className="flex items-center gap-2.5 sm:gap-3.5 flex-1 min-w-0">
+                <div className="flex-shrink-0 flex items-center justify-center p-1.5 sm:p-2 rounded-xl bg-white/40 dark:bg-black/20 shadow-2xs">
+                    <IconComponent className="h-4 w-4 sm:h-5 sm:w-5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                        <h4 className="font-semibold text-sm sm:font-bold sm:text-base truncate leading-snug">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                        <h4 className="font-semibold text-xs sm:text-sm truncate leading-tight">
                             {alert.title}
                         </h4>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full uppercase tracking-wider font-semibold bg-black/10 dark:bg-white/10 shrink-0">
+                        <span className="text-[9px] px-1.5 py-0.2 rounded-full uppercase tracking-wider font-semibold bg-black/10 dark:bg-white/10 shrink-0">
                             {alert.variant}
                         </span>
                     </div>
-                    <p className="text-xs sm:text-sm line-clamp-1 sm:line-clamp-2 leading-relaxed opacity-90 mt-0.5">
+                    <p className="text-[11px] sm:text-xs line-clamp-1 leading-normal opacity-90 mt-0.5">
                         {alert.description}
                     </p>
-                    <p className="text-[10px] sm:text-xs opacity-75 mt-0.5 flex items-center gap-1">
-                        <Clock className="w-3 h-3 inline" />
+                    <p className="text-[10px] opacity-75 mt-0.5 flex items-center gap-1">
+                        <Clock className="w-2.5 h-2.5 inline" />
                         {alert.time}
                     </p>
                 </div>
@@ -97,7 +97,7 @@ function AlertCardBody({
                     e.stopPropagation();
                     onView?.();
                 }}
-                className="text-current border-current/40 hover:bg-white/30 dark:hover:bg-black/30 flex-shrink-0 h-8 sm:h-9 px-3 sm:px-4 text-xs sm:text-sm font-semibold rounded-lg ml-3 shadow-xs"
+                className="text-current border-current/40 hover:bg-white/30 dark:hover:bg-black/30 flex-shrink-0 h-7 sm:h-8 px-2.5 sm:px-3 text-xs font-semibold rounded-lg ml-2 shadow-2xs"
             >
                 View
             </Button>
@@ -547,14 +547,14 @@ export function AlertFlipper({
                 className="relative w-full overflow-visible"
                 style={{
                     perspective: '2500px',
-                    minHeight: '120px',
+                    minHeight: '86px',
                 }}
             >
                 <div
                     className="relative rounded-xl overflow-hidden cursor-pointer"
                     style={{
-                        height: '120px',
-                        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08)',
+                        height: '86px',
+                        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.06)',
                     }}
                     onClick={() => setInspectingAlert(currentAlert)}
                 >
@@ -562,12 +562,12 @@ export function AlertFlipper({
                     <div
                         className="absolute left-0 right-0 overflow-hidden rounded-b-xl"
                         style={{
-                            height: '60px',
-                            top: '60px',
+                            height: '43px',
+                            top: '43px',
                             zIndex: 1,
                         }}
                     >
-                        <div style={{ position: 'absolute', top: '-60px', left: 0, right: 0, height: '120px' }}>
+                        <div style={{ position: 'absolute', top: '-43px', left: 0, right: 0, height: '86px' }}>
                             <AlertCardBody
                                 alert={currentAlert}
                                 variantClass={alertVariants[currentAlert.variant]}
@@ -580,11 +580,11 @@ export function AlertFlipper({
                     <div
                         className="absolute top-0 left-0 right-0 overflow-hidden rounded-t-xl"
                         style={{
-                            height: '60px',
+                            height: '43px',
                             zIndex: 2,
                         }}
                     >
-                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '120px' }}>
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '86px' }}>
                             <AlertCardBody
                                 alert={nextAlert}
                                 variantClass={alertVariants[nextAlert.variant]}
@@ -599,7 +599,7 @@ export function AlertFlipper({
                             isFlipping ? 'flip-top-half' : ''
                         }`}
                         style={{
-                            height: '60px',
+                            height: '43px',
                             transformStyle: 'preserve-3d',
                             transformOrigin: 'bottom center',
                             zIndex: 10,
@@ -610,7 +610,7 @@ export function AlertFlipper({
                             className="absolute inset-0 backface-hidden overflow-hidden rounded-t-xl"
                             style={{ zIndex: 2 }}
                         >
-                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '120px' }}>
+                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '86px' }}>
                                 <AlertCardBody
                                     alert={currentAlert}
                                     variantClass={alertVariants[currentAlert.variant]}
@@ -632,7 +632,7 @@ export function AlertFlipper({
                                 zIndex: 1,
                             }}
                         >
-                            <div style={{ position: 'absolute', top: '-60px', left: 0, right: 0, height: '120px' }}>
+                            <div style={{ position: 'absolute', top: '-43px', left: 0, right: 0, height: '86px' }}>
                                 <AlertCardBody
                                     alert={nextAlert}
                                     variantClass={alertVariants[nextAlert.variant]}
@@ -651,7 +651,7 @@ export function AlertFlipper({
                     <div
                         className="absolute left-0 right-0 pointer-events-none z-20"
                         style={{
-                            top: '60px',
+                            top: '43px',
                             height: '1px',
                             background: 'rgba(0,0,0,0.12)',
                             boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
@@ -682,7 +682,7 @@ export function AlertFlipper({
             </div>
 
             {/* Bottom Controls Bar: Progress Dots, Pause Status, and View Creature Button */}
-            <div className="flex items-center justify-between mt-3 px-1">
+            <div className="flex items-center justify-between mt-1.5 px-1">
                 {/* Status indicator */}
                 <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                     {isPaused ? (

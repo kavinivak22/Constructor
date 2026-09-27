@@ -12,28 +12,28 @@ export function QuickActions() {
 
     return (
         <>
-            <div className="grid grid-cols-2 gap-2 mb-4 sm:flex sm:items-center sm:mb-2">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5">
                 <CreateWorklogDialog
                     trigger={
-                        <Button variant="outline" size="sm" className="gap-2 h-9 w-full sm:w-auto">
-                            <Plus className="h-4 w-4 text-primary" />
-                            Add Worklog
+                        <Button variant="outline" size="sm" className="gap-1.5 h-8 sm:h-9 text-xs font-medium px-2 w-full rounded-xl border-border/60 hover:bg-primary/5 hover:border-primary/30 transition-colors shadow-2xs">
+                            <Plus className="h-3.5 w-3.5 text-primary shrink-0" />
+                            <span className="truncate">Worklog</span>
                         </Button>
                     }
                 />
                 <Button
                     variant="outline"
                     size="sm"
-                    className="gap-2 h-9 w-full sm:w-auto"
+                    className="gap-1.5 h-8 sm:h-9 text-xs font-medium px-2 w-full rounded-xl border-border/60 hover:bg-primary/5 hover:border-primary/30 transition-colors shadow-2xs"
                     onClick={() => setIsExpenseSheetOpen(true)}
                 >
-                    <Receipt className="h-4 w-4 text-primary" />
-                    Add Expense
+                    <Receipt className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span className="truncate">Expense</span>
                 </Button>
-                <Link href="/materials" className="col-span-2 sm:col-span-1 w-full sm:w-auto">
-                    <Button variant="outline" size="sm" className="gap-2 h-9 w-full sm:w-auto">
-                        <Package className="h-4 w-4 text-primary" />
-                        View Materials
+                <Link href="/materials" className="w-full">
+                    <Button variant="outline" size="sm" className="gap-1.5 h-8 sm:h-9 text-xs font-medium px-2 w-full rounded-xl border-border/60 hover:bg-primary/5 hover:border-primary/30 transition-colors shadow-2xs">
+                        <Package className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <span className="truncate">Materials</span>
                     </Button>
                 </Link>
             </div>

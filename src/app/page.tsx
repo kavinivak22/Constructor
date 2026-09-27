@@ -6,7 +6,7 @@ import { ProjectCard } from '@/components/dashboard/project-card';
 import { Project } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, ClipboardCheck, FileText, Package, Plus, Receipt, UserPlus, AlertTriangle, Hammer, Image as ImageIcon, Loader2, Pencil, Trash2, Check, X, PhoneCall } from 'lucide-react';
+import { Calendar, ClipboardCheck, FileText, Package, Plus, Receipt, UserPlus, AlertTriangle, Hammer, Image as ImageIcon, Loader2, Pencil, Trash2, Check, X, PhoneCall, ArrowRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -314,53 +314,55 @@ export default function DashboardPage() {
         <main className="flex-1 p-4 overflow-y-auto md:p-6 bg-transparent">
             <div className="space-y-6">
 
-                {/* Alerts Flipper */}
-                <AlertFlipper
-                    alerts={alerts}
-                    alertVariants={alertVariants}
-                    autoplayDelay={5000}
-                />
+                {/* Compact Top Access Stack: Alerts, Actions & Prep */}
+                <div className="space-y-2 sm:space-y-2.5">
+                    {/* Alerts Flipper */}
+                    <AlertFlipper
+                        alerts={alerts}
+                        alertVariants={alertVariants}
+                        autoplayDelay={5000}
+                    />
 
+                    {/* Quick Actions */}
+                    <QuickActions />
 
-                {/* Quick Actions */}
-                <QuickActions />
-
-                {/* Tomorrow's Work Prep Card (Minimized to conserve space) */}
-                <Card className="glass-card overflow-hidden border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent shadow-sm">
-                    <div className="p-3.5 sm:px-5 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
-                        <div className="flex items-center gap-3">
-                            <div className="h-9 w-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
-                                <PhoneCall className="h-4 w-4" />
-                            </div>
-                            <div className="space-y-0.5">
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                    <h3 className="text-sm font-bold text-foreground">
-                                        {t('tomorrowPrepTitle', "Tomorrow's Work Preparation")}
-                                    </h3>
-                                    <Badge variant="outline" className="text-[10px] px-2 py-0.5 h-auto border-primary/30 text-primary bg-primary/10 whitespace-nowrap shrink-0 font-semibold rounded-full">
-                                        {tomorrowDateLabel || t('tomorrow', 'Tomorrow')}
-                                    </Badge>
+                    {/* Tomorrow's Work Prep Banner (Streamlined single-row banner) */}
+                    <Card className="glass-card overflow-hidden border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent shadow-2xs">
+                        <div className="p-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2.5 w-full">
+                            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0">
+                                    <PhoneCall className="h-3.5 w-3.5" />
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                    {tomorrowTasksCount === null ? (
-                                        t('loadingSchedule', "Loading tomorrow's schedule...")
-                                    ) : tomorrowTasksCount > 0 ? (
-                                        `${tomorrowTasksCount} ${t('tasksScheduledShort', 'tasks scheduled for tomorrow. Call assignees and contractors to prepare.')}`
-                                    ) : (
-                                        t('noPlansForTomorrow', 'No plans for tomorrow yet!')
-                                    )}
-                                </p>
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        <h3 className="text-xs sm:text-sm font-bold text-foreground truncate">
+                                            {t('tomorrowPrepTitle', "Tomorrow's Prep")}
+                                        </h3>
+                                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-primary/30 text-primary bg-primary/10 shrink-0 font-semibold rounded-full">
+                                            {tomorrowDateLabel || t('tomorrow', 'Tomorrow')}
+                                        </Badge>
+                                    </div>
+                                    <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
+                                        {tomorrowTasksCount === null ? (
+                                            t('loadingSchedule', "Loading schedule...")
+                                        ) : tomorrowTasksCount > 0 ? (
+                                            `${tomorrowTasksCount} ${t('tasksScheduledShort', 'tasks scheduled. Tap to prepare.')}`
+                                        ) : (
+                                            t('noPlansForTomorrow', 'No plans for tomorrow yet!')
+                                        )}
+                                    </p>
+                                </div>
                             </div>
-                        </div>
 
-                        <Button asChild size="sm" className="shrink-0 h-8 text-xs rounded-lg px-3 group self-start sm:self-center">
-                            <Link href="/work-prep">
-                                <PhoneCall className="mr-1.5 h-3.5 w-3.5 transition-transform group-hover:scale-110" />
-                                {tomorrowTasksCount && tomorrowTasksCount > 0 ? t('viewPrepBoard', 'View Prep Board') : t('startPrep', 'Start Prep')}
-                            </Link>
-                        </Button>
-                    </div>
-                </Card>
+                            <Button asChild size="sm" className="shrink-0 h-7 text-xs rounded-lg px-2.5 group">
+                                <Link href="/work-prep">
+                                    <span className="hidden xs:inline mr-1">{tomorrowTasksCount && tomorrowTasksCount > 0 ? t('viewPrepBoard', 'View') : t('startPrep', 'Prep')}</span>
+                                    <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                                </Link>
+                            </Button>
+                        </div>
+                    </Card>
+                </div>
 
                 {/* Active Projects Section */}
                 <div>
