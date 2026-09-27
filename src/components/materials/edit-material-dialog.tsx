@@ -381,51 +381,55 @@ export function EditMaterialDialog({
 
       {/* Confirmation Dialog: Quantity Modification Warning */}
       <AlertDialog open={showQuantityWarning} onOpenChange={setShowQuantityWarning}>
-        <AlertDialogContent className="max-w-md rounded-2xl border-white/20 dark:border-white/10 shadow-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-base font-bold text-amber-500">
+        <AlertDialogContent className="w-[94vw] max-w-lg sm:max-w-xl rounded-2xl border-white/20 dark:border-white/10 shadow-2xl p-5 sm:p-6 overflow-hidden">
+          <AlertDialogHeader className="space-y-2">
+            <AlertDialogTitle className="flex items-center gap-2 text-base sm:text-lg font-bold text-amber-500">
               <AlertTriangle className="h-5 w-5 shrink-0" />
               Stock Quantity Changed
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs sm:text-sm space-y-2 text-muted-foreground pt-1">
-              <p>
-                You are modifying the current stock from{' '}
-                <strong className="text-foreground">{originalQty} {material.unit}</strong> to{' '}
-                <strong className="text-foreground">{newQty} {formData.unit}</strong>.
-              </p>
-              <p className="bg-amber-500/10 text-amber-600 dark:text-amber-400 p-2.5 rounded-xl border border-amber-500/20 text-xs">
-                <strong>Notice:</strong> Directly changing stock here will <u>not</u> log any purchase expense or material usage record in project financials.
-              </p>
-              <p className="text-xs">
-                • To record purchases or restocks with expenses, please use <strong>Add Stock</strong>.<br />
-                • To record material consumption, please use <strong>Use Stock</strong>.
-              </p>
+            <AlertDialogDescription asChild>
+              <div className="text-xs sm:text-sm space-y-2.5 text-muted-foreground pt-1">
+                <p>
+                  You are modifying the current stock from{' '}
+                  <strong className="text-foreground">{originalQty} {material.unit}</strong> to{' '}
+                  <strong className="text-foreground">{newQty} {formData.unit}</strong>.
+                </p>
+                <div className="bg-amber-500/10 text-amber-600 dark:text-amber-400 p-3 rounded-xl border border-amber-500/20 text-xs leading-relaxed">
+                  <strong>Notice:</strong> Directly changing stock here will <u>not</u> log any purchase expense or material usage record in project financials.
+                </div>
+                <div className="text-xs space-y-1 text-muted-foreground">
+                  <p>• To record purchases or restocks with expenses, please use <strong>Add Stock</strong>.</p>
+                  <p>• To record material consumption, please use <strong>Use Stock</strong>.</p>
+                </div>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col sm:flex-row gap-2 pt-2">
+          <AlertDialogFooter className="flex-col sm:flex-row sm:space-x-0 gap-2 pt-3 flex-wrap sm:justify-between items-stretch sm:items-center">
             <AlertDialogCancel
               disabled={isSaving}
-              className="mt-0 h-9 rounded-xl text-xs sm:text-sm"
+              className="mt-0 h-9 rounded-xl text-xs sm:text-sm order-3 sm:order-1"
               onClick={() => setShowQuantityWarning(false)}
             >
               Back to Editing
             </AlertDialogCancel>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isSaving}
-              className="h-9 rounded-xl text-xs sm:text-sm border-primary/30 text-primary hover:bg-primary/10"
-              onClick={() => performSave(originalQty)}
-            >
-              Revert Quantity & Save Other Edits
-            </Button>
-            <AlertDialogAction
-              disabled={isSaving}
-              className="bg-amber-600 text-white hover:bg-amber-700 h-9 rounded-xl text-xs sm:text-sm font-semibold"
-              onClick={() => performSave(newQty)}
-            >
-              Confirm Manual Overwrite
-            </AlertDialogAction>
+            <div className="flex flex-col sm:flex-row gap-2 order-1 sm:order-2 flex-wrap">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isSaving}
+                className="h-9 rounded-xl text-xs sm:text-sm border-primary/30 text-primary hover:bg-primary/10 whitespace-nowrap"
+                onClick={() => performSave(originalQty)}
+              >
+                Revert Quantity & Save Other Edits
+              </Button>
+              <AlertDialogAction
+                disabled={isSaving}
+                className="bg-amber-600 text-white hover:bg-amber-700 h-9 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap"
+                onClick={() => performSave(newQty)}
+              >
+                Confirm Manual Overwrite
+              </AlertDialogAction>
+            </div>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
