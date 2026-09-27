@@ -3,14 +3,16 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getContractorAccounts } from '@/app/actions/contractors';
-import { getProjects } from '@/app/actions/financials';
+import { getProjects, getSalaryProfiles, saveSalaryProfile } from '@/app/actions/financials';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { EditContractorDialog } from '@/components/contractors/edit-contractor-dialog';
 import {
@@ -25,7 +27,12 @@ import {
     Calendar,
     Coins,
     Hammer,
-    ShieldCheck
+    ShieldCheck,
+    Landmark,
+    Plus,
+    Trash2,
+    Check,
+    CreditCard
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -52,6 +59,29 @@ interface ContractorAccount {
     allTransactions: any[];
 }
 
+interface SalaryProfile {
+    id: string;
+    contractor_id: string | null;
+    rates: Record<string, number>;
+    payment_type: string;
+    bank_name: string | null;
+    account_number: string | null;
+    ifsc_code: string | null;
+}
+
+const COMMON_WORKER_TYPES = [
+    'Mason',
+    'MC (Mason Coolie)',
+    'FC (Female Coolie)',
+    'Carpenter',
+    'Bar Bender',
+    'Electrician',
+    'Plumber',
+    'Helper',
+    'Painter',
+    'Supervisor'
+];
+
 export default function ContractorDetailPage() {
     const params = useParams();
     const router = useRouter();
@@ -59,18 +89,31 @@ export default function ContractorDetailPage() {
     const contractorId = typeof params?.contractorId === 'string' ? params.contractorId : '';
 
     const [account, setAccount] = useState<ContractorAccount | null>(null);
+    const [salaryProfile, setSalaryProfile] = useState<SalaryProfile | null>(null);
     const [projects, setProjects] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [ledgerProjectFilter, setLedgerProjectFilter] = useState<string>('all');
     const [selectedTxModal, setSelectedTxModal] = useState<any | null>(null);
     const [isEditOpen, setIsEditOpen] = useState(false);
 
+    // Rate card & bank modal state
+    const [isRateBankModalOpen, setIsRateBankModalOpen] = useState(false);
+    const [isSavingRates, setIsSavingRates] = useState(false);
+    const [bankName, setBankName] = useState('');
+    const [accountNumber, setAccountNumber] = useState('');
+    const [ifscCode, setIfscCode] = useState('');
+    const [contractorRates, setContractorRates] = useState<Record<string, number>>({});
+    const [newWorkerTypeSelect, setNewWorkerTypeSelect] = useState('Mason');
+    const [newWorkerTypeCustom, setNewWorkerTypeCustom] = useState('');
+    const [newWorkerRate, setNewWorkerRate] = useState('');
+
     const loadData = async () => {
         setIsLoading(true);
         try {
-            const [accRes, projData] = await Promise.all([
+            const [accRes, projData, profilesData] = await Promise.all([
                 getContractorAccounts(),
-                getProjects()
+                getProjects(),
+                getSalaryProfiles()
             ]);
 
             setProjects(projData || []);
@@ -93,6 +136,24 @@ export default function ContractorDetailPage() {
                     variant: 'destructive'
                 });
             }
+
+            // Match salary profile
+            const matchedProfile = (profilesData as SalaryProfile[] || []).find(
+                (p) => p.contractor_id === contractorId
+            );
+            if (matchedProfile) {
+                setSalaryProfile(matchedProfile);
+                setBankName(matchedProfile.bank_name || '');
+                setAccountNumber(matchedProfile.account_number || '');
+                setIfscCode(matchedProfile.ifsc_code || '');
+                setContractorRates(matchedProfile.rates || {});
+            } else {
+                setSalaryProfile(null);
+                setBankName('');
+                setAccountNumber('');
+                setIfscCode('');
+                setContractorRates({});
+            }
         } catch (err) {
             console.error('Failed to load contractor detail:', err);
         } finally {
@@ -105,6 +166,102 @@ export default function ContractorDetailPage() {
             loadData();
         }
     }, [contractorId]);
+
+    const handleOpenRateBankModal = () => {
+        if (salaryProfile) {
+            setBankName(salaryProfile.bank_name || '');
+            setAccountNumber(salaryProfile.account_number || '');
+            setIfscCode(salaryProfile.ifsc_code || '');
+            setContractorRates(salaryProfile.rates || {});
+        } else {
+            setBankName('');
+            setAccountNumber('');
+            setIfscCode('');
+            setContractorRates({});
+        }
+        setNewWorkerTypeSelect('Mason');
+        setNewWorkerTypeCustom('');
+        setNewWorkerRate('');
+        setIsRateBankModalOpen(true);
+    };
+
+    const handleAddRate = () => {
+        const type = newWorkerTypeSelect === 'custom' ? newWorkerTypeCustom.trim() : newWorkerTypeSelect;
+        if (!type) {
+            toast({
+                title: 'Error',
+                description: 'Please specify a worker type.',
+                variant: 'destructive'
+            });
+            return;
+        }
+
+        if (!newWorkerRate || isNaN(Number(newWorkerRate)) || Number(newWorkerRate) <= 0) {
+            toast({
+                title: 'Error',
+                description: 'Please enter a valid daily wage rate.',
+                variant: 'destructive'
+            });
+            return;
+        }
+
+        setContractorRates(prev => ({
+            ...prev,
+            [type]: Number(newWorkerRate)
+        }));
+
+        setNewWorkerRate('');
+        setNewWorkerTypeCustom('');
+    };
+
+    const handleRemoveRate = (key: string) => {
+        setContractorRates(prev => {
+            const copy = { ...prev };
+            delete copy[key];
+            return copy;
+        });
+    };
+
+    const handleSaveRateBankDetails = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSavingRates(true);
+        try {
+            const res = await saveSalaryProfile({
+                id: salaryProfile?.id,
+                contractor_id: contractorId,
+                rates: contractorRates,
+                payment_type: 'daily_wage',
+                rate: 0,
+                bank_name: bankName.trim() || undefined,
+                account_number: accountNumber.trim() || undefined,
+                ifsc_code: ifscCode.trim() || undefined
+            });
+
+            if (res.success) {
+                toast({
+                    title: 'Saved Successfully',
+                    description: 'Contractor rate card and bank details updated.'
+                });
+                setIsRateBankModalOpen(false);
+                await loadData();
+            } else {
+                toast({
+                    title: 'Error',
+                    description: res.error || 'Failed to save rate card.',
+                    variant: 'destructive'
+                });
+            }
+        } catch (error: any) {
+            console.error('Error saving contractor rates:', error);
+            toast({
+                title: 'Error',
+                description: 'An unexpected error occurred.',
+                variant: 'destructive'
+            });
+        } finally {
+            setIsSavingRates(false);
+        }
+    };
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -228,9 +385,11 @@ export default function ContractorDetailPage() {
         );
     }
 
+    const ratesEntries = Object.entries(salaryProfile?.rates || {});
+
     return (
         <main className="flex-1 p-2.5 sm:p-4 md:p-5 overflow-y-auto bg-transparent">
-            <div className="max-w-6xl mx-auto space-y-2.5 sm:space-y-3.5">
+            <div className="max-w-6xl mx-auto space-y-2.5 sm:space-y-3">
 
                 {/* Compact Header */}
                 <div className="flex items-center justify-between gap-2 pb-1 border-b border-border/40">
@@ -259,11 +418,11 @@ export default function ContractorDetailPage() {
                         className="h-7 sm:h-8 text-xs rounded-lg gap-1 shrink-0 px-2.5"
                     >
                         <Edit className="h-3 w-3 text-primary" />
-                        <span>Edit</span>
+                        <span>Edit Info</span>
                     </Button>
                 </div>
 
-                {/* Compact Inline Contact Bar */}
+                {/* Compact Inline Contact Strip */}
                 {(account.contractor.contactPerson || account.contractor.phone || account.contractor.email) && (
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2.5 py-1.5 glass-card rounded-lg border border-white/10 text-[11px] text-muted-foreground">
                         {account.contractor.contactPerson && (
@@ -293,8 +452,64 @@ export default function ContractorDetailPage() {
                     </div>
                 )}
 
+                {/* Unified Rate Card & Bank Payout Account Bar */}
+                <div className="glass-card rounded-xl p-2.5 sm:p-3 border border-white/10 dark:border-white/5 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                            <Hammer className="h-3.5 w-3.5 text-primary" />
+                            <span className="text-xs font-bold text-foreground">
+                                Daily Wage Rates & Payout Account
+                            </span>
+                        </div>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={handleOpenRateBankModal}
+                            className="h-6 text-xs text-primary hover:text-primary hover:bg-primary/10 rounded-md px-2"
+                        >
+                            <Edit className="h-3 w-3 mr-1" />
+                            <span>Edit Rates & Bank</span>
+                        </Button>
+                    </div>
+
+                    {/* Rates Badges + Bank Details in compact view */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-border/30 text-xs">
+                        {/* Wage Rates Badges */}
+                        <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+                            {ratesEntries.length === 0 ? (
+                                <span className="text-[11px] text-muted-foreground italic">
+                                    No daily wage rates configured yet. Click edit to set trade wages.
+                                </span>
+                            ) : (
+                                ratesEntries.map(([workerType, rate]) => (
+                                    <div
+                                        key={workerType}
+                                        className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/40 border border-border/40 text-[10px]"
+                                    >
+                                        <span className="text-foreground font-medium">{workerType}:</span>
+                                        <span className="font-mono font-bold text-primary">₹{Number(rate).toLocaleString('en-IN')}/d</span>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        {/* Bank Account Summary */}
+                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground shrink-0 sm:border-l sm:border-border/30 sm:pl-3">
+                            <Landmark className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            {salaryProfile?.account_number ? (
+                                <span className="truncate">
+                                    <span className="font-semibold text-foreground">{salaryProfile.bank_name || 'Bank'}</span>: ••••{salaryProfile.account_number.slice(-4)}
+                                    {salaryProfile.ifsc_code && <span className="opacity-75 ml-1">({salaryProfile.ifsc_code})</span>}
+                                </span>
+                            ) : (
+                                <span className="italic text-muted-foreground/80">No bank account linked</span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
                 {/* Sub-account Tabs & Site Filter in one cohesive strip */}
-                <Tabs defaultValue="combined" className="w-full space-y-2.5">
+                <Tabs defaultValue="combined" className="w-full space-y-2">
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 p-1.5 glass-card rounded-xl border border-white/10">
                         {/* Compact Tab Switcher */}
                         <TabsList className="grid grid-cols-3 w-full sm:w-auto p-0.5 rounded-lg bg-muted/40 border border-border/30 h-7 sm:h-8">
@@ -649,13 +864,185 @@ export default function ContractorDetailPage() {
                     </TabsContent>
                 </Tabs>
 
-                {/* Edit Contractor Modal */}
+                {/* Edit Contractor General Details Modal */}
                 <EditContractorDialog
                     open={isEditOpen}
                     onOpenChange={setIsEditOpen}
                     contractor={account.contractor}
                     onSuccess={() => loadData()}
                 />
+
+                {/* Edit Rate Card & Bank Details Modal */}
+                <Dialog open={isRateBankModalOpen} onOpenChange={setIsRateBankModalOpen}>
+                    <DialogContent className="max-w-md sm:max-w-lg rounded-2xl p-4 sm:p-5 glass-card border border-white/20 shadow-2xl max-h-[88vh] overflow-y-auto">
+                        <DialogHeader className="pb-2 border-b border-border/40">
+                            <DialogTitle className="text-base sm:text-lg font-bold font-headline text-foreground flex items-center gap-2">
+                                <Hammer className="h-4 w-4 text-primary" />
+                                <span>Wage Rates & Bank Details</span>
+                            </DialogTitle>
+                            <DialogDescription className="text-xs text-muted-foreground">
+                                Configure {account.contractor.name}&apos;s daily wage rate card and bank account for settlements.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <form onSubmit={handleSaveRateBankDetails} className="space-y-4 pt-1">
+                            {/* Section 1: Trade Daily Wage Rates */}
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                    <Coins className="h-3.5 w-3.5 text-primary" />
+                                    Daily Wage Rates (₹ / day)
+                                </Label>
+
+                                {/* Existing configured rates */}
+                                <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                                    {Object.entries(contractorRates).length === 0 ? (
+                                        <div className="text-xs text-muted-foreground italic p-2 rounded-lg bg-muted/30 border border-border/30 text-center">
+                                            No rates configured yet. Add worker types below.
+                                        </div>
+                                    ) : (
+                                        Object.entries(contractorRates).map(([type, rate]) => (
+                                            <div
+                                                key={type}
+                                                className="flex items-center justify-between p-1.5 px-2.5 rounded-lg bg-background/50 border border-border/30 text-xs"
+                                            >
+                                                <span className="font-semibold text-foreground">{type}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-mono font-bold text-primary">₹{Number(rate).toLocaleString('en-IN')}/day</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveRate(type)}
+                                                        className="text-muted-foreground hover:text-destructive p-0.5"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+
+                                {/* Add new rate row */}
+                                <div className="flex items-center gap-1.5 pt-1">
+                                    <div className="w-[140px] sm:w-[160px] shrink-0">
+                                        <Select
+                                            value={newWorkerTypeSelect}
+                                            onValueChange={(val) => setNewWorkerTypeSelect(val)}
+                                        >
+                                            <SelectTrigger className="h-8 text-xs rounded-lg bg-background/50">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {COMMON_WORKER_TYPES.map(type => (
+                                                    <SelectItem key={type} value={type} className="text-xs">{type}</SelectItem>
+                                                ))}
+                                                <SelectItem value="custom" className="text-xs font-semibold">+ Custom Type</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {newWorkerTypeSelect === 'custom' && (
+                                        <Input
+                                            placeholder="Type name"
+                                            value={newWorkerTypeCustom}
+                                            onChange={(e) => setNewWorkerTypeCustom(e.target.value)}
+                                            className="h-8 text-xs rounded-lg bg-background/50 flex-1 min-w-[90px]"
+                                        />
+                                    )}
+
+                                    <Input
+                                        placeholder="₹ Rate"
+                                        type="number"
+                                        value={newWorkerRate}
+                                        onChange={(e) => setNewWorkerRate(e.target.value)}
+                                        className="h-8 text-xs rounded-lg bg-background/50 flex-1"
+                                    />
+
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="secondary"
+                                        onClick={handleAddRate}
+                                        className="h-8 px-2.5 rounded-lg text-xs shrink-0"
+                                    >
+                                        <Plus className="h-3.5 w-3.5 mr-0.5" />
+                                        <span>Add</span>
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {/* Section 2: Bank Account Details */}
+                            <div className="space-y-2 pt-2 border-t border-border/40">
+                                <Label className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                    <Landmark className="h-3.5 w-3.5 text-primary" />
+                                    Bank Payout Account
+                                </Label>
+
+                                <div className="space-y-2 text-xs">
+                                    <div>
+                                        <Label className="text-[11px] text-muted-foreground">Bank Name</Label>
+                                        <Input
+                                            placeholder="e.g. HDFC Bank, SBI, ICICI"
+                                            value={bankName}
+                                            onChange={(e) => setBankName(e.target.value)}
+                                            className="h-8 text-xs rounded-lg bg-background/50 mt-0.5"
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <Label className="text-[11px] text-muted-foreground">Account Number</Label>
+                                            <Input
+                                                placeholder="A/C Number"
+                                                value={accountNumber}
+                                                onChange={(e) => setAccountNumber(e.target.value)}
+                                                className="h-8 text-xs rounded-lg bg-background/50 font-mono mt-0.5"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label className="text-[11px] text-muted-foreground">IFSC Code</Label>
+                                            <Input
+                                                placeholder="IFSC Code"
+                                                value={ifscCode}
+                                                onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
+                                                className="h-8 text-xs rounded-lg bg-background/50 uppercase font-mono mt-0.5"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <DialogFooter className="flex-row items-center justify-end gap-2 pt-2 border-t border-border/30">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setIsRateBankModalOpen(false)}
+                                    className="h-8 text-xs rounded-lg"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    size="sm"
+                                    disabled={isSavingRates}
+                                    className="h-8 text-xs rounded-lg gap-1"
+                                >
+                                    {isSavingRates ? (
+                                        <>
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                            <span>Saving...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Check className="h-3 w-3" />
+                                            <span>Save Rates & Bank</span>
+                                        </>
+                                    )}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
 
                 {/* Payment Detail Dialog Modal */}
                 <Dialog open={!!selectedTxModal} onOpenChange={(open) => !open && setSelectedTxModal(null)}>
