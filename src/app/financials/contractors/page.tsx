@@ -22,6 +22,7 @@ import {
     User,
     UserPlus,
     ArrowRight,
+    ArrowLeft,
     Edit3,
     X,
     ChevronRight,
@@ -187,13 +188,24 @@ export default function ContractorAccountsPage() {
 
                 {/* Compact Header */}
                 <div className="flex items-center justify-between gap-2 pb-1">
-                    <div className="min-w-0">
-                        <h1 className="text-base sm:text-xl font-bold tracking-tight font-headline text-foreground truncate">
-                            {t('contractorAccounts', 'Contractor Accounts')}
-                        </h1>
-                        <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
-                            Rate contracts & NMR daily wage ledgers
-                        </p>
+                    <div className="flex items-center gap-2 min-w-0">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => router.back()}
+                            className="h-7 w-7 sm:h-8 sm:w-8 shrink-0 rounded-lg text-muted-foreground hover:text-foreground"
+                            aria-label="Back"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                        </Button>
+                        <div className="min-w-0">
+                            <h1 className="text-base sm:text-xl font-bold tracking-tight font-headline text-foreground truncate">
+                                {t('contractorAccounts', 'Contractor Accounts')}
+                            </h1>
+                            <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
+                                Rate contracts & NMR daily wage ledgers
+                            </p>
+                        </div>
                     </div>
                     <Button
                         onClick={() => setIsCreateOpen(true)}
