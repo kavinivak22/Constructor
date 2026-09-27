@@ -32,6 +32,8 @@ const contractorSchema = z.object({
     contactPerson: z.string().optional(),
     phone: z.string().min(1, "Phone is required"),
     email: z.string().email("Invalid email").optional().or(z.literal('')),
+    accountDetails: z.string().optional().or(z.literal('')),
+    gst: z.string().optional().or(z.literal('')),
 });
 
 type ContractorFormValues = z.infer<typeof contractorSchema>;
@@ -52,6 +54,8 @@ export function CreateContractorDialog({ open, onOpenChange, onSuccess }: Create
             contactPerson: '',
             phone: '',
             email: '',
+            accountDetails: '',
+            gst: '',
         },
     });
 
@@ -152,6 +156,34 @@ export function CreateContractorDialog({ open, onOpenChange, onSuccess }: Create
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Email</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} placeholder="Optional" />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="accountDetails"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Account / UPI</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} placeholder="e.g. Bank A/C or UPI" />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="gst"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>GST / PAN</FormLabel>
                                         <FormControl>
                                             <Input {...field} placeholder="Optional" />
                                         </FormControl>

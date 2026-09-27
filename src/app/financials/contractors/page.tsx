@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useI18n } from '@/lib/i18n-context';
+import { CreateContractorDialog } from '@/components/contractors/create-contractor-dialog';
 import { EditContractorDialog } from '@/components/contractors/edit-contractor-dialog';
 import {
     Loader2,
@@ -20,6 +21,7 @@ import {
     Building2,
     Phone,
     User,
+    UserPlus,
     Wallet,
     ArrowRight,
     Edit3
@@ -61,9 +63,10 @@ export default function ContractorAccountsPage() {
     const [selectedBuildingId, setSelectedBuildingId] = useState<string>('all');
     const [viewMode, setViewMode] = useState<'contractors' | 'buildings'>('contractors');
 
-    // Edit modal state
+    // Modal states
     const [editingContractor, setEditingContractor] = useState<Contractor | null>(null);
     const [isEditOpen, setIsEditOpen] = useState(false);
+    const [isCreateOpen, setIsCreateOpen] = useState(false);
 
     const loadAccounts = async () => {
         setIsLoading(true);
@@ -185,6 +188,14 @@ export default function ContractorAccountsPage() {
                             Track Rate contract settlements & NMR daily wage accounts across sites.
                         </p>
                     </div>
+                    <Button
+                        onClick={() => setIsCreateOpen(true)}
+                        size="sm"
+                        className="gap-2 rounded-xl h-9 text-xs sm:text-sm font-semibold shrink-0 self-start sm:self-auto shadow-sm"
+                    >
+                        <UserPlus className="h-4 w-4" />
+                        <span>{t('addContractor', 'Add Contractor')}</span>
+                    </Button>
                 </div>
 
                 {/* View Switcher & Building Filter Bar */}
@@ -299,9 +310,19 @@ export default function ContractorAccountsPage() {
                                 <div className="text-center py-12 px-4">
                                     <Building2 className="h-10 w-10 text-muted-foreground/40 mx-auto mb-2" />
                                     <h3 className="text-base font-bold text-foreground">No Contractor Accounts Found</h3>
-                                    <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1">
-                                        Contractors with payday transactions or active wage profiles will appear here.
+                                    <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1 mb-4">
+                                        {searchQuery ? 'No contractors match your search criteria.' : 'Add your first contractor to start tracking rate contracts and NMR ledgers.'}
                                     </p>
+                                    {!searchQuery && (
+                                        <Button
+                                            onClick={() => setIsCreateOpen(true)}
+                                            size="sm"
+                                            className="gap-2 rounded-xl text-xs font-semibold"
+                                        >
+                                            <UserPlus className="h-4 w-4" />
+                                            <span>Add Contractor</span>
+                                        </Button>
+                                    )}
                                 </div>
                             ) : (
                                 <>
@@ -573,6 +594,13 @@ export default function ContractorAccountsPage() {
                         )}
                     </CardContent>
                 </Card>
+
+                {/* Create Contractor Modal */}
+                <CreateContractorDialog
+                    open={isCreateOpen}
+                    onOpenChange={setIsCreateOpen}
+                    onSuccess={() => loadAccounts()}
+                />
 
                 {/* Edit Contractor Modal */}
                 <EditContractorDialog
