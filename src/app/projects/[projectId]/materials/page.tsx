@@ -112,6 +112,7 @@ export default function ProjectMaterialsPage() {
     const [updateActiveRate, setUpdateActiveRate] = useState(true);
     const [restockSupplier, setRestockSupplier] = useState('');
     const [restockInvoice, setRestockInvoice] = useState('');
+    const [restockDate, setRestockDate] = useState(new Date().toISOString().split('T')[0]);
 
     // History Dialog State
     const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
@@ -335,6 +336,7 @@ export default function ProjectMaterialsPage() {
         setUpdateActiveRate(true);
         setRestockSupplier(material.supplier || '');
         setRestockInvoice('');
+        setRestockDate(new Date().toISOString().split('T')[0]);
         setIsUpdateDialogOpen(true);
     };
 
@@ -362,13 +364,14 @@ export default function ProjectMaterialsPage() {
             totalCost: Number(restockAmount) || (amount * (Number(restockUnitRate) || Number(selectedMaterial.cost) || 0)),
             supplier: restockSupplier || selectedMaterial.supplier || '',
             invoiceNo: restockInvoice || '',
+            date: restockDate || new Date().toISOString().split('T')[0],
             updateMaterialUnitCost: updateActiveRate
         } : undefined;
 
         const result = await updateMaterialStock(
             selectedMaterial.id, 
             newQuantity, 
-            updatePurpose,
+            updatePurpose, 
             purchaseDetails
         );
 
@@ -395,7 +398,7 @@ export default function ProjectMaterialsPage() {
                             amount: finalCost,
                             category: 'materials',
                             description: `Restock: ${amount} ${selectedMaterial.unit} of ${selectedMaterial.name}${purchaseDetails?.supplier ? ` from ${purchaseDetails.supplier}` : ''}${updatePurpose ? ` (${updatePurpose})` : ''}`,
-                            expense_date: new Date().toISOString().split('T')[0],
+                            expense_date: restockDate || new Date().toISOString().split('T')[0],
                             payment_status: restockPaymentStatus,
                             receiver: purchaseDetails?.supplier || selectedMaterial.supplier || null,
                             notes: restockInvoice ? `Bill/Inv: ${restockInvoice}` : null,
@@ -953,18 +956,31 @@ export default function ProjectMaterialsPage() {
                             )}
                         </div>
 
-                        {updateType === 'add' && (
-                            <div className="flex items-center justify-between px-1 py-1">
-                                <Label htmlFor="update-active-rate" className="text-xs text-muted-foreground cursor-pointer">
-                                    Update active inventory price to this rate
+                        {/* Date and Supplier Fields */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <Label htmlFor="restock_date" className="text-xs sm:text-sm font-semibold">
+                                    {updateType === 'add' ? 'Purchase Date' : 'Usage Date'}
                                 </Label>
-                                <Switch
-                                    id="update-active-rate"
-                                    checked={updateActiveRate}
-                                    onCheckedChange={setUpdateActiveRate}
+                                <Input
+                                    id="restock_date"
+                                    type="date"
+                                    value={restockDate}
+                                    onChange={(e) => setRestockDate(e.target.value)}
+                                    className="h-9 text-xs sm:text-sm rounded-xl bg-background/50"
                                 />
                             </div>
-                        )}
+
+                            {updateType === 'add' && (
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs sm:text-sm font-semibold">Supplier</Label>
+                                    <SupplierCombobox
+                                        value={restockSupplier}
+                                        onChange={(name) => setRestockSupplier(name)}
+                                    />
+                                </div>
+                            )}
+                        </div>
 
                         <div className="space-y-1.5">
                             <Label htmlFor="purpose" className="text-xs sm:text-sm font-semibold">Purpose / Reason</Label>
@@ -977,6 +993,19 @@ export default function ProjectMaterialsPage() {
                                 required
                             />
                         </div>
+
+                        {updateType === 'add' && (
+                            <div className="flex items-center justify-between px-1 py-1">
+                                <Label htmlFor="update-active-rate" className="text-xs text-muted-foreground cursor-pointer">
+                                    Update active inventory price to this rate
+                                </Label>
+                                <Switch
+                                    id="update-active-rate"
+                                    checked={updateActiveRate}
+                                    onCheckedChange={setUpdateActiveRate}
+                                />
+                            </div>
+                        )}
 
                         {/* Restock Purchase Details & Expense Logging */}
                         {updateType === 'add' && (
@@ -993,58 +1022,51 @@ export default function ProjectMaterialsPage() {
                                     />
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-2 pt-1">
-                                    <div className="space-y-1">
-                                        <Label className="text-[11px] font-medium text-muted-foreground">Total Bill (₹)</Label>
-                                        <div className="relative">
-                                            <IndianRupee className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                                {logRestockExpense && (
+                                    <div className="space-y-2 pt-1">
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="space-y-1">
+                                                <Label className="text-[11px] font-medium text-muted-foreground">Total Bill (₹)</Label>
+                                                <div className="relative">
+                                                    <IndianRupee className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                                                    <Input
+                                                        type="number"
+                                                        value={restockAmount}
+                                                        onChange={(e) => setRestockAmount(e.target.value)}
+                                                        placeholder="0.00"
+                                                        step="any"
+                                                        className="pl-7 h-8 text-xs rounded-lg bg-background/50"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-[11px] font-medium text-muted-foreground">Payment Status</Label>
+                                                <Select
+                                                    value={restockPaymentStatus}
+                                                    onValueChange={(val: 'paid' | 'pending') => setRestockPaymentStatus(val)}
+                                                >
+                                                    <SelectTrigger className="h-8 text-xs rounded-lg bg-background/50">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="glass rounded-xl">
+                                                        <SelectItem value="paid">Paid</SelectItem>
+                                                        <SelectItem value="pending">Pending</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1">
+                                            <Label className="text-[11px] font-medium text-muted-foreground">Bill / Inv # (Optional)</Label>
                                             <Input
-                                                type="number"
-                                                value={restockAmount}
-                                                onChange={(e) => setRestockAmount(e.target.value)}
-                                                placeholder="0.00"
-                                                step="any"
-                                                className="pl-7 h-8 text-xs rounded-lg bg-background/50"
+                                                value={restockInvoice}
+                                                onChange={(e) => setRestockInvoice(e.target.value)}
+                                                placeholder="e.g. INV-102"
+                                                className="h-8 text-xs rounded-lg bg-background/50"
                                             />
                                         </div>
                                     </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-[11px] font-medium text-muted-foreground">Payment Status</Label>
-                                        <Select
-                                            value={restockPaymentStatus}
-                                            onValueChange={(val: 'paid' | 'pending') => setRestockPaymentStatus(val)}
-                                        >
-                                            <SelectTrigger className="h-8 text-xs rounded-lg bg-background/50">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent className="glass rounded-xl">
-                                                <SelectItem value="paid">Paid</SelectItem>
-                                                <SelectItem value="pending">Pending</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="space-y-1">
-                                        <Label className="text-[11px] font-medium text-muted-foreground">Supplier (Optional)</Label>
-                                        <Input
-                                            value={restockSupplier}
-                                            onChange={(e) => setRestockSupplier(e.target.value)}
-                                            placeholder="Supplier name"
-                                            className="h-8 text-xs rounded-lg bg-background/50"
-                                        />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-[11px] font-medium text-muted-foreground">Bill / Inv # (Optional)</Label>
-                                        <Input
-                                            value={restockInvoice}
-                                            onChange={(e) => setRestockInvoice(e.target.value)}
-                                            placeholder="e.g. INV-102"
-                                            className="h-8 text-xs rounded-lg bg-background/50"
-                                        />
-                                    </div>
-                                </div>
+                                )}
                             </div>
                         )}
 
@@ -1177,7 +1199,9 @@ export default function ProjectMaterialsPage() {
                                                     <div className="flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground pt-0.5">
                                                         <span className="flex items-center gap-1">
                                                             <Calendar className="h-3 w-3" />
-                                                            {format(new Date(log.created_at), 'MMM d, yyyy h:mm a')}
+                                                            {log.purchaseDate 
+                                                                ? format(new Date(`${log.purchaseDate}T12:00:00`), 'MMM d, yyyy') 
+                                                                : format(new Date(log.created_at), 'MMM d, yyyy h:mm a')}
                                                         </span>
                                                         <span className="flex items-center gap-1">
                                                             <User className="h-3 w-3" />

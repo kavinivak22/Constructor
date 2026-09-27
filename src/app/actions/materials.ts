@@ -54,6 +54,7 @@ export interface MaterialPurchaseDetails {
     totalCost?: number;
     supplier?: string;
     invoiceNo?: string;
+    date?: string;
     updateMaterialUnitCost?: boolean;
 }
 
@@ -72,6 +73,7 @@ export interface ParsedMaterialLog {
     totalCost?: number;
     supplier?: string;
     invoiceNo?: string;
+    purchaseDate?: string;
 }
 
 export interface MaterialPurchaseStats {
@@ -135,18 +137,25 @@ export async function updateMaterialStock(
                 totalCost,
                 supplier: purchaseDetails.supplier || material.supplier_name || '',
                 invoiceNo: purchaseDetails.invoiceNo || '',
+                purchaseDate: purchaseDetails.date || '',
                 note: purpose || 'Restock purchase'
             });
         }
 
+        const logInsertPayload: Record<string, any> = {
+            material_id: materialId,
+            user_id: user.id,
+            change_amount: changeAmount,
+            purpose: logPurpose
+        };
+
+        if (purchaseDetails?.date) {
+            logInsertPayload.created_at = new Date(`${purchaseDetails.date}T12:00:00`).toISOString();
+        }
+
         const { error: logError } = await supabase
             .from('material_logs')
-            .insert({
-                material_id: materialId,
-                user_id: user.id,
-                change_amount: changeAmount,
-                purpose: logPurpose
-            })
+            .insert(logInsertPayload);
 
         if (logError) {
             console.error('Error creating material log:', logError)
@@ -217,6 +226,7 @@ export async function getMaterialLogs(materialId: string) {
                 totalCost: parsed?.totalCost !== undefined ? Number(parsed.totalCost) : undefined,
                 supplier: parsed?.supplier,
                 invoiceNo: parsed?.invoiceNo,
+                purchaseDate: parsed?.purchaseDate,
             };
         });
 
