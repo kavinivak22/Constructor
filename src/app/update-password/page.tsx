@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,10 +19,13 @@ export default function UpdatePasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
 
+  const [sessionChecked, setSessionChecked] = useState(false);
+
   // Sync userEmail when user state resolves from provider
   useEffect(() => {
     if (user?.email) {
       setUserEmail(user.email);
+      setSessionChecked(true);
     }
   }, [user]);
 
@@ -41,9 +45,12 @@ export default function UpdatePasswordPage() {
             setStatus({ type: 'error', message: error.message });
           } else if (data.user?.email) {
             setUserEmail(data.user.email);
+            // Clean up single-use code from address bar so refresh works seamlessly
+            window.history.replaceState({}, '', '/update-password');
           }
         } finally {
           setIsVerifying(false);
+          setSessionChecked(true);
         }
       } else if (token_hash) {
         setIsVerifying(true);
@@ -53,15 +60,22 @@ export default function UpdatePasswordPage() {
             setStatus({ type: 'error', message: error.message });
           } else if (data.user?.email) {
             setUserEmail(data.user.email);
+            // Clean up single-use token from address bar so refresh works seamlessly
+            window.history.replaceState({}, '', '/update-password');
           }
         } finally {
           setIsVerifying(false);
+          setSessionChecked(true);
         }
       } else {
         // Query user directly from session if already authenticated
-        const { data } = await supabase.auth.getUser();
-        if (data.user?.email) {
-          setUserEmail(data.user.email);
+        try {
+          const { data } = await supabase.auth.getUser();
+          if (data.user?.email) {
+            setUserEmail(data.user.email);
+          }
+        } finally {
+          setSessionChecked(true);
         }
       }
     }
@@ -88,6 +102,43 @@ export default function UpdatePasswordPage() {
       setIsLoading(false);
     }
   };
+
+  if (isVerifying) {
+    return (
+      <div className="w-full min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm font-medium text-muted-foreground">Verifying password reset link...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (sessionChecked && !userEmail && !user) {
+    return (
+      <div className="w-full min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-background">
+        <div className="mx-auto w-full max-w-md space-y-6 text-center bg-card p-8 border rounded-2xl shadow-sm">
+          <div className="w-12 h-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mx-auto">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold text-foreground font-headline">Reset Session Expired</h2>
+            <p className="text-sm text-muted-foreground">
+              This password reset link has expired, was already used, or is invalid. Please request a new link to reset your password.
+            </p>
+          </div>
+          <div className="pt-2 flex flex-col sm:flex-row gap-3">
+            <Button asChild variant="outline" className="flex-1">
+              <Link href="/login">Back to Sign In</Link>
+            </Button>
+            <Button asChild className="flex-1">
+              <Link href="/forgot-password">Request New Link</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-background">
