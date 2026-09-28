@@ -9,26 +9,41 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { useSupabase } from '@/supabase/provider';
 
+const MAX_ATTEMPTS = 2;
 const RATE_LIMIT_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-function getRateLimitTime(email: string): number | null {
-  if (typeof window === 'undefined') return null;
-  const ls = localStorage.getItem(`pwd_reset_${email}`);
-  if (ls) return parseInt(ls, 10);
-  const match = document.cookie.match(new RegExp(`(^|; )last_pwd_reset_${encodeURIComponent(email)}=([^;]+)`));
-  if (match && match[2]) {
-    return parseInt(match[2], 10);
+function getRecentAttempts(key: string): number[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const timestamps: number[] = JSON.parse(raw);
+    const cutoff = Date.now() - RATE_LIMIT_MS;
+    return timestamps.filter((ts) => typeof ts === 'number' && ts > cutoff);
+  } catch {
+    return [];
   }
-  return null;
 }
 
-function setRateLimitTime(email: string) {
+function recordAttempt(email: string) {
   if (typeof window === 'undefined') return;
-  const now = Date.now().toString();
-  localStorage.setItem(`pwd_reset_${email}`, now);
+  const now = Date.now();
+
+  // 1. Email attempts
+  const emailKey = `pwd_reset_email_${email}`;
+  const emailAttempts = getRecentAttempts(emailKey);
+  emailAttempts.push(now);
+  localStorage.setItem(emailKey, JSON.stringify(emailAttempts));
+
+  // 2. Device attempts
+  const deviceKey = 'pwd_reset_device';
+  const deviceAttempts = getRecentAttempts(deviceKey);
+  deviceAttempts.push(now);
+  localStorage.setItem(deviceKey, JSON.stringify(deviceAttempts));
+
   if (typeof document !== 'undefined') {
-    const maxAge = 24 * 60 * 60; // 24 hours in seconds
-    document.cookie = `last_pwd_reset_${encodeURIComponent(email)}=${now}; path=/; max-age=${maxAge}; SameSite=Lax`;
+    const maxAge = 24 * 60 * 60; // 24 hours
+    document.cookie = `pwd_reset_device_count=${deviceAttempts.length}; path=/; max-age=${maxAge}; SameSite=Lax`;
   }
 }
 
@@ -54,23 +69,38 @@ export default function ForgotPasswordPage() {
 
     const cleanEmail = email.toLowerCase().trim();
 
-    // Enforce 1-per-day rate limit
-    const lastSent = getRateLimitTime(cleanEmail);
-    if (lastSent) {
-      const elapsed = Date.now() - lastSent;
-      if (elapsed < RATE_LIMIT_MS) {
-        const remainingMs = RATE_LIMIT_MS - elapsed;
-        const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));
-        const remainingMins = Math.ceil((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
-        const timeStr = remainingHours > 0 ? `${remainingHours}h ${remainingMins}m` : `${remainingMins}m`;
+    // 1. Enforce 2-per-day rate limit for this email
+    const emailAttempts = getRecentAttempts(`pwd_reset_email_${cleanEmail}`);
+    if (emailAttempts.length >= MAX_ATTEMPTS) {
+      const oldest = Math.min(...emailAttempts);
+      const remainingMs = RATE_LIMIT_MS - (Date.now() - oldest);
+      const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));
+      const remainingMins = Math.ceil((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+      const timeStr = remainingHours > 0 ? `${remainingHours}h ${remainingMins}m` : `${remainingMins}m`;
 
-        setStatus({
-          type: 'error',
-          message: `A password reset link was already sent to this email within the last 24 hours. For security, reset links can only be requested once per day. Please check your inbox (including spam) or try again in ${timeStr}.`
-        });
-        setIsLoading(false);
-        return;
-      }
+      setStatus({
+        type: 'error',
+        message: `You have reached the daily limit (maximum 2 reset requests per day for this email). For security, please check your inbox (including spam) or try again in ${timeStr}.`
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    // 2. Enforce 2-per-day rate limit for this device
+    const deviceAttempts = getRecentAttempts('pwd_reset_device');
+    if (deviceAttempts.length >= MAX_ATTEMPTS) {
+      const oldest = Math.min(...deviceAttempts);
+      const remainingMs = RATE_LIMIT_MS - (Date.now() - oldest);
+      const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));
+      const remainingMins = Math.ceil((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+      const timeStr = remainingHours > 0 ? `${remainingHours}h ${remainingMins}m` : `${remainingMins}m`;
+
+      setStatus({
+        type: 'error',
+        message: `You have reached the daily limit (maximum 2 reset requests per day from this device). Please check your inbox (including spam) or try again in ${timeStr}.`
+      });
+      setIsLoading(false);
+      return;
     }
 
     try {
@@ -82,8 +112,8 @@ export default function ForgotPasswordPage() {
       });
       if (error) throw error;
 
-      // Record rate limit timestamp
-      setRateLimitTime(cleanEmail);
+      // Record rate limit attempt
+      recordAttempt(cleanEmail);
 
       setStatus({ 
         type: 'success', 
@@ -144,10 +174,10 @@ export default function ForgotPasswordPage() {
                     <ShieldAlert className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
                     <div className="space-y-1 leading-normal">
                       <p className="font-semibold text-foreground flex items-center gap-1.5">
-                        Security Notice: Sent Once Per Day
+                        Security Notice: Daily Limit
                       </p>
                       <p>
-                        Password reset links can only be requested <strong>once every 24 hours</strong>. The link remains valid for <strong>1 hour</strong>.
+                        Password reset links are limited to <strong>2 requests per 24 hours</strong>. Each link remains valid for <strong>1 hour</strong>.
                       </p>
                     </div>
                   </div>
