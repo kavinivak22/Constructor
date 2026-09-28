@@ -1,20 +1,55 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Building2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Building2, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useSupabase } from '@/supabase/provider';
 
 export default function UpdatePasswordPage() {
   const router = useRouter();
-  const { supabase } = useSupabase();
+  const { supabase, user } = useSupabase();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  useEffect(() => {
+    async function exchangeAuthTokens() {
+      if (typeof window === 'undefined') return;
+      const searchParams = new URLSearchParams(window.location.search);
+      const code = searchParams.get('code');
+      const token_hash = searchParams.get('token_hash');
+      const type = (searchParams.get('type') || 'recovery') as any;
+
+      if (code) {
+        setIsVerifying(true);
+        try {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            setStatus({ type: 'error', message: error.message });
+          }
+        } finally {
+          setIsVerifying(false);
+        }
+      } else if (token_hash) {
+        setIsVerifying(true);
+        try {
+          const { error } = await supabase.auth.verifyOtp({ token_hash, type });
+          if (error) {
+            setStatus({ type: 'error', message: error.message });
+          }
+        } finally {
+          setIsVerifying(false);
+        }
+      }
+    }
+
+    exchangeAuthTokens();
+  }, [supabase]);
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();

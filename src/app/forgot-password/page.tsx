@@ -29,8 +29,11 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
     setStatus(null);
     try {
+      const origin = typeof window !== 'undefined' && window.location.origin 
+        ? window.location.origin 
+        : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:9002');
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:9002'}/update-password`,
+        redirectTo: `${origin}/auth/callback?type=recovery`,
       });
       if (error) throw error;
       setStatus({ 

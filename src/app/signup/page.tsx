@@ -55,10 +55,13 @@ export default function SignupPage() {
     setIsGoogleLoading(true);
     setError(null);
     try {
+      const origin = typeof window !== 'undefined' && window.location.origin
+        ? window.location.origin
+        : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:9002');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:9002'}/auth/callback`,
+          redirectTo: `${origin}/auth/callback`,
         },
       });
       if (error) throw error;

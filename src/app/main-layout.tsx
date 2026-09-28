@@ -84,6 +84,29 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
     // After loading, if the user is on an auth route, we don't need to do any routing.
     // If they are not on an auth route, we enforce routing rules.
     if (!isAuthRoute) {
+      if (typeof window !== 'undefined') {
+        const search = window.location.search;
+        const hash = window.location.hash;
+
+        // 1. If password recovery token or hash fragment arrives at root
+        if (hash.includes('type=recovery') || search.includes('type=recovery')) {
+          router.push(`/update-password${search}${hash}`);
+          return;
+        }
+
+        // 2. If auth code or token_hash arrives at root
+        if (search.includes('code=') || search.includes('token_hash=')) {
+          router.push(`/auth/callback${search}${hash}`);
+          return;
+        }
+
+        // 3. If Supabase auth error arrives at root
+        if (search.includes('error=') || hash.includes('error=')) {
+          router.push(`/auth/callback${search}${hash}`);
+          return;
+        }
+      }
+
       if (user) {
         if (userProfile?.companyId && isRegisterCompanyRoute) {
           router.push('/');

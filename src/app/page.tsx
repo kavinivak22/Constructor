@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/supabase/provider';
 import { ProjectCard } from '@/components/dashboard/project-card';
 import { Project } from '@/lib/data';
@@ -118,11 +119,23 @@ function getWorklogIcon(worklog: any) {
 }
 
 export default function DashboardPage() {
+    const router = useRouter();
     const { t } = useI18n();
     const { data: projects = [], isLoading } = useProjects();
     const { data: recentWorklogs = [], isLoading: isLoadingWorklogs } = useRecentWorklogs();
     const { supabase, user } = useSupabase();
     const [currentUserProfile, setCurrentUserProfile] = useState<{ id: string; role: string } | null>(null);
+
+    // If redirected here by Supabase Auth with an error (e.g. otp_expired), forward to /auth/callback
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const hash = window.location.hash;
+            if (params.get('error') || params.get('error_code') || hash.includes('error=')) {
+                router.replace(`/auth/callback${window.location.search}${hash}`);
+            }
+        }
+    }, [router]);
 
     useEffect(() => {
         const fetchProfile = async () => {
