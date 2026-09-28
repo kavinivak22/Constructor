@@ -430,12 +430,6 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
               {isCompleted ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <Zap className="h-3 w-3 mr-1" />}
               {isCompleted ? "Completed Task" : "Next Task"}
             </Badge>
-
-            {linkedWorklogIds.length > 0 && !isCompleted && (
-              <Badge variant="secondary" className="text-[10px] px-2 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-semibold">
-                In Progress ({linkedWorklogIds.length} Logs)
-              </Badge>
-            )}
           </div>
 
           {/* Clean Manual Task Navigation Controls */}
@@ -702,9 +696,9 @@ export function AdaptiveNextTaskWidget({ projectId, projectName, onProgressUpdat
                     ? "bg-emerald-600 hover:bg-emerald-500 text-white" 
                     : "bg-muted text-muted-foreground opacity-60 cursor-not-allowed"
                 )}
-                title={linkedWorklogIds.length === 0 ? "Link at least one worklog to complete" : "Mark completed and advance"}
+                title={linkedWorklogIds.length === 0 ? "Link at least one worklog to complete" : "Mark task as completed"}
               >
-                <CheckCircle2 className="mr-1 h-3.5 w-3.5 shrink-0" /> Complete & Advance →
+                <CheckCircle2 className="mr-1 h-3.5 w-3.5 shrink-0" /> Complete
               </Button>
             )}
           </div>
