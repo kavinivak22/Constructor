@@ -5,17 +5,25 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Building2, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { Building2, AlertCircle, CheckCircle, Loader2, Mail } from 'lucide-react';
 import { useSupabase } from '@/supabase/provider';
 
 export default function UpdatePasswordPage() {
   const router = useRouter();
   const { supabase, user } = useSupabase();
+  const [userEmail, setUserEmail] = useState<string | null>(user?.email || null);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+
+  // Sync userEmail when user state resolves from provider
+  useEffect(() => {
+    if (user?.email) {
+      setUserEmail(user.email);
+    }
+  }, [user]);
 
   useEffect(() => {
     async function exchangeAuthTokens() {
@@ -28,9 +36,11 @@ export default function UpdatePasswordPage() {
       if (code) {
         setIsVerifying(true);
         try {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) {
             setStatus({ type: 'error', message: error.message });
+          } else if (data.user?.email) {
+            setUserEmail(data.user.email);
           }
         } finally {
           setIsVerifying(false);
@@ -38,12 +48,20 @@ export default function UpdatePasswordPage() {
       } else if (token_hash) {
         setIsVerifying(true);
         try {
-          const { error } = await supabase.auth.verifyOtp({ token_hash, type });
+          const { data, error } = await supabase.auth.verifyOtp({ token_hash, type });
           if (error) {
             setStatus({ type: 'error', message: error.message });
+          } else if (data.user?.email) {
+            setUserEmail(data.user.email);
           }
         } finally {
           setIsVerifying(false);
+        }
+      } else {
+        // Query user directly from session if already authenticated
+        const { data } = await supabase.auth.getUser();
+        if (data.user?.email) {
+          setUserEmail(data.user.email);
         }
       }
     }
@@ -84,9 +102,19 @@ export default function UpdatePasswordPage() {
           <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-foreground font-headline">
             Update Your Password
           </h2>
-          <p className="mt-2 text-center text-muted-foreground">
-            Enter your new password below.
-          </p>
+          {userEmail ? (
+            <div className="mt-3 flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
+              <span>Account:</span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+                <Mail className="h-3 w-3" />
+                {userEmail}
+              </span>
+            </div>
+          ) : (
+            <p className="mt-2 text-center text-muted-foreground">
+              Enter your new password below.
+            </p>
+          )}
         </div>
 
         {status?.type === 'success' ? (
@@ -102,6 +130,23 @@ export default function UpdatePasswordPage() {
         ) : (
           <form onSubmit={handleUpdatePassword} className="space-y-6">
             <div className="space-y-4">
+              {userEmail && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="account-email" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Account Email
+                  </Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="account-email"
+                      type="email"
+                      disabled
+                      value={userEmail}
+                      className="pl-9 bg-muted/60 cursor-not-allowed font-medium text-foreground select-all"
+                    />
+                  </div>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="password">New Password</Label>
                 <Input
