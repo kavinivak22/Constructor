@@ -302,7 +302,7 @@ export default function ProjectDetailsPage() {
                     <CreateWorklogDialog
                         projectId={projectIdString}
                         trigger={
-                            <Button variant="outline" size="sm" className="col-span-2 sm:col-span-1 w-full text-xs h-9 font-semibold glass border-white/10 rounded-xl px-2">
+                            <Button variant="outline" size="sm" className="col-span-2 sm:col-span-1 w-full sm:w-auto text-xs h-9 font-semibold glass border-white/10 rounded-xl px-2.5">
                                 <Plus className="mr-1.5 h-3.5 w-3.5 text-primary shrink-0" />
                                 <span className="truncate">Add Log</span>
                             </Button>
