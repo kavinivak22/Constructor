@@ -77,10 +77,30 @@ const Carousel = React.forwardRef<
       setCanScrollNext(api.canScrollNext())
     }, [])
 
+    const lastNavTimeRef = React.useRef(0)
+
     const scrollPrev = React.useCallback(() => {
       try {
-        if (api?.canScrollPrev()) {
-          api?.scrollPrev()
+        if (!api) return
+        const now = Date.now()
+        if (now - lastNavTimeRef.current < 450) return
+
+        if (!api.canScrollPrev()) {
+          setCanScrollPrev(false)
+          return
+        }
+
+        const currentSnap = api.selectedScrollSnap()
+        if (currentSnap <= 0) {
+          setCanScrollPrev(false)
+          return
+        }
+
+        lastNavTimeRef.current = now
+        api.scrollPrev()
+
+        if (currentSnap - 1 <= 0) {
+          setCanScrollPrev(false)
         }
       } catch (err) {
         console.warn("Carousel scrollPrev error:", err)
@@ -89,8 +109,27 @@ const Carousel = React.forwardRef<
 
     const scrollNext = React.useCallback(() => {
       try {
-        if (api?.canScrollNext()) {
-          api?.scrollNext()
+        if (!api) return
+        const now = Date.now()
+        if (now - lastNavTimeRef.current < 450) return
+
+        if (!api.canScrollNext()) {
+          setCanScrollNext(false)
+          return
+        }
+
+        const snaps = api.scrollSnapList()
+        const currentSnap = api.selectedScrollSnap()
+        if (currentSnap >= snaps.length - 1) {
+          setCanScrollNext(false)
+          return
+        }
+
+        lastNavTimeRef.current = now
+        api.scrollNext()
+
+        if (currentSnap + 1 >= snaps.length - 1) {
+          setCanScrollNext(false)
         }
       } catch (err) {
         console.warn("Carousel scrollNext error:", err)
@@ -126,9 +165,12 @@ const Carousel = React.forwardRef<
       onSelect(api)
       api.on("reInit", onSelect)
       api.on("select", onSelect)
+      api.on("settle", onSelect)
 
       return () => {
         api?.off("select", onSelect)
+        api?.off("reInit", onSelect)
+        api?.off("settle", onSelect)
       }
     }, [api, onSelect])
 
@@ -213,11 +255,22 @@ export interface CarouselNavButtonProps extends React.ComponentProps<typeof Butt
 const CarouselPrevious = React.forwardRef<
   HTMLButtonElement,
   CarouselNavButtonProps
->(({ className, variant = "outline", size = "icon", hideWhenDisabled = false, ...props }, ref) => {
+>(({ className, variant = "outline", size = "icon", hideWhenDisabled = false, onClick, ...props }, ref) => {
   const { orientation, scrollPrev, canScrollPrev } = useCarousel()
+  const [isLocked, setIsLocked] = React.useState(false)
 
   if (hideWhenDisabled && !canScrollPrev) {
     return null
+  }
+
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!canScrollPrev || isLocked) return
+    setIsLocked(true)
+    setTimeout(() => setIsLocked(false), 450)
+    scrollPrev()
+    onClick?.(e)
   }
 
   return (
@@ -226,14 +279,18 @@ const CarouselPrevious = React.forwardRef<
       variant={variant}
       size={size}
       className={cn(
-        "absolute  h-8 w-8 rounded-full",
+        "absolute  h-8 w-8 rounded-full select-none",
         orientation === "horizontal"
           ? "-left-12 top-1/2 -translate-y-1/2"
           : "-top-12 left-1/2 -translate-x-1/2 rotate-90",
         className
       )}
-      disabled={!canScrollPrev}
-      onClick={scrollPrev}
+      disabled={!canScrollPrev || isLocked}
+      onClick={handleClick}
+      onDoubleClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}
       {...props}
     >
       <ArrowLeft className="h-4 w-4" />
@@ -246,11 +303,22 @@ CarouselPrevious.displayName = "CarouselPrevious"
 const CarouselNext = React.forwardRef<
   HTMLButtonElement,
   CarouselNavButtonProps
->(({ className, variant = "outline", size = "icon", hideWhenDisabled = false, ...props }, ref) => {
+>(({ className, variant = "outline", size = "icon", hideWhenDisabled = false, onClick, ...props }, ref) => {
   const { orientation, scrollNext, canScrollNext } = useCarousel()
+  const [isLocked, setIsLocked] = React.useState(false)
 
   if (hideWhenDisabled && !canScrollNext) {
     return null
+  }
+
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!canScrollNext || isLocked) return
+    setIsLocked(true)
+    setTimeout(() => setIsLocked(false), 450)
+    scrollNext()
+    onClick?.(e)
   }
 
   return (
@@ -259,14 +327,18 @@ const CarouselNext = React.forwardRef<
       variant={variant}
       size={size}
       className={cn(
-        "absolute h-8 w-8 rounded-full",
+        "absolute h-8 w-8 rounded-full select-none",
         orientation === "horizontal"
           ? "-right-12 top-1/2 -translate-y-1/2"
           : "-bottom-12 left-1/2 -translate-x-1/2 rotate-90",
         className
       )}
-      disabled={!canScrollNext}
-      onClick={scrollNext}
+      disabled={!canScrollNext || isLocked}
+      onClick={handleClick}
+      onDoubleClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}
       {...props}
     >
       <ArrowRight className="h-4 w-4" />
