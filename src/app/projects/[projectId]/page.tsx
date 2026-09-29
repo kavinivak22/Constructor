@@ -324,7 +324,7 @@ export default function ProjectDetailsPage() {
                 {worklogs.length > 0 && (
                     <div>
                         <h2 className="text-sm sm:text-base font-bold font-headline mb-2.5 sm:mb-3">Recent Updates</h2>
-                        <Carousel opts={{ align: "start", loop: true }} className="w-full">
+                        <Carousel opts={{ align: "start", loop: false }} className="w-full">
                             <CarouselContent className="-ml-3 sm:-ml-4">
                                 {worklogs.map((worklog: any, index: number) => {
                                     // Aggregate descriptions from labor entries
@@ -382,8 +382,8 @@ export default function ProjectDetailsPage() {
                                     );
                                 })}
                             </CarouselContent>
-                            <CarouselPrevious variant="ghost" className="absolute left-2 top-1/2 -translate-y-1/2 z-10 hidden sm:flex h-7 w-7 rounded-full bg-white/50 hover:bg-white/75 text-foreground" />
-                            <CarouselNext variant="ghost" className="absolute right-2 top-1/2 -translate-y-1/2 z-10 hidden sm:flex h-7 w-7 rounded-full bg-white/50 hover:bg-white/75 text-foreground" />
+                            <CarouselPrevious hideWhenDisabled variant="ghost" className="absolute left-2 top-1/2 -translate-y-1/2 z-10 hidden sm:flex h-7 w-7 rounded-full bg-white/50 hover:bg-white/75 text-foreground" />
+                            <CarouselNext hideWhenDisabled variant="ghost" className="absolute right-2 top-1/2 -translate-y-1/2 z-10 hidden sm:flex h-7 w-7 rounded-full bg-white/50 hover:bg-white/75 text-foreground" />
                         </Carousel>
                     </div>
                 )}

@@ -78,11 +78,23 @@ const Carousel = React.forwardRef<
     }, [])
 
     const scrollPrev = React.useCallback(() => {
-      api?.scrollPrev()
+      try {
+        if (api?.canScrollPrev()) {
+          api?.scrollPrev()
+        }
+      } catch (err) {
+        console.warn("Carousel scrollPrev error:", err)
+      }
     }, [api])
 
     const scrollNext = React.useCallback(() => {
-      api?.scrollNext()
+      try {
+        if (api?.canScrollNext()) {
+          api?.scrollNext()
+        }
+      } catch (err) {
+        console.warn("Carousel scrollNext error:", err)
+      }
     }, [api])
 
     const handleKeyDown = React.useCallback(
@@ -194,11 +206,19 @@ const CarouselItem = React.forwardRef<
 })
 CarouselItem.displayName = "CarouselItem"
 
+export interface CarouselNavButtonProps extends React.ComponentProps<typeof Button> {
+  hideWhenDisabled?: boolean
+}
+
 const CarouselPrevious = React.forwardRef<
   HTMLButtonElement,
-  React.ComponentProps<typeof Button>
->(({ className, variant = "outline", size = "icon", ...props }, ref) => {
+  CarouselNavButtonProps
+>(({ className, variant = "outline", size = "icon", hideWhenDisabled = false, ...props }, ref) => {
   const { orientation, scrollPrev, canScrollPrev } = useCarousel()
+
+  if (hideWhenDisabled && !canScrollPrev) {
+    return null
+  }
 
   return (
     <Button
@@ -225,9 +245,13 @@ CarouselPrevious.displayName = "CarouselPrevious"
 
 const CarouselNext = React.forwardRef<
   HTMLButtonElement,
-  React.ComponentProps<typeof Button>
->(({ className, variant = "outline", size = "icon", ...props }, ref) => {
+  CarouselNavButtonProps
+>(({ className, variant = "outline", size = "icon", hideWhenDisabled = false, ...props }, ref) => {
   const { orientation, scrollNext, canScrollNext } = useCarousel()
+
+  if (hideWhenDisabled && !canScrollNext) {
+    return null
+  }
 
   return (
     <Button
