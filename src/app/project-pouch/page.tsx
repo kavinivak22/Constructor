@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useSupabase } from '@/supabase/provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -19,8 +20,10 @@ import { Document as PdfDocument, Page as PdfPage, pdfjs } from 'react-pdf';
 // Configure PDF worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-export default function ProjectPouchPage() {
+function ProjectPouchContent() {
   const { supabase, user } = useSupabase();
+  const searchParams = useSearchParams();
+  const urlProjectId = searchParams.get('projectId');
   const { toast } = useToast();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -75,6 +78,12 @@ export default function ProjectPouchPage() {
   }, [user]);
 
   useEffect(() => {
+    if (urlProjectId && projects.some(p => p.id === urlProjectId)) {
+      setSelectedProject(urlProjectId);
+    }
+  }, [urlProjectId, projects]);
+
+  useEffect(() => {
     if (selectedProject) {
       fetchDocuments(selectedProject);
     } else {
@@ -103,7 +112,8 @@ export default function ProjectPouchPage() {
         if (projectsError) throw projectsError;
         setProjects(projectsData || []);
         if (projectsData && projectsData.length > 0) {
-          setSelectedProject(projectsData[0].id);
+          const match = urlProjectId && projectsData.some(p => p.id === urlProjectId);
+          setSelectedProject(match ? (urlProjectId as string) : projectsData[0].id);
         }
       }
     } catch (error: any) {
@@ -779,5 +789,17 @@ export default function ProjectPouchPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function ProjectPouchPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <ProjectPouchContent />
+    </Suspense>
   );
 }

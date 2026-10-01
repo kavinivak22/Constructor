@@ -9,7 +9,7 @@ import { type Project } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Users, IndianRupee, Edit, CheckCircle, Clock, ArrowLeft, Package as PackageIcon, PhoneCall, Plus } from 'lucide-react';
+import { Calendar, Users, IndianRupee, Edit, CheckCircle, Clock, ArrowLeft, Package as PackageIcon, PhoneCall, Plus, Briefcase } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -309,6 +309,14 @@ export default function ProjectDetailsPage() {
                         }
                         onSuccess={() => window.location.reload()}
                     />
+
+                    {/* Row 3: Full Width on Mobile (5 cols - Project Pouch) */}
+                    <Button variant="outline" size="sm" asChild className="col-span-5 sm:col-span-1 w-full sm:w-auto text-xs h-9 font-semibold glass border-white/10 rounded-xl px-2.5">
+                        <Link href={`/project-pouch?projectId=${projectIdString}`}>
+                            <Briefcase className="mr-1.5 h-3.5 w-3.5 text-primary shrink-0" />
+                            <span className="truncate">Project Pouch</span>
+                        </Link>
+                    </Button>
                 </div>
 
                 <AdaptiveNextTaskWidget
