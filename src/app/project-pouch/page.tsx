@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useSupabase } from '@/supabase/provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Upload, FileText, Trash2, Download, File as FileIcon, Image as ImageIcon } from 'lucide-react';
+import { Loader2, Upload, FileText, Trash2, Download, File as FileIcon, Image as ImageIcon, ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Document, Project } from '@/lib/data';
@@ -21,10 +21,21 @@ import { Document as PdfDocument, Page as PdfPage, pdfjs } from 'react-pdf';
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 function ProjectPouchContent() {
+  const router = useRouter();
   const { supabase, user } = useSupabase();
   const searchParams = useSearchParams();
   const urlProjectId = searchParams.get('projectId');
   const { toast } = useToast();
+
+  const handleBack = () => {
+    if (urlProjectId) {
+      router.push(`/projects/${urlProjectId}`);
+    } else if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/projects');
+    }
+  };
   const [documents, setDocuments] = useState<Document[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
@@ -557,15 +568,33 @@ function ProjectPouchContent() {
         errorMessage={uploadErrorMsg}
         onClose={() => setShowProgressPopup(false)}
       />
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight font-headline">Project Pouch</h1>
-          <p className="text-muted-foreground">Manage and share project documents.</p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3.5">
+        {/* Title Row with Back Button */}
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleBack}
+            className="h-8 w-8 sm:h-9 sm:w-9 shrink-0 rounded-xl hover:bg-muted"
+            title="Back"
+          >
+            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+          </Button>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight font-headline truncate">
+              Project Pouch
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground truncate">
+              Manage and share project documents.
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto">
+        {/* Action Controls: 2 clean spacious rows on mobile, 1 compact row on desktop */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full md:w-auto">
+          {/* Mobile: Full-width Project selector | Desktop: w-[220px] */}
           <Select value={selectedProject} onValueChange={setSelectedProject}>
-            <SelectTrigger className="w-[200px] bg-background">
+            <SelectTrigger className="w-full sm:w-[220px] h-9 text-xs sm:text-sm bg-background border-border/60 rounded-xl shadow-xs">
               <SelectValue placeholder="Select Project" />
             </SelectTrigger>
             <SelectContent>
@@ -577,44 +606,52 @@ function ProjectPouchContent() {
             </SelectContent>
           </Select>
 
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-[150px] bg-background">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">All Categories</SelectItem>
-              <SelectItem value="General">General</SelectItem>
-              <SelectItem value="Contracts">Contracts</SelectItem>
-              <SelectItem value="Blueprints">Blueprints</SelectItem>
-              <SelectItem value="Invoices">Invoices</SelectItem>
-              <SelectItem value="Reports">Reports</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Mobile: Category takes remaining space and Upload sits right next to it */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="flex-1 sm:w-[150px] h-9 text-xs sm:text-sm bg-background border-border/60 rounded-xl shadow-xs">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Categories</SelectItem>
+                <SelectItem value="General">General</SelectItem>
+                <SelectItem value="Contracts">Contracts</SelectItem>
+                <SelectItem value="Blueprints">Blueprints</SelectItem>
+                <SelectItem value="Invoices">Invoices</SelectItem>
+                <SelectItem value="Reports">Reports</SelectItem>
+              </SelectContent>
+            </Select>
 
-          <div className="relative">
-            <input
-              type="file"
-              id="doc-upload"
-              className="hidden"
-              onChange={handleFileUpload}
-              disabled={uploading || !selectedProject}
-            />
-            <label htmlFor="doc-upload">
-              <Button
-                variant="default"
-                className="cursor-pointer"
-                asChild
+            <div className="relative shrink-0">
+              <input
+                type="file"
+                id="doc-upload"
+                className="hidden"
+                onChange={handleFileUpload}
                 disabled={uploading || !selectedProject}
-              >
-                <span>
-                  {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
-                  Upload
-                </span>
-              </Button>
-            </label>
+              />
+              <label htmlFor="doc-upload">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="cursor-pointer h-9 px-3.5 text-xs sm:text-sm font-semibold rounded-xl shadow-sm gap-1.5"
+                  asChild
+                  disabled={uploading || !selectedProject}
+                >
+                  <span>
+                    {uploading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4" />
+                    )}
+                    Upload
+                  </span>
+                </Button>
+              </label>
+            </div>
           </div>
         </div>
-      </div >
+      </div>
 
       {!selectedProject ? (
         <Card className="glass-card flex flex-col items-center justify-center h-[400px] text-center p-6">
