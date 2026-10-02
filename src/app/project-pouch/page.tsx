@@ -760,21 +760,23 @@ function ProjectPouchContent() {
           </div>
         </div>
 
-        {/* Right side: Project Selector (if no projectId query param) & Universal Upload Action */}
+        {/* Right side: Desktop Project Selector (if no projectId query param) & Universal Upload Action */}
         <div className="flex items-center gap-2 shrink-0">
           {!urlProjectId && projects.length > 0 && (
-            <Select value={selectedProject} onValueChange={setSelectedProject}>
-              <SelectTrigger className="w-[130px] sm:w-[220px] h-9 text-xs sm:text-sm bg-background border-border/60 rounded-xl shadow-2xs">
-                <SelectValue placeholder="Select Project" />
-              </SelectTrigger>
-              <SelectContent>
-                {projects.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="hidden sm:block">
+              <Select value={selectedProject} onValueChange={setSelectedProject}>
+                <SelectTrigger className="w-[180px] md:w-[220px] h-9 text-xs sm:text-sm bg-background border-border/60 rounded-xl shadow-2xs">
+                  <SelectValue placeholder="Select Project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           )}
 
           {/* Universal Upload / Add Action Dropdown */}
@@ -839,6 +841,24 @@ function ProjectPouchContent() {
           />
         </div>
       </div>
+
+      {/* Mobile Project Selector: Full-width dedicated row so it never squashes the header title */}
+      {!urlProjectId && projects.length > 0 && (
+        <div className="sm:hidden w-full">
+          <Select value={selectedProject} onValueChange={setSelectedProject}>
+            <SelectTrigger className="w-full h-9 text-xs bg-background border-border/60 rounded-xl shadow-2xs">
+              <SelectValue placeholder="Select Project" />
+            </SelectTrigger>
+            <SelectContent>
+              {projects.map((project) => (
+                <SelectItem key={project.id} value={project.id}>
+                  {project.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {!selectedProject ? (
         <Card className="glass-card flex flex-col items-center justify-center h-[400px] text-center p-6">
