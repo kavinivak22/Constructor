@@ -1,10 +1,7 @@
-import { createClient } from '@/utils/supabase/client';
+import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 
-export const dynamic = 'force-static';
-export function generateStaticParams() {
-  return [{ id: 'placeholder' }];
-}
+export const dynamic = 'force-dynamic';
 
 export async function GET(
     request: Request,
@@ -23,26 +20,50 @@ export async function GET(
             .single();
 
         if (docError || !doc) {
+            console.error('Document not found in DB:', docError);
             return new NextResponse('Document not found', { status: 404 });
         }
 
-        // 2. Fetch the actual file content from the storage URL
-        // Since we are using public URLs in this app, we can just fetch it.
-        // If using private buckets, we would use supabase.storage.download()
-        const response = await fetch(doc.url);
+        // 2. Try fetching from public URL first
+        let fileBlob: Blob | null = null;
+        const contentType = doc.type || 'application/octet-stream';
 
-        if (!response.ok) {
-            return new NextResponse('Failed to fetch document content', { status: response.status });
+        try {
+            const response = await fetch(doc.url);
+            if (response.ok) {
+                fileBlob = await response.blob();
+            }
+        } catch (fetchErr) {
+            console.warn('Direct fetch from doc.url failed, attempting storage download:', fetchErr);
         }
 
-        const blob = await response.blob();
-        const headers = new Headers();
-        headers.set('Content-Type', doc.type || 'application/octet-stream');
-        headers.set('Content-Length', doc.size.toString());
-        // Optional: Content-Disposition to force download or inline
-        // headers.set('Content-Disposition', `inline; filename="${doc.name}"`);
+        // 3. Fallback: if fetch failed, download directly from storage bucket
+        if (!fileBlob) {
+            const urlParts = doc.url.split('/project-documents/');
+            const storagePath = urlParts[1];
+            if (storagePath) {
+                const { data: storageData, error: downloadError } = await supabase.storage
+                    .from('project-documents')
+                    .download(decodeURIComponent(storagePath));
 
-        return new NextResponse(blob, {
+                if (storageData && !downloadError) {
+                    fileBlob = storageData;
+                } else {
+                    console.error('Storage download failed:', downloadError);
+                }
+            }
+        }
+
+        if (!fileBlob) {
+            return new NextResponse('Failed to fetch document content', { status: 404 });
+        }
+
+        const headers = new Headers();
+        headers.set('Content-Type', contentType);
+        headers.set('Content-Length', fileBlob.size.toString());
+        headers.set('Cache-Control', 'public, max-age=3600');
+
+        return new NextResponse(fileBlob, {
             status: 200,
             headers,
         });
