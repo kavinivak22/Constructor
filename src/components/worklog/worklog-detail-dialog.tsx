@@ -77,43 +77,10 @@ export function WorklogDetailDialog({ worklog, isOpen, onClose }: WorklogDetailD
     };
   }, [isOpen, worklog]);
 
-  if (!worklog) return null;
-
   // Calculate Totals matching WorklogFeedCard
-  const laborEntries = worklog.labor || [];
-  const materialEntries = worklog.materials || [];
-  const photoEntries = worklog.photos || [];
-
-  const totalWorkers = laborEntries.reduce((acc: number, entry: any) => {
-    const workers = entry.workers || [];
-    return acc + workers.reduce((wAcc: number, w: any) => wAcc + Number(w.count || 0), 0);
-  }, 0);
-
-  const totalMaterials = materialEntries.length;
-  const totalPhotos = photoEntries.length;
-
-  // Title & Description matching WorklogFeedCard
-  let title = worklog.title || 'Daily Log';
-  let description = '';
-
-  if (!worklog.title || worklog.title === 'Daily Log') {
-    const categories = Array.from(new Set(laborEntries.map((l: any) => l.category).filter(Boolean))) as string[];
-    if (categories.length > 0) {
-      title = categories.slice(0, 2).join(' & ') + (categories.length > 2 ? '...' : '') + ' Work';
-    } else if (photoEntries[0]?.caption) {
-      title = photoEntries[0].caption;
-    }
-  }
-
-  const rawDescription = laborEntries.map((l: any) => l.work_description).filter(Boolean).join('. ') || worklog.notes || '';
-  if (rawDescription) {
-    description = rawDescription;
-  } else {
-    description = "No detailed description provided for this day.";
-  }
-
-  const dateObj = worklog.date ? new Date(worklog.date) : new Date();
-  const createdObj = worklog.created_at || worklog.date ? new Date(worklog.created_at || worklog.date) : new Date();
+  const laborEntries = worklog?.labor || [];
+  const materialEntries = worklog?.materials || [];
+  const photoEntries = worklog?.photos || [];
 
   // Helper to match contractor wage profile
   const findContractorProfile = (contractorName: string, profiles: any[]) => {
@@ -144,7 +111,7 @@ export function WorklogDetailDialog({ worklog, isOpen, onClose }: WorklogDetailD
     return match ? Number(match.cost || 0) : 0;
   };
 
-  // Calculate Labor Cost based on wage profiles
+  // Calculate Labor Cost based on wage profiles (Must run unconditionally before early return for React Hooks rules)
   const laborCostBreakdown = useMemo(() => {
     let totalLaborCost = 0;
     let profilesMatchedCount = 0;
@@ -158,7 +125,6 @@ export function WorklogDetailDialog({ worklog, isOpen, onClose }: WorklogDetailD
       const workers = (entry.workers || []).map((w: any) => {
         const count = Number(w.count || 0);
         const wType = (w.worker_type || w.workerType || '').trim();
-        const wTypeLower = wType.toLowerCase();
 
         let rate = 0;
         let hasProfileRate = false;
@@ -214,7 +180,7 @@ export function WorklogDetailDialog({ worklog, isOpen, onClose }: WorklogDetailD
     return { totalLaborCost, entries, profilesMatchedCount };
   }, [laborEntries, salaryProfiles]);
 
-  // Calculate Materials Cost based on inventory cost per unit
+  // Calculate Materials Cost based on inventory cost per unit (Must run unconditionally before early return for React Hooks rules)
   const materialsCostBreakdown = useMemo(() => {
     let totalMaterialsCost = 0;
     const items = materialEntries.map((m: any) => {
@@ -233,6 +199,39 @@ export function WorklogDetailDialog({ worklog, isOpen, onClose }: WorklogDetailD
     });
     return { totalMaterialsCost, items };
   }, [materialEntries, projectMaterials]);
+
+  if (!worklog) return null;
+
+  const totalWorkers = laborEntries.reduce((acc: number, entry: any) => {
+    const workers = entry.workers || [];
+    return acc + workers.reduce((wAcc: number, w: any) => wAcc + Number(w.count || 0), 0);
+  }, 0);
+
+  const totalMaterials = materialEntries.length;
+  const totalPhotos = photoEntries.length;
+
+  // Title & Description matching WorklogFeedCard
+  let title = worklog.title || 'Daily Log';
+  let description = '';
+
+  if (!worklog.title || worklog.title === 'Daily Log') {
+    const categories = Array.from(new Set(laborEntries.map((l: any) => l.category).filter(Boolean))) as string[];
+    if (categories.length > 0) {
+      title = categories.slice(0, 2).join(' & ') + (categories.length > 2 ? '...' : '') + ' Work';
+    } else if (photoEntries[0]?.caption) {
+      title = photoEntries[0].caption;
+    }
+  }
+
+  const rawDescription = laborEntries.map((l: any) => l.work_description).filter(Boolean).join('. ') || worklog.notes || '';
+  if (rawDescription) {
+    description = rawDescription;
+  } else {
+    description = "No detailed description provided for this day.";
+  }
+
+  const dateObj = worklog.date ? new Date(worklog.date) : new Date();
+  const createdObj = worklog.created_at || worklog.date ? new Date(worklog.created_at || worklog.date) : new Date();
 
   const estimatedTotalCost = laborCostBreakdown.totalLaborCost + materialsCostBreakdown.totalMaterialsCost;
 
