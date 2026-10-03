@@ -78,6 +78,7 @@ const laborEntrySchema = z.object({
     category: z.string().optional(),
     workDescription: z.string().optional(),
     paymentStatus: z.enum(['Paid', 'On Payday', 'Pending']),
+    workType: z.enum(['nmr', 'rate']).default('nmr'),
     workDoneQuantity: z.coerce.number().optional().nullable(),
     workDoneUnit: z.string().optional().nullable(),
     workers: z.array(workerCountSchema).min(1, "At least one worker type is required"),
@@ -157,6 +158,7 @@ export function CreateWorklogDialog({ projectId, onSuccess, trigger, initialData
         category: l.category,
         workDescription: l.work_description,
         paymentStatus: l.payment_status,
+        workType: l.work_type || l.payout_class || 'nmr',
         workDoneQuantity: l.work_done_quantity,
         workDoneUnit: l.work_done_unit,
         workers: l.workers?.map((w: any) => ({ workerType: w.worker_type, count: w.count })) || []
@@ -652,6 +654,50 @@ function LaborEntryForm({ index, form, remove, contractors, salaryProfiles = [],
     return (
         <div className="overflow-hidden border-l-4 border-l-primary/50 glass-card bg-transparent rounded-2xl border-t border-r border-b border-white/10 dark:border-white/5">
             <div className="p-4 space-y-4">
+                {/* Work Type Classification Toggle Bar */}
+                <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between bg-white/5 dark:bg-black/20 p-3 rounded-xl border border-white/10 dark:border-white/5">
+                    <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs uppercase font-semibold tracking-wider bg-primary/10 text-primary border-primary/20">
+                            Team #{index + 1}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground font-medium">Work Classification:</span>
+                    </div>
+                    <FormField
+                        control={form.control}
+                        name={`labor.${index}.workType`}
+                        render={({ field }) => (
+                            <FormItem className="space-y-0 w-full sm:w-auto">
+                                <div className="inline-flex items-center p-1 bg-black/20 dark:bg-white/5 rounded-xl border border-white/10 w-full sm:w-auto justify-stretch">
+                                    <button
+                                        type="button"
+                                        onClick={() => field.onChange('nmr')}
+                                        className={cn(
+                                            "flex-1 sm:flex-none px-3 py-1.5 text-xs font-semibold rounded-lg transition-all text-center",
+                                            (field.value || 'nmr') === 'nmr'
+                                                ? "bg-primary text-primary-foreground shadow-md"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        NMR Work (Daily Wages)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => field.onChange('rate')}
+                                        className={cn(
+                                            "flex-1 sm:flex-none px-3 py-1.5 text-xs font-semibold rounded-lg transition-all text-center",
+                                            field.value === 'rate'
+                                                ? "bg-emerald-600 text-white shadow-md"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        Rate Work (Piece / Item)
+                                    </button>
+                                </div>
+                            </FormItem>
+                        )}
+                    />
+                </div>
+
                 <div className="flex flex-col md:flex-row gap-4">
                     <FormField control={form.control} name={`labor.${index}.contractorName`} render={({ field }) => (
                         <FormItem className="flex-1 min-w-[200px]">

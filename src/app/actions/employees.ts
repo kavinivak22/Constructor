@@ -109,6 +109,7 @@ export async function inviteEmployee(data: z.infer<typeof inviteSchema>) {
                 company_id: currentUserProfile.company_id,
                 company_name: companyData?.name || 'Unknown Company',
                 project_ids: projectIds,
+                permissions: permissions || {},
                 status: 'pending'
             })
             .select()

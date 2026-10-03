@@ -11,7 +11,7 @@ import { EmployeeCard } from '@/components/employees/employee-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { type User as AppUser, type Project } from '@/lib/data';
-import { AddEmployeeSheet } from '@/components/employees/add-employee-sheet';
+import { AddEmployeeDialog } from '@/components/employees/add-employee-dialog';
 import { useSupabase } from '@/supabase/provider';
 import { getPendingInvites } from '@/app/actions/employees';
 import { getSalaryProfiles, saveSalaryProfile } from '@/app/actions/financials';
@@ -493,7 +493,7 @@ export default function EmployeesPage() {
                 </main>
             </div>
 
-            <AddEmployeeSheet
+            <AddEmployeeDialog
                 isOpen={isSheetOpen}
                 onOpenChange={setIsSheetOpen}
                 projects={projects}

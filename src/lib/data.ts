@@ -36,6 +36,124 @@ export type Project = {
   updated_at?: string;
 };
 
+export type EmployeePermissions = {
+  company: {
+    manageCompany: boolean;
+    manageEmployees: boolean;
+    viewFinancials: boolean;
+    manageSalaries: boolean;
+  };
+  projects: {
+    viewAllProjects: boolean;
+    createProjects: boolean;
+    editProjects: boolean;
+    deleteProjects: boolean;
+    manageProjectMembers: boolean;
+  };
+  expenses: {
+    viewExpenses: boolean;
+    createExpenses: boolean;
+    approveExpenses: boolean;
+    deleteExpenses: boolean;
+    exportExpenses: boolean;
+  };
+  inventory: {
+    viewInventory: boolean;
+    manageInventory: boolean;
+    logMaterialUsage: boolean;
+    manageSuppliers: boolean;
+    materialEstimation: boolean;
+  };
+  purchaseOrders: {
+    viewPurchaseOrders: boolean;
+    createPurchaseOrders: boolean;
+    approvePurchaseOrders: boolean;
+    completePurchaseOrders: boolean;
+  };
+  worklogs: {
+    viewWorklogs: boolean;
+    createWorklogs: boolean;
+    approveWorklogs: boolean;
+    exportWorklogs: boolean;
+  };
+  pouches: {
+    viewPouches: boolean;
+    requestPouchFunds: boolean;
+    approvePouchFunds: boolean;
+  };
+  documents: {
+    viewDocuments: boolean;
+    uploadDocuments: boolean;
+    deleteDocuments: boolean;
+  };
+};
+
+export const DEFAULT_EMPTY_PERMISSIONS: EmployeePermissions = {
+  company: { manageCompany: false, manageEmployees: false, viewFinancials: false, manageSalaries: false },
+  projects: { viewAllProjects: false, createProjects: false, editProjects: false, deleteProjects: false, manageProjectMembers: false },
+  expenses: { viewExpenses: false, createExpenses: false, approveExpenses: false, deleteExpenses: false, exportExpenses: false },
+  inventory: { viewInventory: false, manageInventory: false, logMaterialUsage: false, manageSuppliers: false, materialEstimation: false },
+  purchaseOrders: { viewPurchaseOrders: false, createPurchaseOrders: false, approvePurchaseOrders: false, completePurchaseOrders: false },
+  worklogs: { viewWorklogs: false, createWorklogs: false, approveWorklogs: false, exportWorklogs: false },
+  pouches: { viewPouches: false, requestPouchFunds: false, approvePouchFunds: false },
+  documents: { viewDocuments: false, uploadDocuments: false, deleteDocuments: false },
+};
+
+export const ADMIN_PERMISSIONS_PRESET: EmployeePermissions = {
+  company: { manageCompany: true, manageEmployees: true, viewFinancials: true, manageSalaries: true },
+  projects: { viewAllProjects: true, createProjects: true, editProjects: true, deleteProjects: true, manageProjectMembers: true },
+  expenses: { viewExpenses: true, createExpenses: true, approveExpenses: true, deleteExpenses: true, exportExpenses: true },
+  inventory: { viewInventory: true, manageInventory: true, logMaterialUsage: true, manageSuppliers: true, materialEstimation: true },
+  purchaseOrders: { viewPurchaseOrders: true, createPurchaseOrders: true, approvePurchaseOrders: true, completePurchaseOrders: true },
+  worklogs: { viewWorklogs: true, createWorklogs: true, approveWorklogs: true, exportWorklogs: true },
+  pouches: { viewPouches: true, requestPouchFunds: true, approvePouchFunds: true },
+  documents: { viewDocuments: true, uploadDocuments: true, deleteDocuments: true },
+};
+
+export const MANAGER_PERMISSIONS_PRESET: EmployeePermissions = {
+  company: { manageCompany: false, manageEmployees: false, viewFinancials: true, manageSalaries: false },
+  projects: { viewAllProjects: true, createProjects: true, editProjects: true, deleteProjects: false, manageProjectMembers: true },
+  expenses: { viewExpenses: true, createExpenses: true, approveExpenses: true, deleteExpenses: false, exportExpenses: true },
+  inventory: { viewInventory: true, manageInventory: true, logMaterialUsage: true, manageSuppliers: true, materialEstimation: true },
+  purchaseOrders: { viewPurchaseOrders: true, createPurchaseOrders: true, approvePurchaseOrders: true, completePurchaseOrders: true },
+  worklogs: { viewWorklogs: true, createWorklogs: true, approveWorklogs: true, exportWorklogs: true },
+  pouches: { viewPouches: true, requestPouchFunds: true, approvePouchFunds: true },
+  documents: { viewDocuments: true, uploadDocuments: true, deleteDocuments: true },
+};
+
+export const SITE_ENGINEER_PRESET: EmployeePermissions = {
+  company: { manageCompany: false, manageEmployees: false, viewFinancials: false, manageSalaries: false },
+  projects: { viewAllProjects: false, createProjects: false, editProjects: false, deleteProjects: false, manageProjectMembers: false },
+  expenses: { viewExpenses: true, createExpenses: true, approveExpenses: false, deleteExpenses: false, exportExpenses: false },
+  inventory: { viewInventory: true, manageInventory: false, logMaterialUsage: true, manageSuppliers: true, materialEstimation: true },
+  purchaseOrders: { viewPurchaseOrders: true, createPurchaseOrders: true, approvePurchaseOrders: false, completePurchaseOrders: true },
+  worklogs: { viewWorklogs: true, createWorklogs: true, approveWorklogs: true, exportWorklogs: true },
+  pouches: { viewPouches: true, requestPouchFunds: true, approvePouchFunds: false },
+  documents: { viewDocuments: true, uploadDocuments: true, deleteDocuments: false },
+};
+
+export const ACCOUNTANT_PRESET: EmployeePermissions = {
+  company: { manageCompany: false, manageEmployees: false, viewFinancials: true, manageSalaries: true },
+  projects: { viewAllProjects: true, createProjects: false, editProjects: false, deleteProjects: false, manageProjectMembers: false },
+  expenses: { viewExpenses: true, createExpenses: true, approveExpenses: true, deleteExpenses: true, exportExpenses: true },
+  inventory: { viewInventory: true, manageInventory: false, logMaterialUsage: false, manageSuppliers: true, materialEstimation: false },
+  purchaseOrders: { viewPurchaseOrders: true, createPurchaseOrders: true, approvePurchaseOrders: true, completePurchaseOrders: false },
+  worklogs: { viewWorklogs: true, createWorklogs: false, approveWorklogs: false, exportWorklogs: true },
+  pouches: { viewPouches: true, requestPouchFunds: true, approvePouchFunds: true },
+  documents: { viewDocuments: true, uploadDocuments: true, deleteDocuments: false },
+};
+
+export const MEMBER_PERMISSIONS_PRESET: EmployeePermissions = {
+  company: { manageCompany: false, manageEmployees: false, viewFinancials: false, manageSalaries: false },
+  projects: { viewAllProjects: false, createProjects: false, editProjects: false, deleteProjects: false, manageProjectMembers: false },
+  expenses: { viewExpenses: true, createExpenses: true, approveExpenses: false, deleteExpenses: false, exportExpenses: false },
+  inventory: { viewInventory: true, manageInventory: false, logMaterialUsage: true, manageSuppliers: false, materialEstimation: false },
+  purchaseOrders: { viewPurchaseOrders: true, createPurchaseOrders: false, approvePurchaseOrders: false, completePurchaseOrders: false },
+  worklogs: { viewWorklogs: true, createWorklogs: true, approveWorklogs: false, exportWorklogs: false },
+  pouches: { viewPouches: true, requestPouchFunds: true, approvePouchFunds: false },
+  documents: { viewDocuments: true, uploadDocuments: true, deleteDocuments: false },
+};
+
 export type User = {
   id: string;
   email: string;
@@ -44,7 +162,7 @@ export type User = {
   photoURL?: string;
   role: 'admin' | 'manager' | 'member';
   projectIds: string[];
-  permissions?: Record<string, any>;
+  permissions?: EmployeePermissions | Record<string, any>;
   companyId: string | null;
   status: 'active' | 'inactive';
   created_at?: string;
@@ -68,7 +186,7 @@ export type Invite = {
   companyId: string;
   role: 'admin' | 'manager' | 'member';
   projectIds?: string[];
-  permissions?: Record<string, any>;
+  permissions?: EmployeePermissions | Record<string, any>;
   status: 'pending' | 'accepted';
   createdAt: string;
 };

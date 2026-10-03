@@ -16,6 +16,7 @@ const laborEntrySchema = z.object({
     category: z.string().optional(),
     workDescription: z.string().optional(),
     paymentStatus: z.enum(['Paid', 'On Payday', 'Pending']).default('Pending'),
+    workType: z.enum(['nmr', 'rate']).default('nmr'),
     workDoneQuantity: z.number().optional().nullable(),
     workDoneUnit: z.string().optional().nullable(),
     workers: z.array(workerCountSchema).min(1, "At least one worker type is required"),
@@ -100,6 +101,8 @@ export async function createWorklog(data: WorklogData) {
                     payment_status: entry.paymentStatus,
                     work_done_quantity: entry.workDoneQuantity || null,
                     work_done_unit: entry.workDoneUnit || null,
+                    work_type: entry.workType || 'nmr',
+                    payout_class: entry.workType || 'nmr',
                 })
                 .select()
                 .single()
@@ -357,6 +360,8 @@ export async function updateWorklog(worklogId: string, data: WorklogData) {
                     payment_status: entry.paymentStatus,
                     work_done_quantity: entry.workDoneQuantity || null,
                     work_done_unit: entry.workDoneUnit || null,
+                    work_type: entry.workType || 'nmr',
+                    payout_class: entry.workType || 'nmr',
                 })
                 .select().single()
             if (laborError) throw laborError

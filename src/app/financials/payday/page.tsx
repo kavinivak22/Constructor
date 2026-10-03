@@ -111,6 +111,7 @@ export default function PaydayPage() {
     const [weekStart, setWeekStart] = useState('')
     const [weekEnd, setWeekEnd] = useState('')
     const [includePreviousUnpaid, setIncludePreviousUnpaid] = useState(true)
+    const [calculationMethod, setCalculationMethod] = useState<'auto' | 'wage_wise' | 'work_wise'>('auto')
 
     const setPresetThisWeek = () => {
         const now = new Date();
@@ -357,7 +358,7 @@ export default function PaydayPage() {
 
         setIsActionLoading(true)
         try {
-            const res = await createWeeklyPayoutRun(weekStart, weekEnd, includePreviousUnpaid)
+            const res = await createWeeklyPayoutRun(weekStart, weekEnd, includePreviousUnpaid, calculationMethod)
             if (res.success) {
                 toast({
                     title: 'Success',
@@ -1917,6 +1918,34 @@ export default function PaydayPage() {
                                     onCheckedChange={setIncludePreviousUnpaid}
                                     className="shrink-0"
                                 />
+                            </div>
+
+                            {/* Payout Calculation Mode Selector */}
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-semibold text-muted-foreground">Payout Calculation Mode</Label>
+                                <Select value={calculationMethod} onValueChange={(val: any) => setCalculationMethod(val)}>
+                                    <SelectTrigger className="h-9 bg-background border-muted/30 text-xs">
+                                        <SelectValue placeholder="Select calculation mode" />
+                                    </SelectTrigger>
+                                    <SelectContent className="glass border-muted/30 text-xs">
+                                        <SelectItem value="auto">
+                                            <span className="font-semibold text-foreground">Auto / Hybrid (Default)</span> — Attendance for NMR, Item rate for Rate work
+                                        </SelectItem>
+                                        <SelectItem value="wage_wise">
+                                            <span className="font-semibold text-emerald-400">Wage-Wise (Daily Wages)</span> — Calculate actual daily wages for rate contractors interim
+                                        </SelectItem>
+                                        <SelectItem value="work_wise">
+                                            <span className="font-semibold text-sky-400">Work-Wise (Item Rate)</span> — Calculate contractor payout strictly on work quantity
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-[11px] text-muted-foreground/80">
+                                    {calculationMethod === 'wage_wise'
+                                        ? 'Wage-wise mode calculates actual worker daily wages even for Rate Work contractors receiving interim payouts.'
+                                        : calculationMethod === 'work_wise'
+                                        ? 'Work-wise mode calculates payouts strictly based on item rate work done quantity.'
+                                        : 'Auto mode uses trade attendance rates for NMR work & contract rates for Rate work.'}
+                                </p>
                             </div>
 
                             <div className="bg-muted/10 border border-muted/20 p-3 rounded-lg flex items-start gap-2.5">

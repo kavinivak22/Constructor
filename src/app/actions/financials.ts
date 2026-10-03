@@ -185,7 +185,12 @@ export async function getPayoutItems(payoutId: string) {
     }
 }
 
-export async function createWeeklyPayoutRun(weekStartDate: string, weekEndDate: string, includePreviousUnpaid: boolean = true) {
+export async function createWeeklyPayoutRun(
+    weekStartDate: string, 
+    weekEndDate: string, 
+    includePreviousUnpaid: boolean = true,
+    calculationMethod: 'auto' | 'wage_wise' | 'work_wise' = 'auto'
+) {
     const supabase = await createClient()
 
     try {
@@ -365,6 +370,11 @@ export async function createWeeklyPayoutRun(weekStartDate: string, weekEndDate: 
                             laborEntries.some(le => le.worklog_id === w.id && le.contractor_name?.toLowerCase().includes((profile.contractors?.name || '').toLowerCase()))
                         )
 
+                        // Check if contractor entries were rate work vs nmr work
+                        const hasRateWork = matchingLaborEntries.some(le => le.work_type === 'rate' || le.payout_class === 'rate')
+                        const itemPayoutClass = (hasRateWork && calculationMethod !== 'wage_wise') ? 'rate' : 'nmr'
+                        const calcLabel = calculationMethod === 'wage_wise' ? 'Wage-Wise (Interim Wages)' : calculationMethod === 'work_wise' ? 'Work-Wise (Item Rate)' : 'Auto / Attendance'
+
                         payoutItems.push({
                             payout_id: payoutId,
                             recipient_type: 'labor_wage',
@@ -375,8 +385,8 @@ export async function createWeeklyPayoutRun(weekStartDate: string, weekEndDate: 
                             status: 'pending',
                             project_id: linkedWorklog?.project_id || null,
                             reference_details: detailsJson,
-                            payout_class: 'nmr',
-                            notes: `Bank: ${profile.bank_name || 'N/A'}, Acc: ${profile.account_number || 'N/A'}`
+                            payout_class: itemPayoutClass,
+                            notes: `Calc: ${calcLabel} | Bank: ${profile.bank_name || 'N/A'}, Acc: ${profile.account_number || 'N/A'}`
                         })
                     }
                 } else {

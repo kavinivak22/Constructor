@@ -399,13 +399,24 @@ export function WorklogDetailDialog({ worklog, isOpen, onClose }: WorklogDetailD
                   {laborCostBreakdown.entries.map((entry: any, eIdx: number) => (
                     <div key={eIdx} className="p-3.5 rounded-xl bg-muted/40 dark:bg-muted/20 border border-border/50 space-y-2">
                       <div className="flex justify-between items-start gap-2">
-                        <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-semibold text-sm text-foreground">{entry.contractorName || 'Contractor Team'}</span>
                           {entry.profileFound && (
-                            <span className="ml-2 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
                               (Wage Profile)
                             </span>
                           )}
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-[9px] px-1.5 py-0 h-4 font-semibold uppercase tracking-wider",
+                              (entry.work_type || entry.payout_class) === 'rate'
+                                ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
+                                : "bg-sky-500/10 text-sky-500 border-sky-500/30"
+                            )}
+                          >
+                            {(entry.work_type || entry.payout_class) === 'rate' ? 'Rate Work' : 'NMR Work'}
+                          </Badge>
                         </div>
                         {entry.category && (
                           <Badge variant="secondary" className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary border-none font-semibold">
