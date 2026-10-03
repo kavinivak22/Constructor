@@ -51,6 +51,8 @@ import {
 import Autoplay from "embla-carousel-autoplay"
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { Eye } from 'lucide-react';
+import { WorklogDetailDialog } from '@/components/worklog/worklog-detail-dialog';
 import { CreateWorklogDialog } from '@/components/worklog/create-worklog-dialog';
 import { getSalaryProfiles } from '@/app/actions/financials';
 import { getProjectMaterials } from '@/app/actions/materials';
@@ -93,6 +95,8 @@ export function WorklogList({ projectId, refreshTrigger, highlightWorklogId }: W
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
     const [editingWorklog, setEditingWorklog] = useState<any | null>(null);
     const [deletingWorklogId, setDeletingWorklogId] = useState<string | null>(null);
+    const [selectedDetailWorklog, setSelectedDetailWorklog] = useState<any | null>(null);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [salaryProfiles, setSalaryProfiles] = useState<any[]>([]);
     const [projectMaterials, setProjectMaterials] = useState<any[]>([]);
     const { toast } = useToast();
@@ -490,6 +494,10 @@ export function WorklogList({ projectId, refreshTrigger, highlightWorklogId }: W
                     onSort={handleSort}
                     onEdit={(log) => setEditingWorklog(log)}
                     onDelete={(id) => setDeletingWorklogId(id)}
+                    onViewDetails={(log) => {
+                        setSelectedDetailWorklog(log);
+                        setIsDetailModalOpen(true);
+                    }}
                     currentUserProfile={currentUserProfile}
                 />
             ) : (
@@ -501,7 +509,10 @@ export function WorklogList({ projectId, refreshTrigger, highlightWorklogId }: W
                                 index={index}
                                 onEdit={() => setEditingWorklog(log)}
                                 onDelete={() => setDeletingWorklogId(log.id)}
-                                initiallyExpanded={log.id === highlightWorklogId}
+                                onViewDetails={() => {
+                                    setSelectedDetailWorklog(log);
+                                    setIsDetailModalOpen(true);
+                                }}
                                 currentUserProfile={currentUserProfile}
                                 salaryProfiles={salaryProfiles}
                                 projectMaterials={projectMaterials}
@@ -511,7 +522,15 @@ export function WorklogList({ projectId, refreshTrigger, highlightWorklogId }: W
                 </div>
             )}
 
-            {/* Hidden Edit Dialog Trigger removed */}
+            {/* Worklog Full Detail Dialog Modal */}
+            <WorklogDetailDialog
+                worklog={selectedDetailWorklog}
+                isOpen={isDetailModalOpen}
+                onClose={() => {
+                    setIsDetailModalOpen(false);
+                    setSelectedDetailWorklog(null);
+                }}
+            />
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!deletingWorklogId} onOpenChange={(open) => !open && setDeletingWorklogId(null)}>
@@ -553,7 +572,7 @@ function WorklogFeedCard({
     index, 
     onEdit, 
     onDelete, 
-    initiallyExpanded = false,
+    onViewDetails,
     currentUserProfile,
     salaryProfiles = [],
     projectMaterials = []
@@ -562,20 +581,13 @@ function WorklogFeedCard({
     index: number; 
     onEdit: () => void; 
     onDelete: () => void; 
-    initiallyExpanded?: boolean; 
+    onViewDetails: () => void;
     currentUserProfile: { id: string; role: string } | null;
     salaryProfiles?: any[];
     projectMaterials?: any[];
 }) {
-    const [expanded, setExpanded] = useState(initiallyExpanded);
     const [isFullscreenViewerOpen, setIsFullscreenViewerOpen] = useState(false);
     const [fullscreenPhotoIndex, setFullscreenPhotoIndex] = useState(0);
-
-    useEffect(() => {
-        if (initiallyExpanded) {
-            setExpanded(true);
-        }
-    }, [initiallyExpanded]);
 
     // Totals
     const totalWorkers = (worklog.labor || []).reduce((acc: number, entry: any) => {
@@ -616,18 +628,14 @@ function WorklogFeedCard({
     // Calculate Labor Cost based on wage profiles
     const laborCostBreakdown = useMemo(() => {
         let totalLaborCost = 0;
-        let profilesMatchedCount = 0;
 
-        const entries = (worklog.labor || []).map((entry: any) => {
+        (worklog.labor || []).forEach((entry: any) => {
             const contractorName = entry.contractor_name || entry.contractorName || '';
             const profile = findContractorProfile(contractorName, salaryProfiles);
-            if (profile) profilesMatchedCount++;
 
-            let entryTotal = 0;
-            const workers = (entry.workers || []).map((w: any) => {
+            (entry.workers || []).forEach((w: any) => {
                 const count = Number(w.count || 0);
                 const wType = (w.worker_type || w.workerType || '').trim();
-                const wTypeLower = wType.toLowerCase();
 
                 let rate = 0;
                 let hasProfileRate = false;
@@ -650,58 +658,30 @@ function WorklogFeedCard({
                         const matchingKey = Object.keys(rates).find(k => matchesWorkerType(k, wType));
                         if (matchingKey && Number(rates[matchingKey]) > 0) {
                             rate = Number(rates[matchingKey]);
-                            hasProfileRate = true;
                             break;
                         }
                     }
                 }
 
-                const subtotal = count * rate;
-                entryTotal += subtotal;
-
-                return {
-                    type: wType,
-                    count,
-                    rate,
-                    subtotal,
-                    hasProfileRate,
-                };
+                totalLaborCost += count * rate;
             });
-
-            totalLaborCost += entryTotal;
-            return {
-                ...entry,
-                contractorName,
-                profileFound: !!profile,
-                entryTotal,
-                workersBreakdown: workers,
-            };
         });
 
-        return { totalLaborCost, entries, profilesMatchedCount };
+        return totalLaborCost;
     }, [worklog.labor, salaryProfiles]);
 
     // Calculate Materials Cost based on inventory cost per unit
     const materialsCostBreakdown = useMemo(() => {
         let totalMaterialsCost = 0;
-        const items = (worklog.materials || []).map((m: any) => {
+        (worklog.materials || []).forEach((m: any) => {
             const qty = Number(m.quantity_consumed || m.quantity || 0);
             const unitCost = getMaterialUnitCost(m, projectMaterials);
-            const subtotal = qty * unitCost;
-            totalMaterialsCost += subtotal;
-            return {
-                name: m.material_name || m.materialName || 'Material',
-                quantity: qty,
-                unit: m.unit || '',
-                unitCost,
-                subtotal,
-                hasCost: unitCost > 0,
-            };
+            totalMaterialsCost += qty * unitCost;
         });
-        return { totalMaterialsCost, items };
+        return totalMaterialsCost;
     }, [worklog.materials, projectMaterials]);
 
-    const estimatedTotalCost = laborCostBreakdown.totalLaborCost + materialsCostBreakdown.totalMaterialsCost;
+    const estimatedTotalCost = laborCostBreakdown + materialsCostBreakdown;
 
     // Autoplay Plugin Reference
     const plugin = useRef(
@@ -734,28 +714,34 @@ function WorklogFeedCard({
 
     const canEditOrDelete = currentUserProfile?.role === 'admin' || currentUserProfile?.id === worklog.created_by;
 
-        return (
-            <div className="group overflow-hidden glass-card flex flex-col h-full relative border-none bg-transparent">
-                {/* Edit/Delete Menu */}
-                {canEditOrDelete && (
-                    <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full glass border border-white/10 dark:border-white/5 shadow-sm hover:bg-white/20">
-                                    <MoreVertical className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="glass border border-white/10 dark:border-white/5">
-                                <DropdownMenuItem onClick={onEdit} className="focus:bg-white/10 dark:focus:bg-white/5">
-                                    <Edit className="mr-2 h-4 w-4" /> Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive focus:bg-red-500/10">
-                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-                )}
+    return (
+        <div 
+            onClick={onViewDetails}
+            className="group overflow-hidden glass-card flex flex-col h-full relative border-none bg-transparent cursor-pointer transition-all hover:border-primary/40 hover:shadow-lg"
+        >
+            {/* Edit/Delete Menu */}
+            {canEditOrDelete && (
+                <div 
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full glass border border-white/10 dark:border-white/5 shadow-sm hover:bg-white/20">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="glass border border-white/10 dark:border-white/5">
+                            <DropdownMenuItem onClick={onEdit} className="focus:bg-white/10 dark:focus:bg-white/5">
+                                <Edit className="mr-2 h-4 w-4" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive focus:bg-red-500/10">
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            )}
 
             {/* Image Section */}
             <div className={cn(
@@ -850,156 +836,13 @@ function WorklogFeedCard({
                     )}
                 </div>
 
-                <h3 
-                    onClick={() => setExpanded(!expanded)}
-                    className="font-bold text-lg mb-2 leading-tight group-hover:text-primary transition-colors line-clamp-2 text-foreground cursor-pointer"
-                >
+                <h3 className="font-bold text-lg mb-2 leading-tight group-hover:text-primary transition-colors line-clamp-2 text-foreground">
                     {title}
                 </h3>
 
                 <p className="text-sm text-muted-foreground/80 line-clamp-3 mb-4 flex-1">
                     {description}
                 </p>
-
-                {/* Detailed expanded sections */}
-                {expanded && (
-                    <div className="space-y-4 my-4 pt-4 border-t border-white/10 dark:border-white/5 animate-in fade-in-50 slide-in-from-top-2 duration-300">
-                        {/* Job-Costing Cost of Work Banner */}
-                        <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col gap-2">
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                                <div className="flex items-center gap-2.5">
-                                    <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">
-                                        ₹
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-1">
-                                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider leading-none">Job Cost of Work</p>
-                                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">• Wage Profile Linked</span>
-                                        </div>
-                                        <p className="text-base font-bold text-emerald-600 dark:text-emerald-400 leading-tight mt-0.5 font-mono">
-                                            ₹{estimatedTotalCost.toLocaleString('en-IN')}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-muted-foreground self-end sm:self-auto">
-                                    <span className="bg-background/80 px-2 py-0.5 rounded-md border border-white/10 dark:border-white/5 flex items-center gap-1 text-[11px]">
-                                        <Users className="h-3 w-3 text-primary" /> Labour: <span className="font-mono text-foreground font-bold">₹{laborCostBreakdown.totalLaborCost.toLocaleString('en-IN')}</span>
-                                    </span>
-                                    <span className="bg-background/80 px-2 py-0.5 rounded-md border border-white/10 dark:border-white/5 flex items-center gap-1 text-[11px]">
-                                        <Package className="h-3 w-3 text-amber-500" /> Materials: <span className="font-mono text-foreground font-bold">₹{materialsCostBreakdown.totalMaterialsCost.toLocaleString('en-IN')}</span>
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Labor section */}
-                        {laborCostBreakdown.entries.length > 0 && (
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center">
-                                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                                        <Users className="h-3.5 w-3.5 text-primary" /> Labor & Activity
-                                    </h4>
-                                    {laborCostBreakdown.totalLaborCost > 0 && (
-                                        <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                                            Total: ₹{laborCostBreakdown.totalLaborCost.toLocaleString('en-IN')}
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="space-y-2">
-                                    {laborCostBreakdown.entries.map((entry: any, eIdx: number) => (
-                                        <div key={eIdx} className="p-3 rounded-xl bg-white/5 dark:bg-black/20 border border-white/5 space-y-2">
-                                            <div className="flex justify-between items-start gap-2">
-                                                <div>
-                                                    <span className="font-semibold text-sm text-foreground">{entry.contractorName}</span>
-                                                    {entry.profileFound && (
-                                                        <span className="ml-2 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                                                            (Wage Profile)
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                {entry.category && (
-                                                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-white/10 text-foreground border-none">
-                                                        {entry.category}
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                            {entry.work_description && (
-                                                <p className="text-xs text-muted-foreground/90">{entry.work_description}</p>
-                                            )}
-                                            {entry.work_done_quantity !== null && entry.work_done_quantity !== undefined && (
-                                                <div className="text-[11px] font-medium text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-md w-fit flex items-center gap-1">
-                                                    <span className="text-muted-foreground/90">Work Done:</span>
-                                                    <span className="font-bold text-foreground">{entry.work_done_quantity}</span>
-                                                    {entry.work_done_unit && <span className="text-foreground">{entry.work_done_unit}</span>}
-                                                </div>
-                                            )}
-                                            {entry.workersBreakdown && entry.workersBreakdown.length > 0 && (
-                                                <div className="flex flex-wrap gap-1.5 pt-1">
-                                                    {entry.workersBreakdown.map((w: any, wIdx: number) => (
-                                                        <Badge key={wIdx} variant="outline" className="text-[10px] py-0.5 px-2 glass border-white/5 text-foreground font-medium flex items-center gap-1">
-                                                            <span className="text-muted-foreground">{w.type}:</span>
-                                                            <span className="font-bold">{w.count}</span>
-                                                            {w.hasProfileRate ? (
-                                                                <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold ml-0.5">
-                                                                    (@ ₹{w.rate} = ₹{w.subtotal.toLocaleString('en-IN')})
-                                                                </span>
-                                                            ) : null}
-                                                        </Badge>
-                                                    ))}
-                                                </div>
-                                            )}
-                                            {entry.entryTotal > 0 && (
-                                                <div className="flex justify-end pt-1 border-t border-white/5 text-xs text-muted-foreground">
-                                                    <span>Team Daily Wages: <strong className="font-mono text-foreground font-bold">₹{entry.entryTotal.toLocaleString('en-IN')}</strong></span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Materials section */}
-                        {materialsCostBreakdown.items.length > 0 && (
-                            <div className="space-y-2">
-                                <div className="flex justify-between items-center">
-                                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                                        <Package className="h-3.5 w-3.5 text-amber-500" /> Materials Consumed
-                                    </h4>
-                                    {materialsCostBreakdown.totalMaterialsCost > 0 && (
-                                        <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                                            Total: ₹{materialsCostBreakdown.totalMaterialsCost.toLocaleString('en-IN')}
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="p-3 rounded-xl bg-white/5 dark:bg-black/20 border border-white/5 divide-y divide-white/5">
-                                    {materialsCostBreakdown.items.map((m: any, mIdx: number) => (
-                                        <div key={mIdx} className="flex justify-between items-center py-1.5 first:pt-0 last:pb-0 text-xs">
-                                            <div className="flex flex-col">
-                                                <span className="text-foreground font-medium">{m.name}</span>
-                                                {m.hasCost && (
-                                                    <span className="text-[10px] text-muted-foreground font-mono">
-                                                        ₹{m.unitCost} per {m.unit || 'unit'}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-muted-foreground font-semibold">
-                                                    {m.quantity} <span className="text-[10px] font-normal">{m.unit}</span>
-                                                </span>
-                                                {m.hasCost && (
-                                                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                                                        ₹{m.subtotal.toLocaleString('en-IN')}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
 
                 <div className="pt-4 border-t border-white/10 dark:border-white/5 w-full flex items-center justify-between mt-auto">
                     <span className="text-xs text-muted-foreground flex flex-col items-start gap-0.5">
@@ -1016,11 +859,14 @@ function WorklogFeedCard({
                         <Button 
                             variant="ghost" 
                             size="sm" 
-                            onClick={() => setExpanded(!expanded)} 
-                            className="text-xs text-primary hover:text-primary/80 font-semibold flex items-center gap-1 hover:bg-white/10 dark:hover:bg-white/5 h-8 px-2"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onViewDetails();
+                            }} 
+                            className="text-xs text-primary hover:text-primary/80 font-semibold flex items-center gap-1.5 hover:bg-white/10 dark:hover:bg-white/5 h-8 px-2.5 rounded-lg"
                         >
-                            {expanded ? "Hide Details" : "Show Details"}
-                            <ArrowRight className={cn("h-3.5 w-3.5 transition-transform", expanded ? "rotate-90" : "")} />
+                            <span>View Details</span>
+                            <ArrowRight className="h-3.5 w-3.5" />
                         </Button>
                     </div>
                 </div>

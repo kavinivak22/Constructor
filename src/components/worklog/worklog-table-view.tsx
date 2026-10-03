@@ -15,7 +15,8 @@ import {
     ArrowUp, 
     ArrowDown,
     CheckCircle2,
-    HardHat
+    HardHat,
+    Eye
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,7 @@ interface WorklogTableViewProps {
     onSort: (key: string) => void;
     onEdit: (worklog: any) => void;
     onDelete: (worklogId: string) => void;
+    onViewDetails?: (worklog: any) => void;
     currentUserProfile: { id: string; role: string } | null;
 }
 
@@ -61,6 +63,7 @@ export function WorklogTableView({
     onSort,
     onEdit,
     onDelete,
+    onViewDetails,
     currentUserProfile,
 }: WorklogTableViewProps) {
     // Lightbox state
@@ -423,23 +426,30 @@ export function WorklogTableView({
 
                                         {/* Actions */}
                                         <TableCell className="py-3 px-3 align-top text-right">
-                                            {canEditOrDelete && (
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-white/10">
-                                                            <MoreVertical className="h-4 w-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="glass border-white/10 dark:border-white/5">
-                                                        <DropdownMenuItem onClick={() => onEdit(log)} className="focus:bg-white/10">
-                                                            <Edit className="mr-2 h-4 w-4" /> Edit
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-white/10">
+                                                        <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="glass border-white/10 dark:border-white/5">
+                                                    {onViewDetails && (
+                                                        <DropdownMenuItem onClick={() => onViewDetails(log)} className="focus:bg-white/10">
+                                                            <Eye className="mr-2 h-4 w-4 text-primary" /> View Details
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => onDelete(log.id)} className="text-destructive focus:text-destructive focus:bg-red-500/10">
-                                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            )}
+                                                    )}
+                                                    {canEditOrDelete && (
+                                                        <>
+                                                            <DropdownMenuItem onClick={() => onEdit(log)} className="focus:bg-white/10">
+                                                                <Edit className="mr-2 h-4 w-4" /> Edit
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => onDelete(log.id)} className="text-destructive focus:text-destructive focus:bg-red-500/10">
+                                                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                            </DropdownMenuItem>
+                                                        </>
+                                                    )}
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </TableCell>
                                     </TableRow>
                                 );
