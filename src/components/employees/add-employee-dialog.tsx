@@ -183,6 +183,9 @@ export function AddEmployeeDialog({
         return MEMBER_PERMISSIONS_PRESET;
     };
 
+    const editingUserId = editingUser?.id;
+    const editingUserEmail = editingUser?.email;
+
     // Update form state when editingUser or isOpen changes
     useEffect(() => {
         if (isOpen) {
@@ -206,7 +209,8 @@ export function AddEmployeeDialog({
                 });
             }
         }
-    }, [editingUser, isOpen, form]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [editingUserId, editingUserEmail, isOpen]);
 
     // Handle preset selection
     const applyPreset = (presetKey: string) => {
@@ -267,7 +271,7 @@ export function AddEmployeeDialog({
             return;
         }
 
-        const email = form.getValues('email');
+        const email = emailValue?.trim();
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!email || !emailRegex.test(email)) {
             setEmailStatus('new');
@@ -293,7 +297,8 @@ export function AddEmployeeDialog({
         }, 500);
 
         return () => clearTimeout(timer);
-    }, [emailValue, isEditMode, isOpen, form]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [emailValue, isEditMode, isOpen]);
 
     async function onSubmit(values: AddEmployeeFormValues) {
         setIsSubmitting(true);
@@ -607,33 +612,27 @@ export function AddEmployeeDialog({
                                                                         return (
                                                                             <FormItem
                                                                                 key={project.id}
-                                                                                className={`flex flex-row items-center space-x-3 space-y-0 p-2 rounded-lg transition-colors cursor-pointer ${
+                                                                                className={`flex flex-row items-center space-x-3 space-y-0 p-2 rounded-lg transition-colors ${
                                                                                     isChecked ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted/50'
                                                                                 }`}
-                                                                                onClick={() => {
-                                                                                    if (isChecked) {
-                                                                                        field.onChange(field.value.filter(id => id !== project.id));
-                                                                                    } else {
-                                                                                        field.onChange([...field.value, project.id]);
-                                                                                    }
-                                                                                }}
                                                                             >
                                                                                 <Checkbox
+                                                                                    id={`proj-${project.id}`}
                                                                                     checked={isChecked}
                                                                                     onCheckedChange={(checked) => {
                                                                                         if (checked) {
                                                                                             field.onChange([...field.value, project.id]);
                                                                                         } else {
-                                                                                            field.onChange(field.value.filter(id => id !== project.id));
+                                                                                            field.onChange(field.value.filter((id: string) => id !== project.id));
                                                                                         }
                                                                                     }}
                                                                                 />
-                                                                                <div className="flex-1 min-w-0">
+                                                                                <label htmlFor={`proj-${project.id}`} className="flex-1 min-w-0 cursor-pointer">
                                                                                     <div className="text-xs font-medium truncate">{project.name}</div>
                                                                                     <div className="text-[10px] text-muted-foreground truncate">
                                                                                         {project.client_name || project.clientName || 'General Project'}
                                                                                     </div>
-                                                                                </div>
+                                                                                </label>
                                                                                 <Badge variant={project.status === 'active' ? 'default' : 'secondary'} className="text-[9px] capitalize px-1.5 py-0">
                                                                                     {project.status}
                                                                                 </Badge>
@@ -910,6 +909,7 @@ function PermissionCategoryCard({
                             <FormItem className="flex flex-row items-start space-x-2.5 space-y-0 p-1.5 rounded-lg hover:bg-muted/40 transition-colors">
                                 <FormControl className="mt-0.5">
                                     <Checkbox
+                                        id={`perm-${categoryKey}-${item.name}`}
                                         checked={field.value}
                                         onCheckedChange={(val) => {
                                             field.onChange(val);
@@ -917,11 +917,8 @@ function PermissionCategoryCard({
                                         }}
                                     />
                                 </FormControl>
-                                <div className="space-y-0.5 leading-none cursor-pointer" onClick={() => {
-                                    field.onChange(!field.value);
-                                    form.setValue('preset', 'custom');
-                                }}>
-                                    <FormLabel className="text-xs font-medium cursor-pointer">{item.label}</FormLabel>
+                                <div className="space-y-0.5 leading-none">
+                                    <FormLabel htmlFor={`perm-${categoryKey}-${item.name}`} className="text-xs font-medium cursor-pointer">{item.label}</FormLabel>
                                     <FormDescription className="text-[10px] text-muted-foreground leading-tight">
                                         {item.desc}
                                     </FormDescription>
