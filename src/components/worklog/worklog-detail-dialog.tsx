@@ -22,6 +22,7 @@ import { FullscreenPhotoViewer } from '@/components/worklog/fullscreen-photo-vie
 import { getSalaryProfiles } from '@/app/actions/financials';
 import { getProjectMaterials } from '@/app/actions/materials';
 import { matchesWorkerType } from '@/lib/worklog-helpers';
+import { cn } from '@/lib/utils';
 
 interface WorklogDetailDialogProps {
   worklog: any | null;

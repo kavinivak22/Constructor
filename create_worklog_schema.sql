@@ -49,6 +49,10 @@ CREATE TABLE IF NOT EXISTS public.worklog_labor_entries (
     category text, -- e.g., 'Masonry', 'Painting'
     work_description text,
     payment_status text DEFAULT 'Pending' CHECK (payment_status IN ('Paid', 'On Payday', 'Pending')),
+    work_type text DEFAULT 'nmr',
+    payout_class text DEFAULT 'nmr',
+    work_done_quantity numeric,
+    work_done_unit text,
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
