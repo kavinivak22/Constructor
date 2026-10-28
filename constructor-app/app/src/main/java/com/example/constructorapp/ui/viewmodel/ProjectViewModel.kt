@@ -162,6 +162,106 @@ class ProjectViewModel(private val repository: ProjectRepository) : ViewModel() 
         }
     }
 
+    // Tasks
+    private val _tasks = MutableStateFlow<List<com.example.constructorapp.data.remote.TaskItemDto>>(emptyList())
+    val tasks: StateFlow<List<com.example.constructorapp.data.remote.TaskItemDto>> = _tasks.asStateFlow()
+
+    // Purchase Orders
+    private val _purchaseOrders = MutableStateFlow<List<com.example.constructorapp.data.remote.PurchaseOrderDto>>(emptyList())
+    val purchaseOrders: StateFlow<List<com.example.constructorapp.data.remote.PurchaseOrderDto>> = _purchaseOrders.asStateFlow()
+
+    // Pouch Transactions
+    private val _pouchTransactions = MutableStateFlow<List<com.example.constructorapp.data.remote.PouchTransactionDto>>(emptyList())
+    val pouchTransactions: StateFlow<List<com.example.constructorapp.data.remote.PouchTransactionDto>> = _pouchTransactions.asStateFlow()
+
+    fun loadTasks(projectId: String) {
+        viewModelScope.launch {
+            val res = repository.getProjectTasks(projectId)
+            if (res.isSuccess) {
+                _tasks.value = res.getOrNull() ?: emptyList()
+            }
+        }
+    }
+
+    fun createTask(task: com.example.constructorapp.data.remote.TaskItemDto, onDone: () -> Unit) {
+        viewModelScope.launch {
+            val res = repository.createTask(task)
+            if (res.isSuccess) {
+                loadTasks(task.projectId)
+                onDone()
+            }
+        }
+    }
+
+    fun toggleTask(taskId: String, isCompleted: Boolean, projectId: String) {
+        viewModelScope.launch {
+            // Optimistic update
+            _tasks.value = _tasks.value.map {
+                if (it.id == taskId) it.copy(isCompleted = isCompleted) else it
+            }
+            repository.toggleTask(taskId, isCompleted)
+        }
+    }
+
+    fun loadPurchaseOrders(projectId: String? = null) {
+        viewModelScope.launch {
+            val res = repository.getPurchaseOrders(projectId)
+            if (res.isSuccess) {
+                _purchaseOrders.value = res.getOrNull() ?: emptyList()
+            }
+        }
+    }
+
+    fun createPurchaseOrder(po: com.example.constructorapp.data.remote.PurchaseOrderDto, onDone: () -> Unit) {
+        viewModelScope.launch {
+            val res = repository.createPurchaseOrder(po)
+            if (res.isSuccess) {
+                loadPurchaseOrders(po.projectId)
+                onDone()
+            }
+        }
+    }
+
+    fun approvePurchaseOrder(poId: String, projectId: String? = null) {
+        viewModelScope.launch {
+            val res = repository.updatePurchaseOrderStatus(poId, "Approved")
+            if (res.isSuccess) {
+                loadPurchaseOrders(projectId)
+            }
+        }
+    }
+
+    fun loadPouchTransactions(projectId: String) {
+        viewModelScope.launch {
+            val res = repository.getPouchTransactions(projectId)
+            if (res.isSuccess) {
+                _pouchTransactions.value = res.getOrNull() ?: emptyList()
+            }
+        }
+    }
+
+    fun createPouchTransaction(transaction: com.example.constructorapp.data.remote.PouchTransactionDto, onDone: () -> Unit) {
+        viewModelScope.launch {
+            val res = repository.createPouchTransaction(transaction)
+            if (res.isSuccess) {
+                loadPouchTransactions(transaction.projectId)
+                onDone()
+            }
+        }
+    }
+
+    fun saveProjectMaterial(material: ProjectMaterialDto, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val res = repository.createProjectMaterial(material)
+            if (res.isSuccess) {
+                loadProjectMaterials(material.projectId)
+                onDone(true)
+            } else {
+                onDone(false)
+            }
+        }
+    }
+
     fun submitPayoutRun(payoutRun: com.example.constructorapp.data.remote.PayoutRunDto, onDone: (Boolean) -> Unit) {
         viewModelScope.launch {
             val res = repository.createPayoutRun(payoutRun)

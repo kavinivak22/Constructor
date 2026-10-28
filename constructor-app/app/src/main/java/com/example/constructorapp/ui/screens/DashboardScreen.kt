@@ -10,9 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -26,6 +24,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation3.runtime.NavKey
+import com.example.constructorapp.MaterialEstimation
+import com.example.constructorapp.PurchaseOrders
 import com.example.constructorapp.data.remote.ProjectDto
 import com.example.constructorapp.data.remote.SupabaseClient
 import com.example.constructorapp.theme.*
@@ -38,6 +39,7 @@ import java.util.Locale
 fun DashboardScreen(
     viewModel: ProjectViewModel,
     onProjectClick: (ProjectDto) -> Unit,
+    onNavigate: (NavKey) -> Unit = {},
     onLogout: () -> Unit
 ) {
     val projects by viewModel.projects.collectAsState()
@@ -156,6 +158,84 @@ fun DashboardScreen(
                                 )
                             }
                         }
+                    }
+
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Card(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { onNavigate(MaterialEstimation()) },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = SlateSurface),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, SlateBorder)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(PurpleAccent.copy(alpha = 0.15f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(Icons.Default.Calculate, contentDescription = null, tint = PurpleAccent, modifier = Modifier.size(18.dp))
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text("Material Calc", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = TextPrimary)
+                                        Text("Civil takeoff", fontSize = 10.sp, color = TextSecondary)
+                                    }
+                                }
+                            }
+
+                            Card(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { onNavigate(PurchaseOrders()) },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = SlateSurface),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, SlateBorder)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(EmeraldSuccess.copy(alpha = 0.15f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(Icons.Default.ShoppingCart, contentDescription = null, tint = EmeraldSuccess, modifier = Modifier.size(18.dp))
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text("Purchase Orders", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = TextPrimary)
+                                        Text("Procurement", fontSize = 10.sp, color = TextSecondary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    item {
+                        Text(
+                            text = "ASSIGNED PROJECTS",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BrandPrimary,
+                            letterSpacing = 1.sp,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
                     }
 
                     items(projects) { project ->

@@ -18,6 +18,7 @@ class ProjectRepository(private val appDao: AppDao) {
                 status = it.status,
                 progress = it.progress,
                 clientName = it.clientName,
+                clientPhone = it.clientPhone,
                 location = it.location,
                 budget = it.budget,
                 companyId = it.companyId
@@ -44,6 +45,7 @@ class ProjectRepository(private val appDao: AppDao) {
                         status = it.status,
                         progress = it.progress,
                         clientName = it.clientName,
+                        clientPhone = it.clientPhone,
                         location = it.location,
                         budget = it.budget,
                         companyId = it.companyId
@@ -255,6 +257,142 @@ class ProjectRepository(private val appDao: AppDao) {
                 Result.success(response.body()!![0])
             } else {
                 Result.failure(Exception("Failed to create payout run: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getProjectTasks(projectId: String): Result<List<TaskItemDto>> {
+        val authHeader = SupabaseClient.authHeader
+        if (authHeader.isEmpty()) return Result.failure(Exception("Not authenticated"))
+        return try {
+            val response = SupabaseClient.api.getProjectTasks(authHeader, "eq.$projectId")
+            if (response.isSuccessful) {
+                Result.success(response.body() ?: emptyList())
+            } else {
+                Result.failure(Exception("Failed to load tasks: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun createTask(task: TaskItemDto): Result<TaskItemDto> {
+        val authHeader = SupabaseClient.authHeader
+        if (authHeader.isEmpty()) return Result.failure(Exception("Not authenticated"))
+        return try {
+            val response = SupabaseClient.api.createTask(authHeader, task)
+            if (response.isSuccessful && !response.body().isNullOrEmpty()) {
+                Result.success(response.body()!![0])
+            } else {
+                Result.failure(Exception("Failed to create task: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun toggleTask(taskId: String, isCompleted: Boolean): Result<Unit> {
+        val authHeader = SupabaseClient.authHeader
+        if (authHeader.isEmpty()) return Result.failure(Exception("Not authenticated"))
+        return try {
+            val response = SupabaseClient.api.updateTaskStatus(authHeader, "eq.$taskId", mapOf("is_completed" to isCompleted))
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to update task: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getPurchaseOrders(projectId: String?): Result<List<PurchaseOrderDto>> {
+        val authHeader = SupabaseClient.authHeader
+        if (authHeader.isEmpty()) return Result.failure(Exception("Not authenticated"))
+        return try {
+            val filter = if (projectId != null) "eq.$projectId" else null
+            val response = SupabaseClient.api.getPurchaseOrders(authHeader, filter)
+            if (response.isSuccessful) {
+                Result.success(response.body() ?: emptyList())
+            } else {
+                Result.failure(Exception("Failed to load POs: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun createPurchaseOrder(po: PurchaseOrderDto): Result<PurchaseOrderDto> {
+        val authHeader = SupabaseClient.authHeader
+        if (authHeader.isEmpty()) return Result.failure(Exception("Not authenticated"))
+        return try {
+            val response = SupabaseClient.api.createPurchaseOrder(authHeader, po)
+            if (response.isSuccessful && !response.body().isNullOrEmpty()) {
+                Result.success(response.body()!![0])
+            } else {
+                Result.failure(Exception("Failed to create purchase order: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getPouchTransactions(projectId: String): Result<List<PouchTransactionDto>> {
+        val authHeader = SupabaseClient.authHeader
+        if (authHeader.isEmpty()) return Result.failure(Exception("Not authenticated"))
+        return try {
+            val response = SupabaseClient.api.getPouchTransactions(authHeader, "eq.$projectId")
+            if (response.isSuccessful) {
+                Result.success(response.body() ?: emptyList())
+            } else {
+                Result.failure(Exception("Failed to load pouch transactions: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun createProjectMaterial(material: ProjectMaterialDto): Result<ProjectMaterialDto> {
+        val authHeader = SupabaseClient.authHeader
+        if (authHeader.isEmpty()) return Result.failure(Exception("Not authenticated"))
+        return try {
+            val response = SupabaseClient.api.createProjectMaterial(authHeader, material)
+            if (response.isSuccessful && !response.body().isNullOrEmpty()) {
+                Result.success(response.body()!![0])
+            } else {
+                Result.failure(Exception("Failed to save material: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updatePurchaseOrderStatus(poId: String, status: String): Result<Unit> {
+        val authHeader = SupabaseClient.authHeader
+        if (authHeader.isEmpty()) return Result.failure(Exception("Not authenticated"))
+        return try {
+            val response = SupabaseClient.api.updatePurchaseOrderStatus(authHeader, "eq.$poId", mapOf("status" to status))
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to update PO status: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun createPouchTransaction(transaction: PouchTransactionDto): Result<PouchTransactionDto> {
+        val authHeader = SupabaseClient.authHeader
+        if (authHeader.isEmpty()) return Result.failure(Exception("Not authenticated"))
+        return try {
+            val response = SupabaseClient.api.createPouchTransaction(authHeader, transaction)
+            if (response.isSuccessful && !response.body().isNullOrEmpty()) {
+                Result.success(response.body()!![0])
+            } else {
+                Result.failure(Exception("Failed to record pouch expense: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)

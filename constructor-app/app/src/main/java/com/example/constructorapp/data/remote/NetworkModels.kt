@@ -32,6 +32,7 @@ data class ProjectDto(
     val status: String? = null,
     val progress: Int = 0,
     @SerialName("clientName") val clientName: String? = null,
+    @SerialName("clientPhone") val clientPhone: String? = null,
     val location: String? = null,
     val budget: Double = 0.0,
     @SerialName("companyId") val companyId: String
@@ -81,7 +82,7 @@ data class WorklogMaterialDto(
 
 @Serializable
 data class ProjectMaterialDto(
-    val id: String,
+    val id: String? = null,
     @SerialName("project_id") val projectId: String,
     val name: String,
     val quantity: Double,
@@ -212,4 +213,59 @@ data class PayoutRunDto(
     @SerialName("payout_class") val payoutClass: String,
     val status: String = "Pending",
     @SerialName("run_date") val runDate: String
+)
+
+@Serializable
+data class TaskItemDto(
+    val id: String? = null,
+    @SerialName("project_id") val projectId: String,
+    val title: String,
+    val description: String? = null,
+    @SerialName("is_completed") val isCompleted: Boolean = false,
+    @SerialName("due_date") val dueDate: String? = null,
+    val priority: String = "Medium",
+    @SerialName("assigned_to") val assignedTo: String? = null
+)
+
+@Serializable
+data class PurchaseOrderItemDto(
+    @SerialName("material_name") val materialName: String,
+    val quantity: Double,
+    @SerialName("unit_price") val unitPrice: Double,
+    val unit: String = "units",
+    @SerialName("total_price") val totalPrice: Double = quantity * unitPrice
+)
+
+@Serializable
+data class PurchaseOrderDto(
+    val id: String? = null,
+    @SerialName("project_id") val projectId: String,
+    @SerialName("supplier_name") val supplierName: String,
+    @SerialName("supplier_contact") val supplierContact: String? = null,
+    val status: String = "Draft", // Draft, Approved, Fulfilled, Cancelled
+    @SerialName("total_amount") val totalAmount: Double = 0.0,
+    @SerialName("delivery_date") val deliveryDate: String? = null,
+    @SerialName("special_instructions") val specialInstructions: String? = null,
+    val items: List<PurchaseOrderItemDto> = emptyList()
+)
+
+@Serializable
+data class PouchTransactionDto(
+    val id: String? = null,
+    @SerialName("project_id") val projectId: String,
+    val amount: Double,
+    val category: String, // Transport, Tea/Snacks, Urgent Hardware, Fuel, Misc
+    val description: String? = null,
+    @SerialName("transaction_type") val transactionType: String = "Expense", // Expense vs FundRequest
+    val status: String = "Approved",
+    val date: String
+)
+
+@Serializable
+data class BuildingPlanDto(
+    val id: String? = null,
+    @SerialName("project_id") val projectId: String,
+    val title: String,
+    @SerialName("floor_level") val floorLevel: String = "Ground Floor",
+    @SerialName("plan_image_url") val planImageUrl: String? = null
 )

@@ -10,9 +10,7 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.example.constructorapp.data.remote.SupabaseClient
 import com.example.constructorapp.ui.main.MainScreen
-import com.example.constructorapp.ui.screens.LoginScreen
-import com.example.constructorapp.ui.screens.WorklogScreen
-import com.example.constructorapp.ui.screens.AddEditReminderScreen
+import com.example.constructorapp.ui.screens.*
 import com.example.constructorapp.ui.viewmodel.AuthViewModel
 import com.example.constructorapp.ui.viewmodel.ProjectViewModel
 import com.example.constructorapp.ui.viewmodel.ReminderViewModel
@@ -50,8 +48,46 @@ fun MainNavigation(
                     }
                 )
             }
+            entry<ProjectDetail> { key ->
+                ProjectDetailScreen(
+                    projectId = key.projectId,
+                    projectName = key.projectName,
+                    viewModel = projectViewModel,
+                    onNavigate = { navKey -> backStack.add(navKey) },
+                    onBackClick = { backStack.removeLastOrNull() }
+                )
+            }
             entry<Worklog> { key ->
                 WorklogScreen(
+                    projectId = key.projectId,
+                    projectName = key.projectName,
+                    viewModel = projectViewModel,
+                    onBackClick = { backStack.removeLastOrNull() }
+                )
+            }
+            entry<MaterialEstimation> { key ->
+                MaterialEstimationScreen(
+                    initialProjectId = key.projectId,
+                    viewModel = projectViewModel,
+                    onBackClick = { backStack.removeLastOrNull() }
+                )
+            }
+            entry<PurchaseOrders> { key ->
+                PurchaseOrdersScreen(
+                    initialProjectId = key.projectId,
+                    viewModel = projectViewModel,
+                    onBackClick = { backStack.removeLastOrNull() }
+                )
+            }
+            entry<BuildingPlan> { key ->
+                BuildingPlanScreen(
+                    projectId = key.projectId,
+                    projectName = key.projectName,
+                    onBackClick = { backStack.removeLastOrNull() }
+                )
+            }
+            entry<ProjectPouch> { key ->
+                ProjectPouchScreen(
                     projectId = key.projectId,
                     projectName = key.projectName,
                     viewModel = projectViewModel,

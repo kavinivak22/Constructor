@@ -71,6 +71,13 @@ interface SupabaseApi {
         @Query("select") select: String = "*"
     ): Response<List<ProjectMaterialDto>>
 
+    @POST("rest/v1/project_materials")
+    @Headers("Prefer: return=representation")
+    suspend fun createProjectMaterial(
+        @Header("Authorization") authHeader: String,
+        @Body material: ProjectMaterialDto
+    ): Response<List<ProjectMaterialDto>>
+
     // Personal Notes / Reminders
     @GET("rest/v1/personal_notes")
     suspend fun getPersonalNotes(
@@ -141,4 +148,63 @@ interface SupabaseApi {
         @Header("Authorization") authHeader: String,
         @Body payoutRun: PayoutRunDto
     ): Response<List<PayoutRunDto>>
+
+    // Tasks
+    @GET("rest/v1/project_tasks")
+    suspend fun getProjectTasks(
+        @Header("Authorization") authHeader: String,
+        @Query("project_id") projectIdFilter: String,
+        @Query("select") select: String = "*"
+    ): Response<List<TaskItemDto>>
+
+    @POST("rest/v1/project_tasks")
+    @Headers("Prefer: return=representation")
+    suspend fun createTask(
+        @Header("Authorization") authHeader: String,
+        @Body task: TaskItemDto
+    ): Response<List<TaskItemDto>>
+
+    @PATCH("rest/v1/project_tasks")
+    suspend fun updateTaskStatus(
+        @Header("Authorization") authHeader: String,
+        @Query("id") idFilter: String,
+        @Body updates: Map<String, Boolean>
+    ): Response<Unit>
+
+    // Purchase Orders
+    @GET("rest/v1/purchase_orders")
+    suspend fun getPurchaseOrders(
+        @Header("Authorization") authHeader: String,
+        @Query("project_id") projectIdFilter: String? = null,
+        @Query("select") select: String = "*"
+    ): Response<List<PurchaseOrderDto>>
+
+    @POST("rest/v1/purchase_orders")
+    @Headers("Prefer: return=representation")
+    suspend fun createPurchaseOrder(
+        @Header("Authorization") authHeader: String,
+        @Body order: PurchaseOrderDto
+    ): Response<List<PurchaseOrderDto>>
+
+    @PATCH("rest/v1/purchase_orders")
+    suspend fun updatePurchaseOrderStatus(
+        @Header("Authorization") authHeader: String,
+        @Query("id") idFilter: String,
+        @Body updates: Map<String, String>
+    ): Response<Unit>
+
+    // Pouch Transactions
+    @GET("rest/v1/project_pouch_transactions")
+    suspend fun getPouchTransactions(
+        @Header("Authorization") authHeader: String,
+        @Query("project_id") projectIdFilter: String,
+        @Query("select") select: String = "*"
+    ): Response<List<PouchTransactionDto>>
+
+    @POST("rest/v1/project_pouch_transactions")
+    @Headers("Prefer: return=representation")
+    suspend fun createPouchTransaction(
+        @Header("Authorization") authHeader: String,
+        @Body transaction: PouchTransactionDto
+    ): Response<List<PouchTransactionDto>>
 }

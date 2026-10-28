@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation3.runtime.NavKey
 import com.example.constructorapp.AddEditReminder
+import com.example.constructorapp.ProjectDetail
 import com.example.constructorapp.Worklog
 import com.example.constructorapp.theme.*
 import com.example.constructorapp.ui.screens.DashboardScreen
@@ -108,8 +109,9 @@ fun MainScreen(
                 0 -> DashboardScreen(
                     viewModel = projectViewModel,
                     onProjectClick = { project ->
-                        onItemClick(Worklog(projectId = project.id, projectName = project.name))
+                        onItemClick(ProjectDetail(projectId = project.id, projectName = project.name))
                     },
+                    onNavigate = { navKey -> onItemClick(navKey) },
                     onLogout = onLogout
                 )
                 1 -> EmployeesScreen(

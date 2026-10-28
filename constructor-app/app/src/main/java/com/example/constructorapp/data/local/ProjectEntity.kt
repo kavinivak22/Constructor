@@ -13,6 +13,7 @@ data class ProjectEntity(
     val status: String?,
     val progress: Int,
     val clientName: String?,
+    val clientPhone: String? = null,
     val location: String?,
     val budget: Double,
     val companyId: String
