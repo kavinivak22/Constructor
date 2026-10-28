@@ -102,16 +102,10 @@ fun RemindersScreen(
                 .padding(paddingValues)
         ) {
             // Screen tabs
-            TabRow(
+            SecondaryTabRow(
                 selectedTabIndex = activeTab,
                 containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary,
-                indicator = { tabPositions ->
-                    TabRowDefaults.SecondaryIndicator(
-                        Modifier.tabIndicatorOffset(tabPositions[activeTab]),
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
+                contentColor = MaterialTheme.colorScheme.primary
             ) {
                 Tab(
                     selected = activeTab == 0,

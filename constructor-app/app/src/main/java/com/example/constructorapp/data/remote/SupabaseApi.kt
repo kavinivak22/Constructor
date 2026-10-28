@@ -99,4 +99,46 @@ interface SupabaseApi {
         @Header("Authorization") authHeader: String,
         @Query("id") idFilter: String // e.g. eq.UUID
     ): Response<Unit>
+
+    // Employees
+    @GET("rest/v1/employees")
+    suspend fun getEmployees(
+        @Header("Authorization") authHeader: String,
+        @Query("select") select: String = "*"
+    ): Response<List<EmployeeDto>>
+
+    @POST("rest/v1/employees")
+    @Headers("Prefer: return=representation")
+    suspend fun createEmployee(
+        @Header("Authorization") authHeader: String,
+        @Body employee: EmployeeDto
+    ): Response<List<EmployeeDto>>
+
+    @DELETE("rest/v1/employees")
+    suspend fun deleteEmployee(
+        @Header("Authorization") authHeader: String,
+        @Query("id") idFilter: String
+    ): Response<Unit>
+
+    // Contractors
+    @GET("rest/v1/contractors")
+    suspend fun getContractors(
+        @Header("Authorization") authHeader: String,
+        @Query("select") select: String = "*"
+    ): Response<List<ContractorDto>>
+
+    // Payout Runs
+    @GET("rest/v1/payout_runs")
+    suspend fun getPayoutRuns(
+        @Header("Authorization") authHeader: String,
+        @Query("project_id") projectIdFilter: String,
+        @Query("select") select: String = "*"
+    ): Response<List<PayoutRunDto>>
+
+    @POST("rest/v1/payout_runs")
+    @Headers("Prefer: return=representation")
+    suspend fun createPayoutRun(
+        @Header("Authorization") authHeader: String,
+        @Body payoutRun: PayoutRunDto
+    ): Response<List<PayoutRunDto>>
 }

@@ -7,34 +7,42 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 
 private val DarkColorScheme = darkColorScheme(
-    primary = CoralPrimary,
+    primary = BrandPrimary,
     onPrimary = SurfaceWhite,
-    secondary = CoralLight,
-    onSecondary = CoralDark,
-    background = DarkBackground,
-    onBackground = DarkOnBackground,
-    surface = DarkSurface,
-    onSurface = DarkOnSurface,
-    error = RedDanger,
+    secondary = SkyInfo,
+    onSecondary = SlateSurface,
+    tertiary = EmeraldSuccess,
+    background = SlateBackground,
+    onBackground = TextPrimary,
+    surface = SlateSurface,
+    onSurface = TextPrimary,
+    surfaceVariant = SlateSurfaceSubtle,
+    onSurfaceVariant = TextSecondary,
+    outline = SlateBorder,
+    error = RoseDanger,
     onError = SurfaceWhite
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = CoralPrimary,
+private val LightColorScheme = darkColorScheme(
+    primary = BrandPrimary,
     onPrimary = SurfaceWhite,
-    secondary = CoralLight,
-    onSecondary = CoralDark,
-    background = GreyBackground,
-    onBackground = TextDark,
-    surface = SurfaceWhite,
-    onSurface = TextDark,
-    error = RedDanger,
+    secondary = SkyInfo,
+    onSecondary = SlateSurface,
+    tertiary = EmeraldSuccess,
+    background = SlateBackground, // We keep sleek dark aesthetic as primary
+    onBackground = TextPrimary,
+    surface = SlateSurface,
+    onSurface = TextPrimary,
+    surfaceVariant = SlateSurfaceSubtle,
+    onSurfaceVariant = TextSecondary,
+    outline = SlateBorder,
+    error = RoseDanger,
     onError = SurfaceWhite
 )
 
 @Composable
 fun ConstructorAppTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = true, // Default to dark glassmorphic theme to match web
     content: @Composable () -> Unit,
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
@@ -45,4 +53,3 @@ fun ConstructorAppTheme(
         content = content
     )
 }
-

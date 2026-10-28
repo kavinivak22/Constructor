@@ -121,7 +121,13 @@ class ProjectRepository(private val appDao: AppDao) {
                         contractorName = entryInput.contractorName,
                         category = entryInput.category,
                         workDescription = entryInput.workDescription,
-                        paymentStatus = entryInput.paymentStatus
+                        paymentStatus = entryInput.paymentStatus,
+                        payoutClass = entryInput.payoutClass,
+                        workType = entryInput.workType,
+                        workDoneQuantity = entryInput.workDoneQuantity,
+                        workDoneUnit = entryInput.workDoneUnit,
+                        payoutRate = entryInput.payoutRate,
+                        totalPayout = entryInput.totalPayout
                     )
                 )
 
@@ -164,6 +170,96 @@ class ProjectRepository(private val appDao: AppDao) {
             Result.failure(e)
         }
     }
+
+    suspend fun getEmployees(): Result<List<EmployeeDto>> {
+        val authHeader = SupabaseClient.authHeader
+        if (authHeader.isEmpty()) return Result.failure(Exception("Not authenticated"))
+        return try {
+            val response = SupabaseClient.api.getEmployees(authHeader)
+            if (response.isSuccessful) {
+                Result.success(response.body() ?: emptyList())
+            } else {
+                Result.failure(Exception("Failed to load employees: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun createEmployee(employee: EmployeeDto): Result<EmployeeDto> {
+        val authHeader = SupabaseClient.authHeader
+        if (authHeader.isEmpty()) return Result.failure(Exception("Not authenticated"))
+        return try {
+            val response = SupabaseClient.api.createEmployee(authHeader, employee)
+            if (response.isSuccessful && !response.body().isNullOrEmpty()) {
+                Result.success(response.body()!![0])
+            } else {
+                Result.failure(Exception("Failed to create employee: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteEmployee(id: String): Result<Unit> {
+        val authHeader = SupabaseClient.authHeader
+        if (authHeader.isEmpty()) return Result.failure(Exception("Not authenticated"))
+        return try {
+            val response = SupabaseClient.api.deleteEmployee(authHeader, "eq.$id")
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to delete employee: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getContractors(): Result<List<ContractorDto>> {
+        val authHeader = SupabaseClient.authHeader
+        if (authHeader.isEmpty()) return Result.failure(Exception("Not authenticated"))
+        return try {
+            val response = SupabaseClient.api.getContractors(authHeader)
+            if (response.isSuccessful) {
+                Result.success(response.body() ?: emptyList())
+            } else {
+                Result.failure(Exception("Failed to load contractors: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getPayoutRuns(projectId: String): Result<List<PayoutRunDto>> {
+        val authHeader = SupabaseClient.authHeader
+        if (authHeader.isEmpty()) return Result.failure(Exception("Not authenticated"))
+        return try {
+            val response = SupabaseClient.api.getPayoutRuns(authHeader, "eq.$projectId")
+            if (response.isSuccessful) {
+                Result.success(response.body() ?: emptyList())
+            } else {
+                Result.failure(Exception("Failed to load payout runs: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun createPayoutRun(payoutRun: PayoutRunDto): Result<PayoutRunDto> {
+        val authHeader = SupabaseClient.authHeader
+        if (authHeader.isEmpty()) return Result.failure(Exception("Not authenticated"))
+        return try {
+            val response = SupabaseClient.api.createPayoutRun(authHeader, payoutRun)
+            if (response.isSuccessful && !response.body().isNullOrEmpty()) {
+                Result.success(response.body()!![0])
+            } else {
+                Result.failure(Exception("Failed to create payout run: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
 
 // Input data structures helper
@@ -172,8 +268,14 @@ data class LaborEntryInput(
     val category: String,
     val workDescription: String,
     val paymentStatus: String,
-    val workerCounts: List<WorkerCountInput>,
-    val materialsConsumed: List<MaterialConsumedInput>
+    val payoutClass: String = "NMR",
+    val workType: String? = null,
+    val workDoneQuantity: Double? = null,
+    val workDoneUnit: String? = null,
+    val payoutRate: Double? = null,
+    val totalPayout: Double? = null,
+    val workerCounts: List<WorkerCountInput> = emptyList(),
+    val materialsConsumed: List<MaterialConsumedInput> = emptyList()
 )
 
 data class WorkerCountInput(

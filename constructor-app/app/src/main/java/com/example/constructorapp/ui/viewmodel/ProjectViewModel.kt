@@ -98,8 +98,80 @@ class ProjectViewModel(private val repository: ProjectRepository) : ViewModel() 
         }
     }
 
+    // Employees
+    private val _employees = MutableStateFlow<List<com.example.constructorapp.data.remote.EmployeeDto>>(emptyList())
+    val employees: StateFlow<List<com.example.constructorapp.data.remote.EmployeeDto>> = _employees.asStateFlow()
+
+    // Contractors
+    private val _contractors = MutableStateFlow<List<com.example.constructorapp.data.remote.ContractorDto>>(emptyList())
+    val contractors: StateFlow<List<com.example.constructorapp.data.remote.ContractorDto>> = _contractors.asStateFlow()
+
+    // Payout runs
+    private val _payoutRuns = MutableStateFlow<List<com.example.constructorapp.data.remote.PayoutRunDto>>(emptyList())
+    val payoutRuns: StateFlow<List<com.example.constructorapp.data.remote.PayoutRunDto>> = _payoutRuns.asStateFlow()
+
     fun resetSubmitState() {
         _worklogSubmitState.value = SubmitState.Idle
+    }
+
+    fun loadEmployees() {
+        viewModelScope.launch {
+            val res = repository.getEmployees()
+            if (res.isSuccess) {
+                _employees.value = res.getOrNull() ?: emptyList()
+            }
+        }
+    }
+
+    fun addEmployee(employee: com.example.constructorapp.data.remote.EmployeeDto, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val res = repository.createEmployee(employee)
+            if (res.isSuccess) {
+                loadEmployees()
+                onDone(true)
+            } else {
+                onDone(false)
+            }
+        }
+    }
+
+    fun removeEmployee(id: String) {
+        viewModelScope.launch {
+            val res = repository.deleteEmployee(id)
+            if (res.isSuccess) {
+                loadEmployees()
+            }
+        }
+    }
+
+    fun loadContractors() {
+        viewModelScope.launch {
+            val res = repository.getContractors()
+            if (res.isSuccess) {
+                _contractors.value = res.getOrNull() ?: emptyList()
+            }
+        }
+    }
+
+    fun loadPayoutRuns(projectId: String) {
+        viewModelScope.launch {
+            val res = repository.getPayoutRuns(projectId)
+            if (res.isSuccess) {
+                _payoutRuns.value = res.getOrNull() ?: emptyList()
+            }
+        }
+    }
+
+    fun submitPayoutRun(payoutRun: com.example.constructorapp.data.remote.PayoutRunDto, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val res = repository.createPayoutRun(payoutRun)
+            if (res.isSuccess) {
+                loadPayoutRuns(payoutRun.projectId)
+                onDone(true)
+            } else {
+                onDone(false)
+            }
+        }
     }
 }
 

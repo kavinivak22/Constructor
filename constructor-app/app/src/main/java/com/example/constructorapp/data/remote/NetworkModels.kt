@@ -52,7 +52,13 @@ data class LaborEntryDto(
     @SerialName("contractor_name") val contractorName: String,
     val category: String? = null,
     @SerialName("work_description") val workDescription: String? = null,
-    @SerialName("payment_status") val paymentStatus: String = "Pending"
+    @SerialName("payment_status") val paymentStatus: String = "Pending",
+    @SerialName("payout_class") val payoutClass: String = "NMR",
+    @SerialName("work_type") val workType: String? = null,
+    @SerialName("work_done_quantity") val workDoneQuantity: Double? = null,
+    @SerialName("work_done_unit") val workDoneUnit: String? = null,
+    @SerialName("payout_rate") val payoutRate: Double? = null,
+    @SerialName("total_payout") val totalPayout: Double? = null
 )
 
 @Serializable
@@ -93,4 +99,117 @@ data class PersonalNoteDto(
     @SerialName("due_date") val dueDate: String? = null,
     @SerialName("is_completed") val isCompleted: Boolean = false,
     @SerialName("created_at") val createdAt: String? = null
+)
+
+// ─── Granular Permissions (Matching Web AddEmployeeDialog) ───────────────────
+
+@Serializable
+data class CompanyPermissions(
+    val manageCompany: Boolean = false,
+    val manageEmployees: Boolean = false,
+    val viewFinancials: Boolean = false,
+    val manageSalaries: Boolean = false
+)
+
+@Serializable
+data class ProjectsPermissions(
+    val viewAllProjects: Boolean = false,
+    val createProjects: Boolean = false,
+    val editProjects: Boolean = false,
+    val deleteProjects: Boolean = false,
+    val manageProjectMembers: Boolean = false
+)
+
+@Serializable
+data class ExpensesPermissions(
+    val viewExpenses: Boolean = false,
+    val createExpenses: Boolean = false,
+    val approveExpenses: Boolean = false,
+    val deleteExpenses: Boolean = false,
+    val exportExpenses: Boolean = false
+)
+
+@Serializable
+data class InventoryPermissions(
+    val viewInventory: Boolean = false,
+    val manageInventory: Boolean = false,
+    val logMaterialUsage: Boolean = false,
+    val manageSuppliers: Boolean = false,
+    val materialEstimation: Boolean = false
+)
+
+@Serializable
+data class PurchaseOrdersPermissions(
+    val viewPurchaseOrders: Boolean = false,
+    val createPurchaseOrders: Boolean = false,
+    val approvePurchaseOrders: Boolean = false,
+    val completePurchaseOrders: Boolean = false
+)
+
+@Serializable
+data class WorklogsPermissions(
+    val viewWorklogs: Boolean = false,
+    val createWorklogs: Boolean = false,
+    val approveWorklogs: Boolean = false,
+    val exportWorklogs: Boolean = false
+)
+
+@Serializable
+data class PouchesPermissions(
+    val viewPouches: Boolean = false,
+    val requestPouchFunds: Boolean = false,
+    val approvePouchFunds: Boolean = false
+)
+
+@Serializable
+data class DocumentsPermissions(
+    val viewDocuments: Boolean = false,
+    val uploadDocuments: Boolean = false,
+    val deleteDocuments: Boolean = false
+)
+
+@Serializable
+data class EmployeePermissions(
+    val company: CompanyPermissions = CompanyPermissions(),
+    val projects: ProjectsPermissions = ProjectsPermissions(),
+    val expenses: ExpensesPermissions = ExpensesPermissions(),
+    val inventory: InventoryPermissions = InventoryPermissions(),
+    val purchaseOrders: PurchaseOrdersPermissions = PurchaseOrdersPermissions(),
+    val worklogs: WorklogsPermissions = WorklogsPermissions(),
+    val pouches: PouchesPermissions = PouchesPermissions(),
+    val documents: DocumentsPermissions = DocumentsPermissions()
+)
+
+@Serializable
+data class EmployeeDto(
+    val id: String? = null,
+    @SerialName("company_id") val companyId: String? = null,
+    val name: String,
+    val email: String,
+    val role: String,
+    val phone: String? = null,
+    val status: String = "active",
+    val permissions: EmployeePermissions = EmployeePermissions()
+)
+
+@Serializable
+data class ContractorDto(
+    val id: String,
+    val name: String,
+    val phone: String? = null,
+    val trade: String? = null,
+    @SerialName("payout_type") val payoutType: String = "NMR",
+    @SerialName("default_rate") val defaultRate: Double = 0.0,
+    @SerialName("company_id") val companyId: String? = null
+)
+
+@Serializable
+data class PayoutRunDto(
+    val id: String? = null,
+    @SerialName("project_id") val projectId: String,
+    @SerialName("contractor_name") val contractorName: String,
+    @SerialName("total_amount") val totalAmount: Double,
+    @SerialName("payout_class") val payoutClass: String,
+    val status: String = "Pending",
+    @SerialName("run_date") val runDate: String
 )
