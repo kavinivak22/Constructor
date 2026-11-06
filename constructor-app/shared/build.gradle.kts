@@ -12,7 +12,7 @@ kotlin {
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "SharedApp"
-            isStatic = true
+            isStatic = false
         }
     }
 

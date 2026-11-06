@@ -62,6 +62,19 @@ jobs:
           cd ..
           mkdir -p build-output
           find ios/build/Build/Products/Debug-iphonesimulator -name "*.app" -exec cp -R {} build-output/ \;
+
+          echo "Embedding SharedApp.framework into Constructor.app/Frameworks..."
+          mkdir -p build-output/Constructor.app/Frameworks
+          cp -R ios/Frameworks/SharedApp.framework build-output/Constructor.app/Frameworks/
+
+          echo "Ad-hoc codesigning embedded framework and app bundle..."
+          codesign --force --sign - --timestamp=none build-output/Constructor.app/Frameworks/SharedApp.framework
+          codesign --force --sign - --timestamp=none build-output/Constructor.app
+
+          echo "Verifying Constructor.app structure and framework:"
+          ls -la build-output/Constructor.app
+          ls -la build-output/Constructor.app/Frameworks
+
           cd build-output
           zip -r ../appetize-upload.zip *.app
           cd ..

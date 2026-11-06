@@ -184,6 +184,7 @@
 				);
 				OTHER_LDFLAGS = (
 					"$(inherited)",
+					"-ObjC",
 					"-framework",
 					"SharedApp",
 				);
@@ -217,6 +218,7 @@
 				);
 				OTHER_LDFLAGS = (
 					"$(inherited)",
+					"-ObjC",
 					"-framework",
 					"SharedApp",
 				);
