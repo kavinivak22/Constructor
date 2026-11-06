@@ -16,6 +16,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.work.WorkManager
 import com.example.constructorapp.data.local.AppDatabase
+import com.example.constructorapp.data.remote.SupabaseClient
 import com.example.constructorapp.data.repository.ProjectRepository
 import com.example.constructorapp.data.repository.ReminderRepository
 import com.example.constructorapp.theme.ConstructorAppTheme
@@ -27,7 +28,7 @@ class MainActivity : ComponentActivity() {
 
     // Lazy initialization of Database & Repositories
     private val database by lazy { AppDatabase.getDatabase(applicationContext) }
-    private val projectRepository by lazy { ProjectRepository(database.appDao) }
+    private val projectRepository by lazy { ProjectRepository(database) }
     private val reminderRepository by lazy { ReminderRepository(database.appDao) }
     private val workManager by lazy { WorkManager.getInstance(applicationContext) }
 
@@ -61,6 +62,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Initialize Supabase session persistence
+        SupabaseClient.init(applicationContext)
 
         // Request runtime permissions dynamically
         requestPermissions()

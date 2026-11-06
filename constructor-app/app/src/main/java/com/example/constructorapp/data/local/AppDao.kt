@@ -34,6 +34,9 @@ interface AppDao {
     @Query("SELECT * FROM projects")
     fun getProjects(): Flow<List<ProjectEntity>>
 
+    @Query("SELECT * FROM projects")
+    suspend fun getProjectsSync(): List<ProjectEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProjects(projects: List<ProjectEntity>)
 

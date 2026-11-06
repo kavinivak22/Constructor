@@ -16,5 +16,6 @@ data class ProjectEntity(
     val clientPhone: String? = null,
     val location: String?,
     val budget: Double,
-    val companyId: String
+    val companyId: String,
+    val thumbnailUrl: String? = null
 )

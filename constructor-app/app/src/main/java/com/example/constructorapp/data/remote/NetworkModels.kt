@@ -35,13 +35,22 @@ data class ProjectDto(
     @SerialName("clientPhone") val clientPhone: String? = null,
     val location: String? = null,
     val budget: Double = 0.0,
-    @SerialName("companyId") val companyId: String
+    @SerialName("companyId") val companyId: String,
+    @SerialName("site_id") val siteId: String? = null,
+    @SerialName("thumbnail_url") val thumbnailUrl: String? = null
+)
+
+@Serializable
+data class ProjectSiteDto(
+    val id: String,
+    @SerialName("site_id") val siteId: String? = null
 )
 
 @Serializable
 data class DailyWorklogDto(
     val id: String? = null,
     @SerialName("project_id") val projectId: String,
+    val title: String? = null,
     val date: String, // Format YYYY-MM-DD
     @SerialName("created_by") val createdBy: String? = null
 )
@@ -81,12 +90,57 @@ data class WorklogMaterialDto(
 )
 
 @Serializable
+data class WorklogPhotoDto(
+    val id: String? = null,
+    @SerialName("worklog_id") val worklogId: String,
+    @SerialName("photo_url") val photoUrl: String,
+    val caption: String? = null,
+    @SerialName("created_at") val createdAt: String? = null
+)
+
+@Serializable
 data class ProjectMaterialDto(
     val id: String? = null,
-    @SerialName("project_id") val projectId: String,
-    val name: String,
-    val quantity: Double,
-    val unit: String
+    @SerialName("project_id") val projectId: String? = null,
+    @SerialName("site_id") val siteId: String? = null,
+    val name: String = "",
+    val category: String? = null,
+    @SerialName("unit_of_measurement") val unitOfMeasurement: String? = null,
+    @SerialName("current_stock") val currentStock: Double? = null,
+    @SerialName("minimum_stock_level") val minimumStockLevel: Double? = null,
+    @SerialName("unit_cost") val unitCost: Double? = null,
+    @SerialName("supplier_name") val supplierName: String? = null,
+    @SerialName("supplier_contact") val supplierContact: String? = null,
+    @SerialName("image_url") val imageUrl: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null,
+    val quantity: Double = 0.0,
+    val unit: String = ""
+) {
+    val effectiveQuantity: Double
+        get() = currentStock ?: quantity
+
+    val effectiveMinQuantity: Double
+        get() = minimumStockLevel ?: 0.0
+
+    val effectiveUnit: String
+        get() = unitOfMeasurement?.takeIf { it.isNotBlank() } ?: unit.takeIf { it.isNotBlank() } ?: "units"
+
+    val effectiveCost: Double
+        get() = unitCost ?: 0.0
+
+    val effectiveSupplier: String
+        get() = supplierName ?: ""
+}
+
+@Serializable
+data class MaterialLogDto(
+    val id: String? = null,
+    @SerialName("material_id") val materialId: String,
+    @SerialName("user_id") val userId: String? = null,
+    @SerialName("change_amount") val changeAmount: Double = 0.0,
+    val purpose: String? = null,
+    @SerialName("created_at") val createdAt: String? = null
 )
 
 @Serializable
@@ -194,6 +248,16 @@ data class EmployeeDto(
 )
 
 @Serializable
+data class CompanyUserDto(
+    val id: String,
+    @SerialName("display_name") val displayName: String? = null,
+    @SerialName("full_name") val fullName: String? = null,
+    val email: String? = null,
+    val role: String? = null,
+    @SerialName("company_id") val companyId: String? = null
+)
+
+@Serializable
 data class ContractorDto(
     val id: String,
     val name: String,
@@ -218,13 +282,31 @@ data class PayoutRunDto(
 @Serializable
 data class TaskItemDto(
     val id: String? = null,
-    @SerialName("project_id") val projectId: String,
+    @SerialName("project_id") val projectId: String? = null,
     val title: String,
     val description: String? = null,
-    @SerialName("is_completed") val isCompleted: Boolean = false,
+    val status: String = "pending",
     @SerialName("due_date") val dueDate: String? = null,
-    val priority: String = "Medium",
-    @SerialName("assigned_to") val assignedTo: String? = null
+    val priority: String? = "medium",
+    @SerialName("assigned_to") val assignedTo: String? = null,
+    @SerialName("created_by") val createdBy: String? = null
+) {
+    val isCompleted: Boolean
+        get() = status.equals("completed", ignoreCase = true)
+}
+
+@Serializable
+data class DocumentDto(
+    val id: String? = null,
+    @SerialName("project_id") val projectId: String,
+    @SerialName("uploader_id") val uploaderId: String? = null,
+    val name: String,
+    val url: String = "",
+    val size: Long = 0L,
+    val type: String = "note", // note, pdf, image, dwg, blueprint, etc.
+    val category: String = "Notes", // Notes, Blueprints, Designs, Details, Specifications
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null
 )
 
 @Serializable

@@ -1,36 +1,45 @@
 package com.example.constructorapp.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.constructorapp.data.remote.PouchTransactionDto
+import com.example.constructorapp.data.remote.DocumentDto
+import com.example.constructorapp.data.remote.SupabaseClient
 import com.example.constructorapp.theme.*
 import com.example.constructorapp.ui.viewmodel.ProjectViewModel
-import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProjectPouchScreen(
     projectId: String,
@@ -39,152 +48,197 @@ fun ProjectPouchScreen(
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val transactions by viewModel.pouchTransactions.collectAsState()
-    var isAddExpenseOpen by remember { mutableStateOf(false) }
+    val clipboardManager = LocalClipboardManager.current
+    val rawDocuments by viewModel.documents.collectAsState()
+    val isDocumentsLoading by viewModel.isDocumentsLoading.collectAsState()
+    val allProjects by viewModel.projects.collectAsState()
 
-    LaunchedEffect(projectId) {
-        viewModel.loadPouchTransactions(projectId)
+    var activeProjectId by remember(projectId, allProjects) {
+        mutableStateOf(
+            if (projectId.isNotBlank()) projectId
+            else allProjects.firstOrNull()?.id ?: ""
+        )
     }
 
-    val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
+    val currentProjectName = remember(activeProjectId, allProjects) {
+        allProjects.find { it.id == activeProjectId }?.name ?: projectName.ifBlank { "Project Pouch" }
+    }
 
-    // Initial dummy data if db is empty for preview
-    val displayTransactions = remember(transactions) {
-        if (transactions.isNotEmpty()) transactions
-        else listOf(
-            PouchTransactionDto(
-                projectId = projectId,
-                amount = 450.0,
-                category = "Site Meals & Tea",
-                description = "Morning tea and snacks for 12 masons",
-                date = "2026-10-27",
-                transactionType = "Expense"
+    var selectedCategoryFilter by remember { mutableStateOf("All") }
+    var isAddItemOpen by remember { mutableStateOf(false) }
+    var viewingDocument by remember { mutableStateOf<DocumentDto?>(null) }
+
+    LaunchedEffect(activeProjectId) {
+        if (activeProjectId.isNotBlank()) {
+            viewModel.loadDocuments(activeProjectId)
+        }
+    }
+
+    // Default starter vault items for initial project setup
+    val starterTemplates = remember(activeProjectId) {
+        listOf(
+            DocumentDto(
+                id = "demo-bp-1",
+                projectId = activeProjectId,
+                name = "Architectural Floor Plan Rev 3",
+                url = "https://drive.google.com/open?id=architectural-blueprint-final",
+                size = 3450000L,
+                type = "pdf",
+                category = "Blueprints",
+                createdAt = "2026-10-25T10:00:00Z"
             ),
-            PouchTransactionDto(
-                projectId = projectId,
-                amount = 1200.0,
-                category = "Urgent Hardware",
-                description = "Binding wire 10kg & 3-inch nails from local shop",
-                date = "2026-10-26",
-                transactionType = "Expense"
+            DocumentDto(
+                id = "demo-des-1",
+                projectId = activeProjectId,
+                name = "3D Exterior Elevation & Facade Render",
+                url = "https://drive.google.com/open?id=exterior-elevation-render",
+                size = 8200000L,
+                type = "image",
+                category = "Designs",
+                createdAt = "2026-10-22T14:30:00Z"
             ),
-            PouchTransactionDto(
-                projectId = projectId,
-                amount = 800.0,
-                category = "Fuel & Diesel",
-                description = "5 liters diesel for concrete vibrator engine",
-                date = "2026-10-25",
-                transactionType = "Expense"
+            DocumentDto(
+                id = "demo-note-1",
+                projectId = activeProjectId,
+                name = "Site Benchmark Dimensions & Foundation Depth",
+                url = "Foundation footings depth: 5ft 6in below natural ground. Column center spacing: 12ft 4in C/C. Bearing capacity verified at 180 kN/sq.m.",
+                size = 1200L,
+                type = "note",
+                category = "Notes",
+                createdAt = "2026-10-20T08:15:00Z"
+            ),
+            DocumentDto(
+                id = "demo-spec-1",
+                projectId = activeProjectId,
+                name = "Steel Rebar & Concrete Mix Grade Specifications",
+                url = "Slab: M25 (1:1:2). Columns & Beams: M25 with Fe550D TMT bars. Min lap length: 48d. 28-day target cube strength: 31.6 N/mm².",
+                size = 2400L,
+                type = "note",
+                category = "Specifications",
+                createdAt = "2026-10-18T16:00:00Z"
             )
         )
     }
 
-    val totalSpent = displayTransactions.filter { it.transactionType == "Expense" }.sumOf { it.amount }
-    val initialDisbursed = 15000.0
-    val inHandBalance = initialDisbursed - totalSpent
+    val displayDocuments = remember(rawDocuments, starterTemplates) {
+        if (rawDocuments.isNotEmpty()) rawDocuments else starterTemplates
+    }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Site Cash & Pouch",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = TextPrimary
-                        )
-                        Text(
-                            text = "$projectName • Petty Cash Ledger",
-                            fontSize = 11.sp,
-                            color = TextSecondary
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = TextPrimary
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = SlateSurface,
-                    titleContentColor = TextPrimary
-                )
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { isAddExpenseOpen = true },
-                containerColor = BrandPrimary,
-                contentColor = Color.White,
-                shape = CircleShape
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Record Site Expense")
-            }
-        },
-        containerColor = SlateBackground
-    ) { paddingValues ->
-        LazyColumn(
+    val categories = listOf("All", "Blueprints", "Designs", "Notes", "Specifications", "Important Details")
+
+    val filteredList = remember(displayDocuments, selectedCategoryFilter) {
+        if (selectedCategoryFilter == "All") displayDocuments
+        else displayDocuments.filter { it.category.equals(selectedCategoryFilter, ignoreCase = true) }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(SlateBackground)
+    ) {
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .statusBarsPadding()
         ) {
-            // Balance Overview Card
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = SlateSurface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, SlateBorder)
+            // Top Bar
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.White.copy(alpha = 0.90f),
+                border = BorderStroke(1.dp, Color(0x150F172A)),
+                shadowElevation = 1.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
                 ) {
-                    Column(modifier = Modifier.padding(18.dp)) {
-                        Text(
-                            text = "AVAILABLE PETTY CASH",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = BrandPrimary,
-                            letterSpacing = 1.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        Text(
-                            text = currencyFormatter.format(inHandBalance),
-                            fontSize = 26.sp,
-                            fontWeight = FontWeight.Black,
-                            color = if (inHandBalance > 3000) EmeraldSuccess else AmberWarning
-                        )
-
-                        Spacer(modifier = Modifier.height(14.dp))
-                        HorizontalDivider(color = SlateDivider)
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = onBackClick,
+                            modifier = Modifier.size(36.dp)
                         ) {
-                            Column {
-                                Text("Disbursed by Office", fontSize = 11.sp, color = TextSecondary)
-                                Text(
-                                    text = currencyFormatter.format(initialDisbursed),
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = TextPrimary
-                                )
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text("Total Site Spent", fontSize = 11.sp, color = TextSecondary)
-                                Text(
-                                    text = currencyFormatter.format(totalSpent),
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = RoseDanger
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = TextPrimary
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Project Pouch",
+                                fontFamily = OutfitFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = "$currentProjectName • Storage & Blueprints",
+                                fontFamily = PlusJakartaSansFontFamily,
+                                fontSize = 11.sp,
+                                color = TextSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        Button(
+                            onClick = { isAddItemOpen = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Add,
+                                contentDescription = "Add",
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Store Item",
+                                fontFamily = PlusJakartaSansFontFamily,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                        }
+                    }
+
+                    // Project Switcher if multiple projects exist
+                    if (allProjects.size > 1) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            items(allProjects) { p ->
+                                val isSelected = p.id == activeProjectId
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = { activeProjectId = p.id },
+                                    label = {
+                                        Text(
+                                            text = p.name,
+                                            fontFamily = PlusJakartaSansFontFamily,
+                                            fontSize = 11.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = BrandPrimary.copy(alpha = 0.15f),
+                                        selectedLabelColor = BrandPrimary,
+                                        containerColor = Color.White.copy(alpha = 0.8f),
+                                        labelColor = TextSecondary
+                                    ),
+                                    shape = RoundedCornerShape(20.dp),
+                                    border = BorderStroke(1.dp, if (isSelected) BrandPrimary.copy(alpha = 0.5f) else Color(0x150F172A))
                                 )
                             }
                         }
@@ -192,78 +246,169 @@ fun ProjectPouchScreen(
                 }
             }
 
-            // Quick Category Overview
-            item {
-                Text(
-                    text = "SPENDING BREAKDOWN",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = BrandPrimary,
-                    letterSpacing = 1.sp
+            // Category Filter Row
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                items(categories) { cat ->
+                    val isSelected = selectedCategoryFilter == cat
+                    val count = if (cat == "All") displayDocuments.size else displayDocuments.count { it.category.equals(cat, ignoreCase = true) }
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { selectedCategoryFilter = cat },
+                        label = {
+                            Text(
+                                text = "$cat ($count)",
+                                fontFamily = PlusJakartaSansFontFamily,
+                                fontSize = 11.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = BrandPrimary,
+                            selectedLabelColor = Color.White,
+                            containerColor = Color.White,
+                            labelColor = TextPrimary
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, if (isSelected) BrandPrimary else Color(0x200F172A))
+                    )
+                }
+            }
+
+            // Storage Overview Card
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                StorageStatPill(
+                    title = "Blueprints",
+                    count = displayDocuments.count { it.category.equals("Blueprints", ignoreCase = true) },
+                    icon = Icons.Outlined.Architecture,
+                    color = Color(0xFF2563EB),
+                    modifier = Modifier.weight(1f)
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    CategoryPill(
-                        icon = Icons.Default.Fastfood,
-                        label = "Tea & Snacks",
-                        color = AmberWarning,
-                        modifier = Modifier.weight(1f)
-                    )
-                    CategoryPill(
-                        icon = Icons.Default.Build,
-                        label = "Hardware",
-                        color = SkyInfo,
-                        modifier = Modifier.weight(1f)
-                    )
-                    CategoryPill(
-                        icon = Icons.Default.LocalGasStation,
-                        label = "Fuel / Diesel",
-                        color = EmeraldSuccess,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+                StorageStatPill(
+                    title = "Designs & 3D",
+                    count = displayDocuments.count { it.category.equals("Designs", ignoreCase = true) },
+                    icon = Icons.Outlined.DesignServices,
+                    color = Color(0xFF7C3AED),
+                    modifier = Modifier.weight(1f)
+                )
+                StorageStatPill(
+                    title = "Site Notes",
+                    count = displayDocuments.count { it.category.equals("Notes", ignoreCase = true) || it.category.equals("Specifications", ignoreCase = true) },
+                    icon = Icons.Outlined.StickyNote2,
+                    color = EmeraldSuccess,
+                    modifier = Modifier.weight(1f)
+                )
             }
 
-            // Expense Ledger Section
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "VOUCHER & EXPENSE LEDGER",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = BrandPrimary,
-                        letterSpacing = 1.sp
-                    )
-                    Text(
-                        text = "${displayTransactions.size} records",
-                        fontSize = 11.sp,
-                        color = TextSecondary
-                    )
-                }
-            }
+            Spacer(modifier = Modifier.height(6.dp))
 
-            items(displayTransactions) { tx ->
-                PouchTransactionCard(tx = tx)
+            // Main Document List
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 40.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (filteredList.isEmpty()) {
+                    item {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color.White,
+                            border = BorderStroke(1.dp, Color(0x150F172A))
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.FolderZip,
+                                    contentDescription = null,
+                                    tint = TextSecondary,
+                                    modifier = Modifier.size(44.dp)
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = "No storage items found in this section",
+                                    fontFamily = OutfitFontFamily,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = TextPrimary
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Tap 'Store Item' to upload blueprints, designs, notes or site measurements.",
+                                    fontFamily = PlusJakartaSansFontFamily,
+                                    fontSize = 12.sp,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    items(filteredList) { doc ->
+                        PouchItemCard(
+                            document = doc,
+                            onClick = { viewingDocument = doc },
+                            onDelete = {
+                                doc.id?.let { id ->
+                                    viewModel.deleteDocument(id, activeProjectId) {
+                                        Toast.makeText(context, "Item deleted", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        )
+                    }
+                }
             }
         }
     }
 
-    if (isAddExpenseOpen) {
-        RecordExpenseDialog(
-            projectId = projectId,
-            onDismiss = { isAddExpenseOpen = false },
-            onSubmit = { newTx ->
-                viewModel.createPouchTransaction(newTx) {
-                    isAddExpenseOpen = false
-                    Toast.makeText(context, "Expense recorded in site pouch!", Toast.LENGTH_SHORT).show()
+    // Modal: Add New Storage Item
+    if (isAddItemOpen) {
+        AddPouchItemDialog(
+            projectId = activeProjectId,
+            projectName = currentProjectName,
+            onDismiss = { isAddItemOpen = false },
+            onSubmit = { newDoc ->
+                viewModel.addDocument(newDoc) {
+                    Toast.makeText(context, "Saved to Project Pouch", Toast.LENGTH_SHORT).show()
+                }
+                isAddItemOpen = false
+            }
+        )
+    }
+
+    // Modal: Inspect Item Details / Blueprints
+    if (viewingDocument != null) {
+        val doc = viewingDocument!!
+        InspectPouchItemDialog(
+            document = doc,
+            onDismiss = { viewingDocument = null },
+            onCopy = {
+                clipboardManager.setText(AnnotatedString(doc.url))
+                Toast.makeText(context, "Details copied to clipboard", Toast.LENGTH_SHORT).show()
+            },
+            onOpenLink = {
+                if (doc.url.startsWith("http://") || doc.url.startsWith("https://")) {
+                    try {
+                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(doc.url))
+                        context.startActivity(browserIntent)
+                    } catch (_: Exception) {
+                        Toast.makeText(context, "Could not open external link", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         )
@@ -271,186 +416,458 @@ fun ProjectPouchScreen(
 }
 
 @Composable
-fun CategoryPill(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
+fun StorageStatPill(
+    title: String,
+    count: Int,
+    icon: ImageVector,
     color: Color,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = SlateSurface),
-        border = androidx.compose.foundation.BorderStroke(1.dp, SlateBorder)
+        shape = RoundedCornerShape(12.dp),
+        color = Color.White,
+        border = BorderStroke(1.dp, Color(0x150F172A)),
+        shadowElevation = 1.dp
     ) {
-        Column(
-            modifier = Modifier.padding(10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
                     .size(28.dp)
-                    .clip(CircleShape)
-                    .background(color.copy(alpha = 0.15f)),
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(color.copy(alpha = 0.12f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(15.dp)
+                )
             }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(label, fontSize = 10.sp, fontWeight = FontWeight.Medium, color = TextPrimary, maxLines = 1)
+            Spacer(modifier = Modifier.width(6.dp))
+            Column {
+                Text(
+                    text = "$count",
+                    fontFamily = OutfitFontFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+                Text(
+                    text = title,
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 9.sp,
+                    color = TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }
 
 @Composable
-fun PouchTransactionCard(tx: PouchTransactionDto) {
-    val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
-    val (catBg, catColor) = when {
-        tx.category.contains("Tea", ignoreCase = true) || tx.category.contains("Snack", ignoreCase = true) -> AmberWarning.copy(alpha = 0.15f) to AmberWarning
-        tx.category.contains("Hardware", ignoreCase = true) || tx.category.contains("Fastener", ignoreCase = true) -> SkyInfo.copy(alpha = 0.15f) to SkyInfo
-        tx.category.contains("Fuel", ignoreCase = true) || tx.category.contains("Diesel", ignoreCase = true) -> EmeraldSuccess.copy(alpha = 0.15f) to EmeraldSuccess
-        else -> PurpleAccent.copy(alpha = 0.15f) to PurpleAccent
+fun PouchItemCard(
+    document: DocumentDto,
+    onClick: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val (catColor, catIcon) = when (document.category.lowercase()) {
+        "blueprints" -> Pair(Color(0xFF2563EB), Icons.Outlined.Architecture)
+        "designs" -> Pair(Color(0xFF7C3AED), Icons.Outlined.DesignServices)
+        "notes" -> Pair(EmeraldSuccess, Icons.Outlined.StickyNote2)
+        "specifications" -> Pair(AmberWarning, Icons.Outlined.Description)
+        else -> Pair(BrandPrimary, Icons.Outlined.FolderShared)
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = SlateSurface),
-        border = androidx.compose.foundation.BorderStroke(1.dp, SlateBorder)
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White.copy(alpha = 0.92f),
+        border = BorderStroke(1.dp, Color(0x180F172A)),
+        shadowElevation = 1.dp
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(catColor.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = catIcon,
+                    contentDescription = null,
+                    tint = catColor,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
             Column(modifier = Modifier.weight(1f)) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(catBg)
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = tx.category.uppercase(),
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = catColor
+                        text = document.name,
+                        fontFamily = OutfitFontFamily,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(catColor.copy(alpha = 0.10f))
+                            .padding(horizontal = 7.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = document.category.uppercase(),
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 8.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = catColor
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(3.dp))
 
                 Text(
-                    text = tx.description ?: "Site Disbursement",
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 13.sp,
-                    color = TextPrimary
+                    text = document.url,
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 11.5.sp,
+                    color = TextSecondary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 15.sp
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                Text(
-                    text = tx.date,
-                    fontSize = 10.sp,
-                    color = TextSecondary
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Outlined.Schedule,
+                        contentDescription = null,
+                        tint = TextSecondary.copy(alpha = 0.6f),
+                        modifier = Modifier.size(11.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (document.createdAt.isNullOrBlank()) "Saved in Pouch" else document.createdAt.take(10),
+                        fontFamily = PlusJakartaSansFontFamily,
+                        fontSize = 10.sp,
+                        color = TextSecondary.copy(alpha = 0.7f)
+                    )
+                    if (document.size > 0) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "• ${(document.size / 1024)} KB",
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 10.sp,
+                            color = TextSecondary.copy(alpha = 0.7f)
+                        )
+                    }
+                }
             }
 
-            Text(
-                text = "-${currencyFormatter.format(tx.amount)}",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = RoseDanger
-            )
+            Spacer(modifier = Modifier.width(8.dp))
+
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.DeleteOutline,
+                    contentDescription = "Delete",
+                    tint = TextSecondary.copy(alpha = 0.6f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
     }
 }
 
 @Composable
-fun RecordExpenseDialog(
+fun AddPouchItemDialog(
     projectId: String,
+    projectName: String,
     onDismiss: () -> Unit,
-    onSubmit: (PouchTransactionDto) -> Unit
+    onSubmit: (DocumentDto) -> Unit
 ) {
-    var amount by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("Site Meals & Tea") }
-    var description by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("Notes") }
+    var detailsOrUrl by remember { mutableStateOf("") }
 
-    val categories = listOf("Site Meals & Tea", "Urgent Hardware", "Fuel & Diesel", "Transport & Auto", "Misc Labour Refreshment")
-    val today = remember {
-        SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
-    }
+    val categories = listOf("Notes", "Blueprints", "Designs", "Specifications", "Important Details")
+    val isValid = name.trim().isNotEmpty() && detailsOrUrl.trim().isNotEmpty()
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Record Site Cash Expense", fontWeight = FontWeight.Bold, color = TextPrimary) },
+        title = {
+            Column {
+                Text(
+                    text = "Store in Project Pouch",
+                    fontFamily = OutfitFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = TextPrimary
+                )
+                Text(
+                    text = projectName,
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 11.sp,
+                    color = TextSecondary
+                )
+            }
+        },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 OutlinedTextField(
-                    value = amount,
-                    onValueChange = { amount = it },
-                    label = { Text("Amount Spent (₹)", fontSize = 11.sp) },
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Title / Item Name *", color = TextSecondary, fontSize = 12.sp) },
+                    placeholder = { Text("e.g. Electrical Layout or Foundation Notes", color = TextSecondary) },
                     modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    colors = calculatorFieldColors()
+                    shape = RoundedCornerShape(12.dp),
+                    colors = lightDialogTextFieldColors()
                 )
 
-                Text("Expense Category", fontSize = 11.sp, color = TextSecondary)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "Category",
+                    fontFamily = PlusJakartaSansFontFamily,
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
                     categories.take(3).forEach { cat ->
+                        val isSelected = category == cat
                         FilterChip(
-                            selected = category == cat,
+                            selected = isSelected,
                             onClick = { category = cat },
-                            label = { Text(cat.substringBefore(" & "), fontSize = 10.sp) },
+                            label = { Text(cat, fontSize = 10.5.sp) },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = BrandPrimary,
-                                selectedLabelColor = Color.White
+                                selectedContainerColor = BrandPrimary.copy(alpha = 0.15f),
+                                selectedLabelColor = BrandPrimary
+                            )
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    categories.drop(3).forEach { cat ->
+                        val isSelected = category == cat
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { category = cat },
+                            label = { Text(cat, fontSize = 10.5.sp) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = BrandPrimary.copy(alpha = 0.15f),
+                                selectedLabelColor = BrandPrimary
                             )
                         )
                     }
                 }
 
                 OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Expense Details / Purpose", fontSize = 11.sp) },
-                    placeholder = { Text("e.g. Nails & binding wire for slab", color = TextSecondary) },
+                    value = detailsOrUrl,
+                    onValueChange = { detailsOrUrl = it },
+                    label = { Text("Details, Notes or Link / URL *", color = TextSecondary, fontSize = 12.sp) },
+                    placeholder = { Text("Type structural notes, site measurements, or paste Google Drive / Dropbox link...", color = TextSecondary) },
                     modifier = Modifier.fillMaxWidth(),
-                    minLines = 2,
-                    colors = calculatorFieldColors()
+                    minLines = 4,
+                    maxLines = 6,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = lightDialogTextFieldColors()
                 )
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    val amt = amount.toDoubleOrNull() ?: 0.0
-                    if (amt > 0 && description.isNotBlank()) {
+                    if (isValid) {
+                        val isUrl = detailsOrUrl.startsWith("http://") || detailsOrUrl.startsWith("https://")
+                        val itemType = if (isUrl) {
+                            if (detailsOrUrl.endsWith(".pdf", ignoreCase = true)) "pdf"
+                            else if (detailsOrUrl.endsWith(".png", ignoreCase = true) || detailsOrUrl.endsWith(".jpg", ignoreCase = true)) "image"
+                            else "link"
+                        } else "note"
+
                         onSubmit(
-                            PouchTransactionDto(
+                            DocumentDto(
+                                id = UUID.randomUUID().toString(),
                                 projectId = projectId,
-                                amount = amt,
+                                uploaderId = SupabaseClient.userId,
+                                name = name.trim(),
+                                url = detailsOrUrl.trim(),
+                                size = detailsOrUrl.length.toLong(),
+                                type = itemType,
                                 category = category,
-                                description = description.trim(),
-                                transactionType = "Expense",
-                                status = "Approved",
-                                date = today
+                                createdAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
                             )
                         )
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
+                enabled = isValid,
+                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Save Expense")
+                Text("Save Item", color = Color.White, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            OutlinedButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss) {
                 Text("Cancel", color = TextSecondary)
             }
         },
-        containerColor = SlateSurface
+        containerColor = Color.White,
+        shape = RoundedCornerShape(20.dp)
+    )
+}
+
+@Composable
+fun InspectPouchItemDialog(
+    document: DocumentDto,
+    onDismiss: () -> Unit,
+    onCopy: () -> Unit,
+    onOpenLink: () -> Unit
+) {
+    val isUrl = document.url.startsWith("http://") || document.url.startsWith("https://")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = document.name,
+                    fontFamily = OutfitFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp,
+                    color = TextPrimary
+                )
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(BrandPrimary.copy(alpha = 0.12f))
+                        .padding(horizontal = 10.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = document.category.uppercase(),
+                        fontFamily = PlusJakartaSansFontFamily,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = BrandPrimary
+                    )
+                }
+
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFFF8FAFC),
+                    border = BorderStroke(1.dp, SlateBorder)
+                ) {
+                    Text(
+                        text = document.url,
+                        fontFamily = PlusJakartaSansFontFamily,
+                        fontSize = 13.sp,
+                        color = TextPrimary,
+                        modifier = Modifier.padding(12.dp),
+                        lineHeight = 18.sp
+                    )
+                }
+
+                if (isUrl) {
+                    Text(
+                        text = "This item links to an external cloud resource or blueprint document.",
+                        fontFamily = PlusJakartaSansFontFamily,
+                        fontSize = 11.sp,
+                        color = TextSecondary
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (isUrl) {
+                    Button(
+                        onClick = onOpenLink,
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = Color.White
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Open", color = Color.White, fontSize = 12.sp)
+                    }
+                }
+                Button(
+                    onClick = onCopy,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F172A)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.ContentCopy,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Copy", color = Color.White, fontSize = 12.sp)
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close", color = TextSecondary)
+            }
+        },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(20.dp)
     )
 }

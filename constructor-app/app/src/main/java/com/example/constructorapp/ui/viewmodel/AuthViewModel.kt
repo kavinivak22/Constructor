@@ -26,9 +26,12 @@ class AuthViewModel : ViewModel() {
                 val response = SupabaseClient.api.login(LoginRequest(email, password))
                 if (response.isSuccessful && response.body() != null) {
                     val body = response.body()!!
-                    SupabaseClient.authToken = body.accessToken
-                    SupabaseClient.userId = body.user.id
-                    SupabaseClient.userEmail = body.user.email
+                    SupabaseClient.sessionManager.saveTokens(
+                        accessToken = body.accessToken,
+                        refreshToken = body.refreshToken,
+                        userId = body.user.id,
+                        email = body.user.email
+                    )
 
                     _uiState.value = AuthUiState.Success
                     onSuccess()
