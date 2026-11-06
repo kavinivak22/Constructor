@@ -47,28 +47,20 @@ jobs:
       - name: Build iOS Simulator App
         run: |
           echo "Compiling native iOS simulator target..."
-          # Builds simulator binary (.app) without requiring physical Apple Developer provisioning profiles
-          if [ -d "ios" ]; then
-            cd ios
-            xcodebuild -scheme Constructor -sdk iphonesimulator -configuration Debug -derivedDataPath build
-            cd ..
-            mkdir -p build-output
-            find ios/build/Build/Products/Debug-iphonesimulator -name "*.app" -exec cp -R {} build-output/ \;
-            cd build-output
-            zip -r ../ios-simulator-app.zip *.app
-            cd ..
-          else
-            echo "Packaging iOS configuration..."
-            mkdir -p build-output
-            echo "iOS Target ready for cloud compilation" > build-output/info.txt
-            zip -r ios-simulator-app.zip build-output
-          fi
+          cd ios
+          xcodebuild -scheme Constructor -sdk iphonesimulator -configuration Debug -derivedDataPath build
+          cd ..
+          mkdir -p build-output
+          find ios/build/Build/Products/Debug-iphonesimulator -name "*.app" -exec cp -R {} build-output/ \;
+          cd build-output
+          zip -r ../appetize-upload.zip *.app
+          cd ..
 
       - name: Upload iOS Simulator Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ios-simulator-app
-          path: ios-simulator-app.zip
+          name: Constructor-iOS-Simulator
+          path: build-output/Constructor.app
           retention-days: 14
 
       - name: Upload to Appetize.io (Optional Free In-Browser Simulator)
@@ -79,5 +71,5 @@ jobs:
           echo "Uploading to Appetize.io for instant in-browser testing..."
           curl --location --request POST 'https://api.appetize.io/v1/apps' \
             --header "Authorization: Bearer $APPETIZE_API_TOKEN" \
-            --form "file=@ios-simulator-app.zip" \
+            --form "file=@appetize-upload.zip" \
             --form "platform=ios"
