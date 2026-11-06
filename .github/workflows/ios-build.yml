@@ -58,7 +58,7 @@ jobs:
 
           echo "Compiling native iOS application..."
           cd ios
-          xcodebuild -scheme Constructor -sdk iphonesimulator -configuration Debug -derivedDataPath build
+          xcodebuild -scheme Constructor -sdk iphonesimulator -arch arm64 -configuration Debug -derivedDataPath build
           cd ..
           mkdir -p build-output
           find ios/build/Build/Products/Debug-iphonesimulator -name "*.app" -exec cp -R {} build-output/ \;
