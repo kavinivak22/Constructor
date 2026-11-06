@@ -46,7 +46,17 @@ jobs:
 
       - name: Build iOS Simulator App
         run: |
-          echo "Compiling native iOS simulator target..."
+          echo "Compiling Compose Multiplatform SharedApp for iOS..."
+          if [ -d "constructor-app" ]; then
+            cd constructor-app
+            chmod +x gradlew
+            ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 --no-daemon || true
+            cd ..
+            mkdir -p ios/Frameworks
+            find constructor-app/shared/build -name "SharedApp.framework" -exec cp -R {} ios/Frameworks/ \; || true
+          fi
+
+          echo "Compiling native iOS application..."
           cd ios
           xcodebuild -scheme Constructor -sdk iphonesimulator -configuration Debug -derivedDataPath build
           cd ..

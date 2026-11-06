@@ -177,6 +177,10 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Constructor/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Constructor;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Frameworks/**",
+				);
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -198,6 +202,10 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Constructor/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Constructor;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Frameworks/**",
+				);
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

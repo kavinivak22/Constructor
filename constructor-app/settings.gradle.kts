@@ -31,3 +31,4 @@ plugins {
 
 rootProject.name = "ConstructorApp"
 include(":app")
+include(":shared")

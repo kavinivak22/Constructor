@@ -1,37 +1,47 @@
 import SwiftUI
-import WebKit
+import UIKit
+
+#if canImport(SharedApp)
+import SharedApp
+
+struct ComposeView: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> UIViewController {
+        MainViewControllerKt.MainViewController()
+    }
+
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
+}
+#endif
 
 struct ContentView: View {
     var body: some View {
-        ConstructorWebView(urlString: "https://constructor-beta.vercel.app")
-            .ignoresSafeArea()
+        #if canImport(SharedApp)
+        ComposeView()
+            .ignoresSafeArea(.all)
+        #else
+        NativeFallbackView()
+        #endif
     }
 }
 
-struct ConstructorWebView: UIViewRepresentable {
-    let urlString: String
-
-    func makeUIView(context: Context) -> WKWebView {
-        let preferences = WKWebpagePreferences()
-        preferences.allowsContentJavaScript = true
-        
-        let configuration = WKWebViewConfiguration()
-        configuration.defaultWebpagePreferences = preferences
-        configuration.allowsInlineMediaPlayback = true
-
-        let webView = WKWebView(frame: .zero, configuration: configuration)
-        webView.scrollView.bounces = true
-        webView.isOpaque = false
-        webView.backgroundColor = .clear
-
-        if let url = URL(string: urlString) {
-            let request = URLRequest(url: url)
-            webView.load(request)
+struct NativeFallbackView: View {
+    var body: some View {
+        ZStack {
+            Color(red: 241/255, green: 245/255, blue: 249/255)
+                .ignoresSafeArea()
+            
+            VStack(spacing: 16) {
+                Text("🏗️")
+                    .font(.system(size: 60))
+                Text("Constructor Native iOS")
+                    .font(.title2.bold())
+                    .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
+                Text("Compose Multiplatform Architecture Initialized")
+                    .font(.subheadline)
+                    .foregroundColor(Color(red: 100/255, green: 116/255, blue: 139/255))
+            }
         }
-        return webView
     }
-
-    func updateUIView(_ uiView: WKWebView, context: Context) {}
 }
 
 #Preview {
