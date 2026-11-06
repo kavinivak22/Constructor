@@ -46,15 +46,15 @@ jobs:
 
       - name: Build iOS Simulator App
         run: |
-          echo "Compiling Compose Multiplatform SharedApp for iOS..."
-          if [ -d "constructor-app" ]; then
-            cd constructor-app
-            chmod +x gradlew
-            ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 --no-daemon || true
-            cd ..
-            mkdir -p ios/Frameworks
-            find constructor-app/shared/build -name "SharedApp.framework" -exec cp -R {} ios/Frameworks/ \; || true
-          fi
+          echo "Compiling Compose Multiplatform SharedApp for iOS Simulator..."
+          cd constructor-app
+          chmod +x gradlew
+          ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 --no-daemon --stacktrace
+          cd ..
+          mkdir -p ios/Frameworks
+          find constructor-app/shared/build -name "SharedApp.framework" -exec cp -R {} ios/Frameworks/ \;
+          echo "Verified SharedApp.framework in ios/Frameworks:"
+          ls -la ios/Frameworks/SharedApp.framework
 
           echo "Compiling native iOS application..."
           cd ios

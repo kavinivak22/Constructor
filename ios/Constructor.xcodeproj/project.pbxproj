@@ -179,7 +179,13 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Constructor;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
+					"$(PROJECT_DIR)/Frameworks",
 					"$(PROJECT_DIR)/Frameworks/**",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-framework",
+					"SharedApp",
 				);
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -204,7 +210,13 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Constructor;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
+					"$(PROJECT_DIR)/Frameworks",
 					"$(PROJECT_DIR)/Frameworks/**",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-framework",
+					"SharedApp",
 				);
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
