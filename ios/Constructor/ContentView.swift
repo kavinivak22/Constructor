@@ -14,7 +14,7 @@ struct ContentView: View {
     var body: some View {
         ComposeView()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .ignoresSafeArea(.all)
+            .ignoresSafeArea(.keyboard)
     }
 }
 
