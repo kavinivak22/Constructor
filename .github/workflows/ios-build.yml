@@ -46,24 +46,33 @@ jobs:
 
       - name: Build iOS Simulator App
         run: |
-          echo "Compiling Compose Multiplatform SharedApp for iOS Simulator..."
+          echo "Compiling Compose Multiplatform SharedApp for both Simulator architectures (x86_64 and arm64)..."
           cd constructor-app
           chmod +x gradlew
-          ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 --no-daemon --stacktrace
+          ./gradlew :shared:linkDebugFrameworkIosX64 :shared:linkDebugFrameworkIosSimulatorArm64 --no-daemon --stacktrace
           cd ..
-          mkdir -p ios/Frameworks
-          find constructor-app/shared/build -name "SharedApp.framework" -exec cp -R {} ios/Frameworks/ \;
-          echo "Verified SharedApp.framework in ios/Frameworks:"
-          ls -la ios/Frameworks/SharedApp.framework
 
-          echo "Compiling native iOS application..."
+          echo "Creating Universal (Fat) SharedApp.framework containing x86_64 and arm64..."
+          mkdir -p ios/Frameworks
+          ARM64_FW=$(find constructor-app/shared/build -path "*/iosSimulatorArm64/*" -name "SharedApp.framework" | head -n 1)
+          X64_FW=$(find constructor-app/shared/build -path "*/iosX64/*" -name "SharedApp.framework" | head -n 1)
+          echo "Found ARM64 framework: $ARM64_FW"
+          echo "Found X64 framework: $X64_FW"
+
+          cp -R "$ARM64_FW" ios/Frameworks/
+          lipo -create "$ARM64_FW/SharedApp" "$X64_FW/SharedApp" -output ios/Frameworks/SharedApp.framework/SharedApp
+
+          echo "Verifying universal SharedApp Mach-O slices:"
+          lipo -info ios/Frameworks/SharedApp.framework/SharedApp
+
+          echo "Compiling native iOS application for Universal Simulator (x86_64 + arm64)..."
           cd ios
-          xcodebuild -scheme Constructor -sdk iphonesimulator -arch arm64 -configuration Debug -derivedDataPath build
+          xcodebuild -scheme Constructor -sdk iphonesimulator ARCHS="x86_64 arm64" ONLY_ACTIVE_ARCH=NO -configuration Debug -derivedDataPath build
           cd ..
           mkdir -p build-output
           find ios/build/Build/Products/Debug-iphonesimulator -name "*.app" -exec cp -R {} build-output/ \;
 
-          echo "Embedding SharedApp.framework into Constructor.app/Frameworks..."
+          echo "Embedding Universal SharedApp.framework into Constructor.app/Frameworks..."
           mkdir -p build-output/Constructor.app/Frameworks
           cp -R ios/Frameworks/SharedApp.framework build-output/Constructor.app/Frameworks/
 
@@ -71,9 +80,9 @@ jobs:
           codesign --force --sign - --timestamp=none build-output/Constructor.app/Frameworks/SharedApp.framework
           codesign --force --sign - --timestamp=none build-output/Constructor.app
 
-          echo "Verifying Constructor.app structure and framework:"
-          ls -la build-output/Constructor.app
-          ls -la build-output/Constructor.app/Frameworks
+          echo "Verifying Constructor.app binary architectures:"
+          lipo -info build-output/Constructor.app/Constructor
+          lipo -info build-output/Constructor.app/Frameworks/SharedApp.framework/SharedApp
 
           cd build-output
           zip -r ../appetize-upload.zip *.app
