@@ -3,7 +3,6 @@ package com.example.constructorapp
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,12 +26,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.constructorapp.theme.*
 import com.example.constructorapp.ui.components.AlertFlipper
+import com.example.constructorapp.ui.components.AmbientBlobBackground
 import com.example.constructorapp.ui.components.FloatingBottomNav
 import com.example.constructorapp.ui.components.GlassCard
 import com.example.constructorapp.ui.components.sampleAlerts
@@ -48,35 +47,32 @@ fun App() {
                 .fillMaxSize()
                 .background(SlateBackground)
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Header (Safe-area compliant)
-                NativeHeader()
+            // Layer 1: Ambient Drifting Blobs Canvas Background (Exact Android MainScreen match)
+            AmbientBlobBackground()
 
-                // Active View Content
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                ) {
-                    when (selectedTab) {
-                        0 -> DashboardScreen(
-                            onNavigateToProjects = { selectedTab = 1 },
-                            onNavigateToOrders = { selectedTab = 2 },
-                            onNavigateToMessages = { selectedTab = 3 }
-                        )
-                        1 -> ProjectsScreen()
-                        2 -> PurchaseOrdersScreen()
-                        3 -> RemindersScreen()
-                        else -> DashboardScreen(
-                            onNavigateToProjects = { selectedTab = 1 },
-                            onNavigateToOrders = { selectedTab = 2 },
-                            onNavigateToMessages = { selectedTab = 3 }
-                        )
-                    }
+            // Layer 2: Screen Content (starts directly under status bar with NO extra top header)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
+                when (selectedTab) {
+                    0 -> DashboardScreen(
+                        onNavigateToProjects = { selectedTab = 1 },
+                        onNavigateToOrders = { selectedTab = 2 },
+                        onNavigateToMessages = { selectedTab = 3 }
+                    )
+                    1 -> ProjectsScreen()
+                    2 -> PurchaseOrdersScreen()
+                    3 -> RemindersScreen()
+                    else -> DashboardScreen(
+                        onNavigateToProjects = { selectedTab = 1 },
+                        onNavigateToOrders = { selectedTab = 2 },
+                        onNavigateToMessages = { selectedTab = 3 }
+                    )
                 }
             }
 
-            // Floating Bottom Navigation Bar (Exact 1:1 match with Android App)
+            // Layer 3: Floating Bottom Navigation Bar (Exact 1:1 match with Android App)
             FloatingBottomNav(
                 selectedTab = selectedTab,
                 onTabSelected = { selectedTab = it },
@@ -101,73 +97,6 @@ fun App() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TOP HEADER
-// ─────────────────────────────────────────────────────────────────────────────
-@Composable
-private fun NativeHeader() {
-    Surface(
-        color = SurfaceWhite,
-        shadowElevation = 1.dp,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(BrandPrimaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("🏗️", fontSize = 20.sp)
-                }
-                Column {
-                    Text(
-                        text = "CONSTRUCTOR",
-                        fontFamily = OutfitFontFamily,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = TextPrimary,
-                        letterSpacing = 0.5.sp
-                    )
-                    Text(
-                        text = "Site Construction Manager",
-                        fontFamily = PlusJakartaSansFontFamily,
-                        fontSize = 11.sp,
-                        color = TextSecondary
-                    )
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(EmeraldSuccessContainer)
-                    .border(1.dp, EmeraldSuccess.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(EmeraldSuccess))
-                    Text(
-                        "Cloud Synced",
-                        fontFamily = PlusJakartaSansFontFamily,
-                        fontSize = 10.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = EmeraldSuccess
-                    )
-                }
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // SCREEN 1: DASHBOARD (Authentic 1:1 Android Architecture)
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
@@ -177,16 +106,6 @@ private fun DashboardScreen(
     onNavigateToMessages: () -> Unit
 ) {
     var alertsList by remember { mutableStateOf(sampleAlerts) }
-    var tasks by remember {
-        mutableStateOf(
-            listOf(
-                SharedTask("task-1", "Verify steel delivery manifest for Foundation", false, "High"),
-                SharedTask("task-2", "Call electrical contractor for slab conduit approval", true, "Medium"),
-                SharedTask("task-3", "Review cement cube compression test lab report", false, "Low")
-            )
-        )
-    }
-    var newTaskTitle by remember { mutableStateOf("") }
     var isExpenseDialogOpen by remember { mutableStateOf(false) }
 
     LazyColumn(
@@ -204,7 +123,7 @@ private fun DashboardScreen(
             )
         }
 
-        // 2. Quick Actions Row (Exact Android Dashboard: 38.dp height pills)
+        // 2. Quick Actions Row (Exact Android Dashboard: 38.dp height compact pills)
         item {
             QuickActionsRow(
                 onWorklogClick = onNavigateToProjects,
@@ -249,135 +168,9 @@ private fun DashboardScreen(
             }
         }
 
-        // Projects List
-        items(sharedProjects.take(2)) { project ->
+        // Projects List (Exact Android Dashboard cards)
+        items(sharedProjects) { project ->
             ProjectCard(project)
-        }
-
-        // 5. My Tasks Section (Interactive Checklist)
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, SlateBorder),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "My Site Tasks",
-                            fontFamily = OutfitFontFamily,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
-                        Text(
-                            text = "${tasks.count { it.completed }}/${tasks.size} Done",
-                            fontFamily = PlusJakartaSansFontFamily,
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = BrandPrimary
-                        )
-                    }
-
-                    tasks.forEach { task ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable {
-                                    tasks = tasks.map {
-                                        if (it.id == task.id) it.copy(completed = !it.completed) else it
-                                    }
-                                }
-                                .padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .clip(RoundedCornerShape(5.dp))
-                                    .background(if (task.completed) EmeraldSuccess else SlateBackground)
-                                    .border(1.5.dp, if (task.completed) EmeraldSuccess else SlateBorder, RoundedCornerShape(5.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (task.completed) {
-                                    Icon(Icons.Filled.Check, contentDescription = null, tint = SurfaceWhite, modifier = Modifier.size(14.dp))
-                                }
-                            }
-
-                            Text(
-                                text = task.title,
-                                fontFamily = PlusJakartaSansFontFamily,
-                                fontSize = 12.5.sp,
-                                color = if (task.completed) TextSecondary else TextPrimary,
-                                textDecoration = if (task.completed) TextDecoration.LineThrough else TextDecoration.None,
-                                modifier = Modifier.weight(1f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-
-                            PriorityBadge(task.priority)
-                        }
-                    }
-
-                    // Add Task Field
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(SlateBackground)
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        BasicTextField(
-                            value = newTaskTitle,
-                            onValueChange = { newTaskTitle = it },
-                            modifier = Modifier.weight(1f),
-                            textStyle = TextStyle(fontFamily = PlusJakartaSansFontFamily, fontSize = 13.sp, color = TextPrimary),
-                            decorationBox = { innerTextField ->
-                                if (newTaskTitle.isEmpty()) {
-                                    Text("+ Add a new task...", fontFamily = PlusJakartaSansFontFamily, fontSize = 13.sp, color = TextSecondary)
-                                }
-                                innerTextField()
-                            }
-                        )
-                        if (newTaskTitle.isNotBlank()) {
-                            Text(
-                                text = "Save",
-                                fontFamily = PlusJakartaSansFontFamily,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = BrandPrimary,
-                                modifier = Modifier.clickable {
-                                    tasks = tasks + SharedTask("task-${tasks.size + 1}", newTaskTitle, false, "Medium")
-                                    newTaskTitle = ""
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // 6. Recent Site Activity
-        item {
-            Text(
-                text = "Recent Site Activity",
-                fontFamily = OutfitFontFamily,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-        }
-
-        items(sharedRecentActivities) { activity ->
-            RecentActivityCard(activity)
         }
     }
 
@@ -618,7 +411,7 @@ private fun ProjectsScreen() {
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .background(SurfaceWhite)
-                    .border(1.dp, SlateBorder, RoundedCornerShape(12.dp))
+                    .border(BorderStroke(1.dp, SlateBorder))
                     .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -656,7 +449,7 @@ private fun ProjectsScreen() {
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
                             .background(if (isSel) BrandPrimary else SurfaceWhite)
-                            .border(1.dp, if (isSel) BrandPrimary else SlateBorder, RoundedCornerShape(20.dp))
+                            .border(BorderStroke(1.dp, if (isSel) BrandPrimary else SlateBorder))
                             .clickable { selectedStatus = status }
                             .padding(horizontal = 14.dp, vertical = 6.dp)
                     ) {
@@ -768,7 +561,7 @@ private fun RemindersScreen() {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Team Hub & Reminders",
+                    text = "Reminders & Sync",
                     fontFamily = OutfitFontFamily,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
@@ -821,7 +614,7 @@ private fun MoreMenuDialog(onDismiss: () -> Unit, onSelect: (Int) -> Unit) {
         title = { Text("Menu Navigation", fontFamily = OutfitFontFamily, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("Dashboard", "Projects", "Purchase Orders", "Team Hub & Reminders").forEachIndexed { idx, name ->
+                listOf("Dashboard", "Projects", "Purchase Orders", "Reminders & Sync").forEachIndexed { idx, name ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -870,24 +663,6 @@ private fun ExpenseQuickDialog(onDismiss: () -> Unit) {
 // ─────────────────────────────────────────────────────────────────────────────
 // REUSABLE COMPONENTS
 // ─────────────────────────────────────────────────────────────────────────────
-@Composable
-private fun PriorityBadge(priority: String) {
-    val (bgColor, textColor) = when (priority.lowercase()) {
-        "high" -> RoseDangerContainer to RoseDanger
-        "medium" -> AmberWarningContainer to AmberWarning
-        else -> SkyInfoContainer to SkyInfo
-    }
-
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(bgColor)
-            .padding(horizontal = 8.dp, vertical = 2.dp)
-    ) {
-        Text(priority, fontFamily = PlusJakartaSansFontFamily, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = textColor)
-    }
-}
-
 @Composable
 private fun ProjectCard(project: SharedProject) {
     Card(
@@ -968,54 +743,12 @@ private fun ProjectCard(project: SharedProject) {
     }
 }
 
-@Composable
-private fun RecentActivityCard(activity: SharedRecentActivity) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, SlateBorder),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(BrandPrimaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(activity.icon, fontSize = 16.sp)
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "${activity.project}: ${activity.description}",
-                    fontFamily = PlusJakartaSansFontFamily,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = TextPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(activity.timeAgo, fontFamily = PlusJakartaSansFontFamily, fontSize = 10.5.sp, color = TextSecondary)
-            }
-        }
-    }
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // DATA MODELS & SAMPLE DATA
 // ─────────────────────────────────────────────────────────────────────────────
-private data class SharedTask(val id: String, val title: String, val completed: Boolean, val priority: String)
 private data class SharedProject(val name: String, val location: String, val status: String, val progress: Float, val budget: String, val spent: String)
 private data class SharedWorklog(val title: String, val project: String, val notes: String, val date: String, val laborCount: Int, val materialsCount: Int, val photosCount: Int)
 private data class SharedMaterial(val name: String, val unit: String, val stock: Int, val minStock: Int, val unitCost: Int)
-private data class SharedRecentActivity(val project: String, val description: String, val timeAgo: String, val icon: String)
 
 private val sharedProjects = listOf(
     SharedProject("Greenfield Villa Project", "Thillai Nagar, Trichy", "In Progress", 0.65f, "45,00,000", "28,50,000"),
@@ -1033,10 +766,4 @@ private val sharedMaterials = listOf(
     SharedMaterial("River Sand (Fine)", "CFT", 450, 100, 75),
     SharedMaterial("TMT Steel 16mm (Fe 550D)", "Kg", 850, 200, 68),
     SharedMaterial("Coarse Aggregate (20mm)", "CFT", 35, 80, 52)
-)
-
-private val sharedRecentActivities = listOf(
-    SharedRecentActivity("Greenfield Villa", "12 workers on site for first floor slab casting", "2h ago", "👷"),
-    SharedRecentActivity("Royal Residency", "Consumed 40 bags of OPC 53 Grade Cement", "4h ago", "🧱"),
-    SharedRecentActivity("Greenfield Villa", "3 site photo(s) captured & verified", "5h ago", "📸")
 )
