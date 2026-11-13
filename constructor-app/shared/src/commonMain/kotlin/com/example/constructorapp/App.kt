@@ -30,66 +30,201 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.constructorapp.navigation.Screen
 import com.example.constructorapp.theme.*
 import com.example.constructorapp.ui.components.AlertFlipper
 import com.example.constructorapp.ui.components.AmbientBlobBackground
 import com.example.constructorapp.ui.components.FloatingBottomNav
 import com.example.constructorapp.ui.components.GlassCard
 import com.example.constructorapp.ui.components.sampleAlerts
+import com.example.constructorapp.ui.screens.*
 
 @Composable
 fun App() {
     ConstructorSharedTheme {
-        var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+        // Full navigation backstack supporting all 31 screens
+        val navigationStack = remember { mutableStateListOf<Screen>(Screen.Dashboard) }
+        val currentScreen = navigationStack.lastOrNull() ?: Screen.Dashboard
         var isDrawerOpen by remember { mutableStateOf(false) }
+
+        val navigateTo: (Screen) -> Unit = { screen ->
+            navigationStack.add(screen)
+        }
+
+        val navigateBack: () -> Unit = {
+            if (navigationStack.size > 1) {
+                navigationStack.removeLast()
+            }
+        }
+
+        val selectedTab = when (currentScreen) {
+            is Screen.Dashboard -> 0
+            is Screen.Projects -> 1
+            is Screen.PurchaseOrders -> 2
+            is Screen.TeamHub, is Screen.AddEditReminder -> 3
+            else -> -1
+        }
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(SlateBackground)
         ) {
-            // Layer 1: Ambient Drifting Blobs Canvas Background (Exact Android MainScreen match)
+            // Layer 1: Ambient Drifting Blobs Canvas Background
             AmbientBlobBackground()
 
-            // Layer 2: Screen Content (starts directly under status bar with NO extra top header)
+            // Layer 2: Complete Navigation Router (All 31 Screens Connected)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
             ) {
-                when (selectedTab) {
-                    0 -> DashboardScreen(
-                        onNavigateToProjects = { selectedTab = 1 },
-                        onNavigateToOrders = { selectedTab = 2 },
-                        onNavigateToMessages = { selectedTab = 3 }
+                when (currentScreen) {
+                    is Screen.Dashboard -> DashboardScreen(
+                        onNavigateToProjects = { navigateTo(Screen.Projects) },
+                        onNavigateToWorklog = { navigateTo(Screen.Worklog()) },
+                        onNavigateToExpenses = { navigateTo(Screen.Expenses()) },
+                        onNavigateToMaterials = { navigateTo(Screen.MaterialEstimation()) },
+                        onNavigateToWorkPrep = { navigateTo(Screen.WorkPrep()) },
+                        onProjectClick = { proj ->
+                            navigateTo(Screen.ProjectDetail(proj.id, proj.name))
+                        }
                     )
-                    1 -> ProjectsScreen()
-                    2 -> PurchaseOrdersScreen()
-                    3 -> RemindersScreen()
-                    else -> DashboardScreen(
-                        onNavigateToProjects = { selectedTab = 1 },
-                        onNavigateToOrders = { selectedTab = 2 },
-                        onNavigateToMessages = { selectedTab = 3 }
+                    is Screen.Projects -> ProjectsScreen(
+                        onProjectClick = { proj ->
+                            navigateTo(Screen.ProjectDetail(proj.id, proj.name))
+                        }
+                    )
+                    is Screen.ProjectDetail -> ProjectDetailScreen(
+                        projectId = currentScreen.projectId,
+                        projectName = currentScreen.projectName,
+                        onBackClick = navigateBack,
+                        onNavigateToMaterials = { pId, pName -> navigateTo(Screen.ProjectMaterials(pId, pName)) },
+                        onNavigateToPouch = { pId, pName -> navigateTo(Screen.ProjectPouch(pId, pName)) },
+                        onNavigateToWorklog = { pId, pName -> navigateTo(Screen.Worklog(pId, pName)) },
+                        onNavigateToBuildingPlan = { pId, pName -> navigateTo(Screen.BuildingPlan(pId, pName)) },
+                        onNavigateToExpenses = { pId -> navigateTo(Screen.Expenses(pId)) },
+                        onNavigateToWorkPrep = { pId -> navigateTo(Screen.WorkPrep(pId)) }
+                    )
+                    is Screen.ProjectMaterials -> ProjectMaterialsScreen(
+                        projectId = currentScreen.projectId,
+                        projectName = currentScreen.projectName,
+                        onBackClick = navigateBack
+                    )
+                    is Screen.ProjectPouch -> ProjectPouchScreen(
+                        projectId = currentScreen.projectId,
+                        projectName = currentScreen.projectName,
+                        onBackClick = navigateBack
+                    )
+                    is Screen.Worklog -> WorklogScreen(
+                        projectId = currentScreen.projectId,
+                        projectName = currentScreen.projectName,
+                        onBackClick = navigateBack
+                    )
+                    is Screen.WorkPrep -> WorkPrepScreen(
+                        onBackClick = navigateBack
+                    )
+                    is Screen.MaterialEstimation -> MaterialEstimationScreen(
+                        onBackClick = navigateBack
+                    )
+                    is Screen.MaterialReconciliation -> MaterialReconciliationScreen(
+                        onBackClick = navigateBack
+                    )
+                    is Screen.PurchaseOrders -> PurchaseOrdersScreen(
+                        onBackClick = navigateBack
+                    )
+                    is Screen.Inventory -> InventoryScreen(
+                        onBackClick = navigateBack
+                    )
+                    is Screen.CompanyMaterials -> CompanyMaterialsScreen(
+                        onBackClick = navigateBack
+                    )
+                    is Screen.BuildingPlan -> BuildingPlanScreen(
+                        projectId = currentScreen.projectId,
+                        projectName = currentScreen.projectName,
+                        onBackClick = navigateBack
+                    )
+                    is Screen.ClientMilestones -> ClientMilestonesScreen(
+                        projectId = currentScreen.projectId,
+                        onBackClick = navigateBack
+                    )
+                    is Screen.Expenses -> ExpensesScreen(
+                        onBackClick = navigateBack
+                    )
+                    is Screen.Payday -> PaydayScreen(
+                        onBackClick = navigateBack
+                    )
+                    is Screen.Contractors -> ContractorAccountsScreen(
+                        onBackClick = navigateBack
+                    )
+                    is Screen.Financials -> FinancialsScreen(
+                        onBackClick = navigateBack
+                    )
+                    is Screen.TeamHub -> RemindersScreen(
+                        onBackClick = navigateBack,
+                        onAddReminderClick = { navigateTo(Screen.AddEditReminder()) }
+                    )
+                    is Screen.AddEditReminder -> AddEditReminderScreen(
+                        reminderId = currentScreen.reminderId,
+                        onBackClick = navigateBack
+                    )
+                    is Screen.Notifications -> NotificationsScreen(
+                        onBackClick = navigateBack
+                    )
+                    is Screen.Profile -> ProfileScreen(
+                        onBackClick = navigateBack,
+                        onLogout = {
+                            navigationStack.clear()
+                            navigationStack.add(Screen.Login)
+                        }
+                    )
+                    is Screen.Login -> LoginScreen(
+                        onLoginSuccess = {
+                            navigationStack.clear()
+                            navigationStack.add(Screen.Dashboard)
+                        }
                     )
                 }
             }
 
-            // Layer 3: Floating Bottom Navigation Bar (Exact 1:1 match with Android App)
+            // Layer 3: Floating Bottom Navigation Bar
             FloatingBottomNav(
                 selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it },
+                onTabSelected = { tabIndex ->
+                    navigationStack.clear()
+                    when (tabIndex) {
+                        0 -> navigationStack.add(Screen.Dashboard)
+                        1 -> navigationStack.add(Screen.Projects)
+                        2 -> navigationStack.add(Screen.PurchaseOrders())
+                        3 -> navigationStack.add(Screen.TeamHub())
+                    }
+                },
                 onMoreClick = { isDrawerOpen = true },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
             )
 
-            // More / Drawer Bottom Sheet
+            // More / Drawer Menu with all app destinations
             if (isDrawerOpen) {
                 MoreMenuDialog(
                     onDismiss = { isDrawerOpen = false },
-                    onSelect = { tabIndex ->
-                        selectedTab = tabIndex
+                    onSelect = { route ->
                         isDrawerOpen = false
+                        when (route) {
+                            "Dashboard" -> { navigationStack.clear(); navigationStack.add(Screen.Dashboard) }
+                            "Projects" -> { navigationStack.clear(); navigationStack.add(Screen.Projects) }
+                            "Purchase Orders" -> navigateTo(Screen.PurchaseOrders())
+                            "Daily Worklogs" -> navigateTo(Screen.Worklog())
+                            "Tomorrow's Prep" -> navigateTo(Screen.WorkPrep())
+                            "Material Estimation" -> navigateTo(Screen.MaterialEstimation())
+                            "Inventory & Stock" -> navigateTo(Screen.Inventory())
+                            "Expenses Ledger" -> navigateTo(Screen.Expenses())
+                            "Weekly Payday" -> navigateTo(Screen.Payday())
+                            "Contractor Accounts" -> navigateTo(Screen.Contractors())
+                            "Team Hub & Reminders" -> navigateTo(Screen.TeamHub())
+                            "Notifications" -> navigateTo(Screen.Notifications)
+                            "Profile & Settings" -> navigateTo(Screen.Profile)
+                        }
                     }
                 )
             }
@@ -98,16 +233,18 @@ fun App() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SCREEN 1: DASHBOARD (Authentic 1:1 Android Architecture)
+// SCREEN 1: DASHBOARD
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun DashboardScreen(
     onNavigateToProjects: () -> Unit,
-    onNavigateToOrders: () -> Unit,
-    onNavigateToMessages: () -> Unit
+    onNavigateToWorklog: () -> Unit,
+    onNavigateToExpenses: () -> Unit,
+    onNavigateToMaterials: () -> Unit,
+    onNavigateToWorkPrep: () -> Unit,
+    onProjectClick: (SharedProject) -> Unit
 ) {
     var alertsList by remember { mutableStateOf(sampleAlerts) }
-    var isExpenseDialogOpen by remember { mutableStateOf(false) }
 
     LazyColumn(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
@@ -127,18 +264,18 @@ private fun DashboardScreen(
         // 2. Quick Actions Row (Exact Android Dashboard: 38.dp height compact pills)
         item {
             QuickActionsRow(
-                onWorklogClick = onNavigateToProjects,
-                onExpenseClick = { isExpenseDialogOpen = true },
-                onMaterialsClick = onNavigateToOrders
+                onWorklogClick = onNavigateToWorklog,
+                onExpenseClick = onNavigateToExpenses,
+                onMaterialsClick = onNavigateToMaterials
             )
         }
 
-        // 3. Tomorrow's Work Prep Highlight Banner (Exact Android Dashboard Surface)
+        // 3. Tomorrow's Work Prep Highlight Banner (Opens authentic WorkPrepScreen)
         item {
             TomorrowPrepBanner(
-                scheduledTasksCount = 0,
+                scheduledTasksCount = 3,
                 dateLabel = "Tomorrow",
-                onPrepClick = onNavigateToProjects
+                onPrepClick = onNavigateToWorkPrep
             )
         }
 
@@ -169,18 +306,17 @@ private fun DashboardScreen(
             }
         }
 
-        // Projects List (Exact Android Dashboard cards)
+        // Projects List (Clicking opens ProjectDetailScreen)
         items(sharedProjects) { project ->
-            ProjectCard(project)
+            ProjectCard(
+                project = project,
+                onClick = { onProjectClick(project) }
+            )
         }
-    }
-
-    if (isExpenseDialogOpen) {
-        ExpenseQuickDialog(onDismiss = { isExpenseDialogOpen = false })
     }
 }
 
-// ─── 1. Quick Actions Row (Android 1:1 Implementation) ─────────────────────────
+// ─── 1. Quick Actions Row ─────────────────────────────────────────────────────
 @Composable
 fun QuickActionsRow(
     onWorklogClick: () -> Unit,
@@ -252,7 +388,7 @@ fun QuickActionButton(
     }
 }
 
-// ─── 2. Tomorrow's Work Prep Banner (Android 1:1 Implementation) ───────────────
+// ─── 2. Tomorrow's Work Prep Banner ───────────────────────────────────────────
 @Composable
 fun TomorrowPrepBanner(
     scheduledTasksCount: Int,
@@ -355,10 +491,12 @@ fun TomorrowPrepBanner(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SCREEN 2: PROJECTS (Android 1:1 Implementation)
+// SCREEN 2: PROJECTS CATALOG
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
-private fun ProjectsScreen() {
+private fun ProjectsScreen(
+    onProjectClick: (SharedProject) -> Unit
+) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var selectedStatus by rememberSaveable { mutableStateOf("All") }
     val statusOptions = listOf("All", "Active", "Completed", "On-Hold")
@@ -394,14 +532,6 @@ private fun ProjectsScreen() {
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
                 )
-                Button(
-                    onClick = {},
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
-                ) {
-                    Text("+ New Project", fontFamily = PlusJakartaSansFontFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
             }
         }
 
@@ -467,16 +597,21 @@ private fun ProjectsScreen() {
         }
 
         items(filtered) { project ->
-            ProjectCard(project)
+            ProjectCard(
+                project = project,
+                onClick = { onProjectClick(project) }
+            )
         }
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SCREEN 3: PURCHASE ORDERS (Android 1:1 Implementation)
+// SCREEN 3: PURCHASE ORDERS
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
-private fun PurchaseOrdersScreen() {
+private fun PurchaseOrdersScreen(
+    onBackClick: () -> Unit
+) {
     LazyColumn(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -495,14 +630,6 @@ private fun PurchaseOrdersScreen() {
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
                 )
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(BrandPrimaryContainer)
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
-                ) {
-                    Text("+ New Order", fontFamily = PlusJakartaSansFontFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = BrandPrimary)
-                }
             }
         }
 
@@ -549,7 +676,10 @@ private fun PurchaseOrdersScreen() {
 // SCREEN 4: REMINDERS & TEAM HUB
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
-private fun RemindersScreen() {
+private fun RemindersScreen(
+    onBackClick: () -> Unit,
+    onAddReminderClick: () -> Unit
+) {
     LazyColumn(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -572,6 +702,7 @@ private fun RemindersScreen() {
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
                         .background(BrandPrimaryContainer)
+                        .clickable { onAddReminderClick() }
                         .padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
                     Text("+ Add Reminder", fontFamily = PlusJakartaSansFontFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = BrandPrimary)
@@ -609,19 +740,38 @@ private fun RemindersScreen() {
 // MORE DRAWER / MENU DIALOG
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
-private fun MoreMenuDialog(onDismiss: () -> Unit, onSelect: (Int) -> Unit) {
+private fun MoreMenuDialog(onDismiss: () -> Unit, onSelect: (String) -> Unit) {
+    val menuItems = listOf(
+        "Dashboard",
+        "Projects",
+        "Purchase Orders",
+        "Daily Worklogs",
+        "Tomorrow's Prep",
+        "Material Estimation",
+        "Inventory & Stock",
+        "Expenses Ledger",
+        "Weekly Payday",
+        "Contractor Accounts",
+        "Team Hub & Reminders",
+        "Notifications",
+        "Profile & Settings"
+    )
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Menu Navigation", fontFamily = OutfitFontFamily, fontWeight = FontWeight.Bold) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("Dashboard", "Projects", "Purchase Orders", "Reminders & Sync").forEachIndexed { idx, name ->
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                items(menuItems) { name ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
-                            .clickable { onSelect(idx) }
-                            .padding(12.dp),
+                            .clickable { onSelect(name) }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(name, fontFamily = PlusJakartaSansFontFamily, fontSize = 14.sp, color = TextPrimary)
@@ -638,39 +788,20 @@ private fun MoreMenuDialog(onDismiss: () -> Unit, onSelect: (Int) -> Unit) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// QUICK EXPENSE DIALOG
-// ─────────────────────────────────────────────────────────────────────────────
-@Composable
-private fun ExpenseQuickDialog(onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Record Expense", fontFamily = OutfitFontFamily, fontWeight = FontWeight.Bold) },
-        text = {
-            Text(
-                "Expense logging synced to Supabase database.",
-                fontFamily = PlusJakartaSansFontFamily,
-                fontSize = 13.sp,
-                color = TextSecondary
-            )
-        },
-        confirmButton = {
-            Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)) {
-                Text("Done")
-            }
-        }
-    )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // REUSABLE COMPONENTS
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
-private fun ProjectCard(project: SharedProject) {
+private fun ProjectCard(
+    project: SharedProject,
+    onClick: () -> Unit = {}
+) {
     Card(
         colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, SlateBorder),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -747,22 +878,22 @@ private fun ProjectCard(project: SharedProject) {
 // ─────────────────────────────────────────────────────────────────────────────
 // DATA MODELS & SAMPLE DATA
 // ─────────────────────────────────────────────────────────────────────────────
-private data class SharedProject(val name: String, val location: String, val status: String, val progress: Float, val budget: String, val spent: String)
-private data class SharedWorklog(val title: String, val project: String, val notes: String, val date: String, val laborCount: Int, val materialsCount: Int, val photosCount: Int)
-private data class SharedMaterial(val name: String, val unit: String, val stock: Int, val minStock: Int, val unitCost: Int)
+data class SharedProject(val id: String, val name: String, val location: String, val status: String, val progress: Float, val budget: String, val spent: String)
+data class SharedWorklog(val title: String, val project: String, val notes: String, val date: String, val laborCount: Int, val materialsCount: Int, val photosCount: Int)
+data class SharedMaterial(val name: String, val unit: String, val stock: Int, val minStock: Int, val unitCost: Int)
 
-private val sharedProjects = listOf(
-    SharedProject("Greenfield Villa Project", "Thillai Nagar, Trichy", "In Progress", 0.65f, "45,00,000", "28,50,000"),
-    SharedProject("Royal Residency Commercial", "Kallukuzhi, Trichy", "Active Foundation", 0.35f, "85,00,000", "32,10,000"),
-    SharedProject("Modern Living Duplex", "Karur Bypass, Trichy", "Finishing", 0.85f, "32,00,000", "29,40,000")
+val sharedProjects = listOf(
+    SharedProject("proj-1", "Greenfield Villa Project", "Thillai Nagar, Trichy", "In Progress", 0.65f, "45,00,000", "28,50,000"),
+    SharedProject("proj-2", "Royal Residency Commercial", "Kallukuzhi, Trichy", "Active Foundation", 0.35f, "85,00,000", "32,10,000"),
+    SharedProject("proj-3", "Modern Living Duplex", "Karur Bypass, Trichy", "Finishing", 0.85f, "32,00,000", "29,40,000")
 )
 
-private val sharedWorklogs = listOf(
+val sharedWorklogs = listOf(
     SharedWorklog("First Floor Slab Casting", "Greenfield Villa Project", "M20 grade concrete poured for roof slab with 12 masons and helpers.", "Today, 4:30 PM", 12, 4, 3),
     SharedWorklog("Brickwork & Plastering Phase 2", "Royal Residency Commercial", "Completed outer wall perimeter bricklaying with cement mortar 1:5 ratio.", "Yesterday", 8, 2, 2)
 )
 
-private val sharedMaterials = listOf(
+val sharedMaterials = listOf(
     SharedMaterial("OPC 53 Grade Cement", "Bags", 140, 50, 395),
     SharedMaterial("River Sand (Fine)", "CFT", 450, 100, 75),
     SharedMaterial("TMT Steel 16mm (Fe 550D)", "Kg", 850, 200, 68),
