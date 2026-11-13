@@ -42,3 +42,8 @@ fun ConstructorSharedTheme(
         content = content
     )
 }
+
+@Composable
+fun ConstructorAppTheme(
+    content: @Composable () -> Unit
+) = ConstructorSharedTheme(content = content)

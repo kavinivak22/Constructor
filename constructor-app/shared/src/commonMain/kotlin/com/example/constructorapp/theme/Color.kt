@@ -27,6 +27,7 @@ val GlassBorder = Color(0x66FFFFFF)
 val GlassCardBorder = Color(0x80FFFFFF)
 val GlassBorderElevated = Color(0xB3FFFFFF)
 val GlassBorderHighlight = Color(0xFFFFFFFF)
+val GlassShadow = Color(0x0F1F2687)
 
 val EmeraldSuccess = Color(0xFF10B981)
 val EmeraldSuccessContainer = Color(0x2610B981)

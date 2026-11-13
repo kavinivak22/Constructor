@@ -1,7 +1,10 @@
 package com.example.constructorapp.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -64,12 +67,13 @@ fun FloatingBottomNav(
         modifier = modifier
             .fillMaxWidth()
             .height(64.dp),
-        shape = RoundedCornerShape(24.dp),
-        color = Color(0xF5FFFFFF), // High opacity frosted white to eliminate Skiko shadow artifacts
-        border = BorderStroke(1.dp, Color(0x60E2E8F0)),
-        shadowElevation = 8.dp
+        shape = RoundedCornerShape(24.dp), // rounded-3xl matching webapp
+        color = Color(0xEBFFFFFF),         // 92% frosted glass (lowered transparency for clear, crisp nav elements)
+        border = BorderStroke(1.dp, Color(0x80FFFFFF)), // Crisp specular glass border
+        shadowElevation = 10.dp
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
+            // Top highlight reflection mimicking inset 0 1px 1px 0 rgba(255, 255, 255, 0.5)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -118,6 +122,7 @@ fun FloatingBottomNav(
                             },
                         contentAlignment = Alignment.Center
                     ) {
+                        // Active Indicator: Top Line (w-8 h-1 rounded-b-full bg-primary)
                         if (isSelected) {
                             Box(
                                 modifier = Modifier
@@ -136,6 +141,7 @@ fun FloatingBottomNav(
                             verticalArrangement = Arrangement.Center,
                             modifier = Modifier.padding(top = 2.dp)
                         ) {
+                            // Icon Container with active tint and background
                             Box(
                                 modifier = Modifier
                                     .offset(y = iconOffsetY)
@@ -155,6 +161,7 @@ fun FloatingBottomNav(
                                 )
                             }
 
+                            // Label
                             Text(
                                 text = item.title,
                                 fontFamily = PlusJakartaSansFontFamily,
