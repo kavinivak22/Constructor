@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -21,6 +22,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -35,6 +38,9 @@ import coil.request.ImageRequest
 import com.example.constructorapp.data.local.entity.WorklogWithDetails
 import com.example.constructorapp.data.remote.SupabaseClient
 import com.example.constructorapp.theme.*
+import com.example.constructorapp.ui.components.FluidGlossButton
+import com.example.constructorapp.ui.components.FluidGlossButtonVariant
+import com.example.constructorapp.ui.components.GlassCard
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -216,17 +222,59 @@ fun WorklogDetailDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Surface(
+        Box(
             modifier = Modifier
-                .fillMaxWidth(0.95f)
-                .fillMaxHeight(0.92f)
-                .clip(RoundedCornerShape(26.dp))
-                .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(26.dp)),
-            color = Color.White,
-            shadowElevation = 10.dp
+                .fillMaxSize()
+                .background(Color(0x59000000))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss
+                ),
+            contentAlignment = Alignment.Center
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Scrollable Body
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(0.95f)
+                    .fillMaxHeight(0.92f)
+                    .shadow(
+                        elevation = 16.dp,
+                        shape = RoundedCornerShape(26.dp),
+                        spotColor = Color(0x261F2687),
+                        ambientColor = Color(0x1F1F2687)
+                    )
+                    .clip(RoundedCornerShape(26.dp))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
+                    )
+                    .imePadding(),
+                shape = RoundedCornerShape(26.dp),
+                color = GlassCardSurfaceElevated,
+                border = BorderStroke(1.dp, GlassBorderElevated),
+                shadowElevation = 0.dp
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    // Top Specular Reflection Highlight Line
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.5.dp)
+                            .align(Alignment.TopCenter)
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        Color.Transparent,
+                                        Color(0xB3FFFFFF),
+                                        Color.Transparent
+                                    )
+                                )
+                            )
+                    )
+
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // Scrollable Body
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
@@ -659,11 +707,9 @@ fun WorklogDetailDialog(
                                         val entry = laborWithCounts.laborEntry
                                         val isRate = entry.payoutClass.equals("Rate", ignoreCase = true) || entry.workType.equals("rate", ignoreCase = true)
 
-                                        Card(
+                                        GlassCard(
                                             modifier = Modifier.fillMaxWidth(),
-                                            shape = RoundedCornerShape(14.dp),
-                                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
-                                            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                                            shape = RoundedCornerShape(14.dp)
                                         ) {
                                             Column(
                                                 modifier = Modifier.padding(14.dp),
@@ -888,11 +934,9 @@ fun WorklogDetailDialog(
                                         }
                                     }
 
-                                    Card(
+                                    GlassCard(
                                         modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(14.dp),
-                                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
-                                        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                                        shape = RoundedCornerShape(14.dp)
                                     ) {
                                         Column(
                                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
@@ -1108,25 +1152,18 @@ fun WorklogDetailDialog(
                         }
 
                         // Close Button
-                        Button(
+                        FluidGlossButton(
+                            text = "Close",
                             onClick = onDismiss,
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                            modifier = Modifier.height(42.dp)
-                        ) {
-                            Text(
-                                text = "Close",
-                                fontFamily = PlusJakartaSansFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                fontSize = 13.sp
-                            )
-                        }
+                            variant = FluidGlossButtonVariant.Primary
+                        )
                     }
                 }
             }
         }
     }
+}
+}
 
     // Fullscreen Modern Photo Lightbox
     if (fullscreenPhotoIndex != null && photos.isNotEmpty()) {

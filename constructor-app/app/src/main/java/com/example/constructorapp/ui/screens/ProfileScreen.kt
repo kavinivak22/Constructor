@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.constructorapp.data.remote.SupabaseClient
 import com.example.constructorapp.theme.*
+import com.example.constructorapp.ui.components.FluidGlossAlertDialog
 import com.example.constructorapp.ui.components.GlassCard
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -69,7 +70,7 @@ fun ProfileScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 90.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // User Card
@@ -260,26 +261,19 @@ fun ProfileScreen(
     }
 
     if (showLogoutDialog) {
-        AlertDialog(
+        FluidGlossAlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            title = { Text("Sign Out", fontWeight = FontWeight.Bold) },
-            text = { Text("Are you sure you want to log out? Local offline records will remain safely cached in your Room database.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showLogoutDialog = false
-                        onLogout()
-                    }
-                ) {
-                    Text("Log Out", color = RoseDanger, fontWeight = FontWeight.Bold)
-                }
+            title = "Sign Out",
+            text = "Are you sure you want to log out? Local offline records will remain safely cached in your Room database.",
+            confirmText = "Log Out",
+            dismissText = "Cancel",
+            onConfirm = {
+                showLogoutDialog = false
+                onLogout()
             },
-            dismissButton = {
-                TextButton(onClick = { showLogoutDialog = false }) {
-                    Text("Cancel", color = TextSecondary)
-                }
-            },
-            containerColor = SlateSurface
+            onDismiss = { showLogoutDialog = false },
+            isDestructive = true,
+            icon = Icons.AutoMirrored.Filled.Logout
         )
     }
 }

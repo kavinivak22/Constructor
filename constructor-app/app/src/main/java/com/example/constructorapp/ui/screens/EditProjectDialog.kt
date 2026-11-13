@@ -1,8 +1,8 @@
 package com.example.constructorapp.ui.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -11,6 +11,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.constructorapp.data.remote.ProjectDto
 import com.example.constructorapp.theme.*
+import com.example.constructorapp.ui.components.FluidGlossButton
+import com.example.constructorapp.ui.components.FluidGlossButtonVariant
+import com.example.constructorapp.ui.components.FluidGlossDialog
+import com.example.constructorapp.ui.components.FluidGlossTextField
 import com.example.constructorapp.util.CurrencyFormatter
 
 @Composable
@@ -33,136 +37,13 @@ fun EditProjectDialog(
     val parsedBudget = remember(budgetStr) { CurrencyFormatter.parseInr(budgetStr) ?: project.budget }
     val isFormValid = name.trim().length >= 2 && parsedBudget >= 0.0
 
-    AlertDialog(
+    FluidGlossDialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text("Edit Project Details", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextPrimary)
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Project Name *", color = TextSecondary, fontSize = 12.sp) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = calculatorFieldColors()
-                )
-
-                OutlinedTextField(
-                    value = clientName,
-                    onValueChange = { clientName = it },
-                    label = { Text("Client Name", color = TextSecondary, fontSize = 12.sp) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = calculatorFieldColors()
-                )
-
-                OutlinedTextField(
-                    value = clientPhone,
-                    onValueChange = { clientPhone = it },
-                    label = { Text("Client Contact", color = TextSecondary, fontSize = 12.sp) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = calculatorFieldColors()
-                )
-
-                OutlinedTextField(
-                    value = location,
-                    onValueChange = { location = it },
-                    label = { Text("Location", color = TextSecondary, fontSize = 12.sp) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = calculatorFieldColors()
-                )
-
-                // Status Chips
-                Text("Project Status", fontSize = 12.sp, color = TextSecondary)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("active", "on-hold", "completed").forEach { st ->
-                        FilterChip(
-                            selected = status.equals(st, ignoreCase = true),
-                            onClick = { status = st },
-                            label = { Text(st.replaceFirstChar { it.uppercase() }, fontSize = 11.sp) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = BrandPrimary,
-                                selectedLabelColor = TextPrimary
-                            )
-                        )
-                    }
-                }
-
-                // Progress Slider
-                Column {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Progress", fontSize = 12.sp, color = TextSecondary)
-                        Text("${progressSlider.toInt()}%", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = BrandPrimary)
-                    }
-                    Slider(
-                        value = progressSlider,
-                        onValueChange = { progressSlider = it },
-                        valueRange = 0f..100f,
-                        colors = SliderDefaults.colors(
-                            thumbColor = BrandPrimary,
-                            activeTrackColor = BrandPrimary
-                        )
-                    )
-                }
-
-                OutlinedTextField(
-                    value = budgetStr,
-                    onValueChange = { budgetStr = it },
-                    label = { Text("Budget (₹) *", color = TextSecondary, fontSize = 12.sp) },
-                    leadingIcon = { Text("₹", fontWeight = FontWeight.Bold, color = BrandPrimary) },
-                    supportingText = {
-                        if (parsedBudget > 0.0) {
-                            Text(
-                                "Preview: ${CurrencyFormatter.formatCompact(parsedBudget)} (${CurrencyFormatter.formatFull(parsedBudget)})",
-                                color = EmeraldSuccess,
-                                fontSize = 11.sp
-                            )
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = calculatorFieldColors()
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = startDate,
-                        onValueChange = { startDate = it },
-                        label = { Text("Start Date", color = TextSecondary, fontSize = 11.sp) },
-                        modifier = Modifier.weight(1f),
-                        colors = calculatorFieldColors()
-                    )
-                    OutlinedTextField(
-                        value = endDate,
-                        onValueChange = { endDate = it },
-                        label = { Text("End Date", color = TextSecondary, fontSize = 11.sp) },
-                        modifier = Modifier.weight(1f),
-                        colors = calculatorFieldColors()
-                    )
-                }
-
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Description / Notes", color = TextSecondary, fontSize = 12.sp) },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 2,
-                    colors = calculatorFieldColors()
-                )
-            }
-        },
+        title = "Edit Project Details",
+        icon = Icons.Default.Edit,
         confirmButton = {
-            Button(
+            FluidGlossButton(
+                text = "Save Changes",
                 onClick = {
                     if (isFormValid) {
                         onSubmit(
@@ -182,16 +63,140 @@ fun EditProjectDialog(
                     }
                 },
                 enabled = isFormValid,
-                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
-            ) {
-                Text("Save Changes")
-            }
+                variant = FluidGlossButtonVariant.Primary,
+                modifier = Modifier.fillMaxWidth()
+            )
         },
         dismissButton = {
-            OutlinedButton(onClick = onDismiss) {
-                Text("Cancel", color = TextSecondary)
+            FluidGlossButton(
+                text = "Cancel",
+                onClick = onDismiss,
+                variant = FluidGlossButtonVariant.Outlined,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            FluidGlossTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = "Project Name *",
+                placeholder = "Project Name",
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            FluidGlossTextField(
+                value = clientName,
+                onValueChange = { clientName = it },
+                label = "Client Name",
+                placeholder = "Client Name",
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            FluidGlossTextField(
+                value = clientPhone,
+                onValueChange = { clientPhone = it },
+                label = "Client Contact",
+                placeholder = "Client Phone / Contact",
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            FluidGlossTextField(
+                value = location,
+                onValueChange = { location = it },
+                label = "Location",
+                placeholder = "Site Address or Coordinates",
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // Status Chips
+            Text("Project Status", fontSize = 12.sp, color = TextSecondary, fontWeight = FontWeight.SemiBold)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("active", "on-hold", "completed").forEach { st ->
+                    FilterChip(
+                        selected = status.equals(st, ignoreCase = true),
+                        onClick = { status = st },
+                        label = { Text(st.replaceFirstChar { it.uppercase() }, fontSize = 11.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = BrandPrimary,
+                            selectedLabelColor = TextPrimary
+                        )
+                    )
+                }
             }
-        },
-        containerColor = SlateSurface
-    )
+
+            // Progress Slider
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Progress", fontSize = 12.sp, color = TextSecondary, fontWeight = FontWeight.SemiBold)
+                    Text("${progressSlider.toInt()}%", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = BrandPrimary)
+                }
+                Slider(
+                    value = progressSlider,
+                    onValueChange = { progressSlider = it },
+                    valueRange = 0f..100f,
+                    colors = SliderDefaults.colors(
+                        thumbColor = BrandPrimary,
+                        activeTrackColor = BrandPrimary
+                    )
+                )
+            }
+
+            Column(modifier = Modifier.fillMaxWidth()) {
+                FluidGlossTextField(
+                    value = budgetStr,
+                    onValueChange = { budgetStr = it },
+                    label = "Budget (₹) *",
+                    placeholder = "Total Budget in INR",
+                    leadingIcon = { Text("₹", fontWeight = FontWeight.Bold, color = BrandPrimary) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (parsedBudget > 0.0) {
+                    Text(
+                        text = "Preview: ${CurrencyFormatter.formatCompact(parsedBudget)} (${CurrencyFormatter.formatFull(parsedBudget)})",
+                        color = EmeraldSuccess,
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FluidGlossTextField(
+                    value = startDate,
+                    onValueChange = { startDate = it },
+                    label = "Start Date",
+                    placeholder = "YYYY-MM-DD",
+                    modifier = Modifier.weight(1f)
+                )
+                FluidGlossTextField(
+                    value = endDate,
+                    onValueChange = { endDate = it },
+                    label = "End Date",
+                    placeholder = "YYYY-MM-DD",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            FluidGlossTextField(
+                value = description,
+                onValueChange = { description = it },
+                label = "Description / Notes",
+                placeholder = "Scope of work, milestone notes",
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = false,
+                minLines = 2,
+                maxLines = 4
+            )
+        }
+    }
 }

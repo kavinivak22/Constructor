@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -21,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -32,6 +34,11 @@ import com.example.constructorapp.data.local.entity.PayoutItemEntity
 import com.example.constructorapp.data.local.entity.PayoutRunWithItems
 import com.example.constructorapp.theme.*
 import com.example.constructorapp.ui.components.AmbientBlobBackground
+import com.example.constructorapp.ui.components.FluidGlossButton
+import com.example.constructorapp.ui.components.FluidGlossButtonSize
+import com.example.constructorapp.ui.components.FluidGlossButtonVariant
+import com.example.constructorapp.ui.components.FluidGlossDialog
+import com.example.constructorapp.ui.components.FluidGlossTextField
 import com.example.constructorapp.ui.components.GlassCard
 import com.example.constructorapp.ui.viewmodel.PaydayUiState
 import com.example.constructorapp.ui.viewmodel.PaydayViewModel
@@ -90,7 +97,7 @@ fun PaydayScreen(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = SlateSurface.copy(alpha = 0.85f),
+                        containerColor = Color.Transparent,
                         titleContentColor = TextPrimary
                     )
                 )
@@ -101,7 +108,7 @@ fun PaydayScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 90.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 // Active Run Overview Card
@@ -127,10 +134,13 @@ fun PaydayScreen(
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text("Generate a weekly run to compile muster attendance & payouts.", color = TextSecondary, fontSize = 12.sp)
                                 Spacer(modifier = Modifier.height(12.dp))
-                                Button(
+                                FluidGlossButton(
                                     onClick = { viewModel.setGenerateRunDialogOpen(true) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                                    shape = RoundedCornerShape(12.dp)
+                                    variant = FluidGlossButtonVariant.Primary,
+                                    shape = RoundedCornerShape(12.dp),
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    }
                                 ) {
                                     Text("Generate Weekly Run", fontWeight = FontWeight.Bold)
                                 }
@@ -282,26 +292,28 @@ fun PaydayRunHeaderCard(
             // Action Buttons based on status
             when (run.status.lowercase()) {
                 "draft" -> {
-                    Button(
+                    FluidGlossButton(
                         onClick = onApprove,
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        variant = FluidGlossButtonVariant.Primary,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        leadingIcon = {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                        }
                     ) {
-                        Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
                         Text("Approve Weekly Pay-Day Run", fontWeight = FontWeight.Bold)
                     }
                 }
                 "approved" -> {
-                    Button(
+                    FluidGlossButton(
                         onClick = onDisburse,
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldSuccess),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        variant = FluidGlossButtonVariant.Success,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        leadingIcon = {
+                            Icon(Icons.Default.AttachMoney, contentDescription = null, modifier = Modifier.size(16.dp))
+                        }
                     ) {
-                        Icon(Icons.Default.AttachMoney, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
                         Text("Disburse & Log Project Expenses", fontWeight = FontWeight.Bold)
                     }
                 }
@@ -375,35 +387,31 @@ fun PayoutRecipientCard(
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(
+                    FluidGlossButton(
                         onClick = onSplitClick,
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                        modifier = Modifier.height(30.dp)
+                        variant = FluidGlossButtonVariant.Outlined,
+                        size = FluidGlossButtonSize.Small,
+                        shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text("Split Rate/NMR", fontSize = 10.sp, color = BrandPrimary)
+                        Text("Split Rate/NMR", fontSize = 10.sp, color = BrandPrimary, fontWeight = FontWeight.SemiBold)
                     }
 
                     Spacer(modifier = Modifier.width(6.dp))
 
-                    Button(
+                    FluidGlossButton(
                         onClick = {
                             val newStat = if (isPaid) "pending" else "paid"
                             val amt = if (isPaid) 0.0 else item.amountDue
                             onStatusChange(newStat, amt)
                         },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isPaid) EmeraldSuccess else SlateSurfaceSubtle
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                        modifier = Modifier.height(30.dp)
+                        variant = if (isPaid) FluidGlossButtonVariant.Success else FluidGlossButtonVariant.Secondary,
+                        size = FluidGlossButtonSize.Small,
+                        shape = RoundedCornerShape(8.dp)
                     ) {
                         Text(
                             text = if (isPaid) "Paid" else "Mark Paid",
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isPaid) Color.White else TextPrimary
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
@@ -432,118 +440,115 @@ fun GeneratePaydayRunDialog(
     var method by remember { mutableStateOf(calcMethod) }
     var unpaid by remember { mutableStateOf(includeUnpaid) }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .clip(RoundedCornerShape(20.dp))
-                .border(1.dp, GlassBorder, RoundedCornerShape(20.dp)),
-            color = SlateSurface
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Text("Generate Weekly Pay-Day Run", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = start,
-                        onValueChange = { start = it },
-                        label = { Text("Week Start Date") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
+    FluidGlossDialog(
+        onDismissRequest = onDismiss,
+        title = "Generate Weekly Pay-Day Run",
+        subtitle = "Compile attendance muster and calculate contractor disbursements",
+        icon = Icons.Default.Payments,
+        iconTint = BrandPrimary,
+        confirmButton = {
+            FluidGlossButton(
+                onClick = {
+                    val dummyItems = listOf(
+                        PayoutItemEntity(
+                            id = UUID.randomUUID().toString(),
+                            payoutId = "",
+                            recipientType = "labor_wage",
+                            recipientId = "mason-team-1",
+                            recipientName = "Periyasamy Mason Team",
+                            amountDue = 14500.0,
+                            amountPaid = 0.0,
+                            payoutClass = "rate",
+                            projectId = "project-1",
+                            notes = "Brickwork contract 2nd floor"
+                        ),
+                        PayoutItemEntity(
+                            id = UUID.randomUUID().toString(),
+                            payoutId = "",
+                            recipientType = "labor_wage",
+                            recipientId = "nmr-gang-2",
+                            recipientName = "Kumar Daily Labor Gang",
+                            amountDue = 9200.0,
+                            amountPaid = 0.0,
+                            payoutClass = "nmr",
+                            projectId = "project-1",
+                            notes = "Concrete curing & earth handling"
+                        ),
+                        PayoutItemEntity(
+                            id = UUID.randomUUID().toString(),
+                            payoutId = "",
+                            recipientType = "vendor_payment",
+                            recipientId = "vendor-steel-1",
+                            recipientName = "Sri Murugan Steels",
+                            amountDue = 35000.0,
+                            amountPaid = 0.0,
+                            payoutClass = "rate",
+                            projectId = "project-1",
+                            notes = "TMT bar delivery PO-102"
+                        )
                     )
-                    OutlinedTextField(
-                        value = end,
-                        onValueChange = { end = it },
-                        label = { Text("Week End Date") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-                Text("Calculation Methodology", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary)
-                Spacer(modifier = Modifier.height(6.dp))
-
-                listOf(
-                    "auto" to "Auto-compile NMR & Rate from Worklogs",
-                    "wage_wise" to "Wage-wise Daily Muster",
-                    "work_wise" to "Work-wise Contract Rates"
-                ).forEach { (m, label) ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { method = m }
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(selected = method == m, onClick = { method = m })
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(label, fontSize = 12.sp, color = TextPrimary)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = unpaid, onCheckedChange = { unpaid = it })
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Include backlogged unpaid wages", fontSize = 12.sp, color = TextPrimary)
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss) { Text("Cancel", color = TextSecondary) }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            val dummyItems = listOf(
-                                PayoutItemEntity(
-                                    id = UUID.randomUUID().toString(),
-                                    payoutId = "",
-                                    recipientType = "labor_wage",
-                                    recipientId = "mason-team-1",
-                                    recipientName = "Periyasamy Mason Team",
-                                    amountDue = 14500.0,
-                                    amountPaid = 0.0,
-                                    payoutClass = "rate",
-                                    projectId = "project-1",
-                                    notes = "Brickwork contract 2nd floor"
-                                ),
-                                PayoutItemEntity(
-                                    id = UUID.randomUUID().toString(),
-                                    payoutId = "",
-                                    recipientType = "labor_wage",
-                                    recipientId = "nmr-gang-2",
-                                    recipientName = "Kumar Daily Labor Gang",
-                                    amountDue = 9200.0,
-                                    amountPaid = 0.0,
-                                    payoutClass = "nmr",
-                                    projectId = "project-1",
-                                    notes = "Concrete curing & earth handling"
-                                ),
-                                PayoutItemEntity(
-                                    id = UUID.randomUUID().toString(),
-                                    payoutId = "",
-                                    recipientType = "vendor_payment",
-                                    recipientId = "vendor-steel-1",
-                                    recipientName = "Sri Murugan Steels",
-                                    amountDue = 35000.0,
-                                    amountPaid = 0.0,
-                                    payoutClass = "rate",
-                                    projectId = "project-1",
-                                    notes = "TMT bar delivery PO-102"
-                                )
-                            )
-                            onConfirm(start, end, method, unpaid, dummyItems)
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Generate Run", fontWeight = FontWeight.Bold)
-                    }
-                }
+                    onConfirm(start, end, method, unpaid, dummyItems)
+                },
+                variant = FluidGlossButtonVariant.Primary
+            ) {
+                Text("Generate Run", fontWeight = FontWeight.Bold)
             }
+        },
+        dismissButton = {
+            FluidGlossButton(
+                onClick = onDismiss,
+                variant = FluidGlossButtonVariant.Secondary
+            ) {
+                Text("Cancel")
+            }
+        }
+    ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FluidGlossTextField(
+                value = start,
+                onValueChange = { start = it },
+                label = "Week Start Date",
+                placeholder = "YYYY-MM-DD",
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+            FluidGlossTextField(
+                value = end,
+                onValueChange = { end = it },
+                label = "Week End Date",
+                placeholder = "YYYY-MM-DD",
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+        Text("Calculation Methodology", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary)
+        Spacer(modifier = Modifier.height(6.dp))
+
+        listOf(
+            "auto" to "Auto-compile NMR & Rate from Worklogs",
+            "wage_wise" to "Wage-wise Daily Muster",
+            "work_wise" to "Work-wise Contract Rates"
+        ).forEach { (m, label) ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { method = m }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(selected = method == m, onClick = { method = m })
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(label, fontSize = 12.sp, color = TextPrimary)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = unpaid, onCheckedChange = { unpaid = it })
+            Spacer(modifier = Modifier.width(6.dp))
+            Text("Include backlogged unpaid wages", fontSize = 12.sp, color = TextPrimary)
         }
     }
 }
@@ -558,65 +563,61 @@ fun SplitPayoutItemDialog(
     var nmrText by remember { mutableStateOf((targetItem.amountDue * 0.4).toInt().toString()) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .clip(RoundedCornerShape(20.dp))
-                .border(1.dp, GlassBorder, RoundedCornerShape(20.dp)),
-            color = SlateSurface
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Text("Split Rate & NMR Accounts", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("Recipient: ${targetItem.recipientName}", fontSize = 12.sp, color = TextSecondary)
-                Text("Total Amount: ${targetItem.amountDue.toInrFull()}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = BrandPrimary)
-                Spacer(modifier = Modifier.height(14.dp))
-
-                OutlinedTextField(
-                    value = rateText,
-                    onValueChange = { rateText = it },
-                    label = { Text("Rate Contract Share (₹)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = nmrText,
-                    onValueChange = { nmrText = it },
-                    label = { Text("NMR Labor Share (₹)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-
-                if (error != null) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(error!!, color = RoseDanger, fontSize = 12.sp)
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss) { Text("Cancel", color = TextSecondary) }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            val r = rateText.toDoubleOrNull() ?: 0.0
-                            val n = nmrText.toDoubleOrNull() ?: 0.0
-                            if (r + n <= 0.0) {
-                                error = "Sum must be greater than zero"
-                                return@Button
-                            }
-                            onConfirm(r, n)
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Confirm Split", fontWeight = FontWeight.Bold)
+    FluidGlossDialog(
+        onDismissRequest = onDismiss,
+        title = "Split Rate & NMR Accounts",
+        subtitle = "Recipient: ${targetItem.recipientName} • Total: ${targetItem.amountDue.toInrFull()}",
+        icon = Icons.Default.CallSplit,
+        iconTint = BrandPrimary,
+        confirmButton = {
+            FluidGlossButton(
+                onClick = {
+                    val r = rateText.toDoubleOrNull() ?: 0.0
+                    val n = nmrText.toDoubleOrNull() ?: 0.0
+                    if (r + n <= 0.0) {
+                        error = "Sum must be greater than zero"
+                        return@FluidGlossButton
                     }
-                }
+                    onConfirm(r, n)
+                },
+                variant = FluidGlossButtonVariant.Primary
+            ) {
+                Text("Confirm Split", fontWeight = FontWeight.Bold)
             }
+        },
+        dismissButton = {
+            FluidGlossButton(
+                onClick = onDismiss,
+                variant = FluidGlossButtonVariant.Secondary
+            ) {
+                Text("Cancel")
+            }
+        }
+    ) {
+        FluidGlossTextField(
+            value = rateText,
+            onValueChange = { rateText = it; error = null },
+            label = "Rate Contract Share (₹)",
+            placeholder = "0.00",
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+
+        FluidGlossTextField(
+            value = nmrText,
+            onValueChange = { nmrText = it; error = null },
+            label = "NMR Labor Share (₹)",
+            placeholder = "0.00",
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        if (error != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(error!!, color = RoseDanger, fontSize = 12.sp)
         }
     }
 }

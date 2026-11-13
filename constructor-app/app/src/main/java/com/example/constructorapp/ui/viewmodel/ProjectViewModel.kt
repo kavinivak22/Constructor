@@ -366,6 +366,18 @@ class ProjectViewModel(private val repository: ProjectRepository) : ViewModel() 
         }
     }
 
+    fun updateDocument(docId: String, projectId: String, updates: Map<String, Any?>, onDone: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            val res = repository.updateDocument(docId, updates)
+            if (res.isSuccess) {
+                loadDocuments(projectId)
+                onDone(true)
+            } else {
+                onDone(false)
+            }
+        }
+    }
+
     fun saveProjectMaterial(material: ProjectMaterialDto, onDone: (Boolean) -> Unit) {
         viewModelScope.launch {
             val res = repository.createProjectMaterial(material)

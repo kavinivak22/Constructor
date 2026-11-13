@@ -43,6 +43,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.constructorapp.data.local.AppDatabase
 import com.example.constructorapp.data.local.entity.WorklogWithDetails
+import com.example.constructorapp.ui.components.FluidGlossAlertDialog
 import com.example.constructorapp.data.repository.ProjectRepository
 import com.example.constructorapp.data.repository.WorklogRepository
 import com.example.constructorapp.theme.*
@@ -267,7 +268,7 @@ fun WorklogScreen(
                     containerColor = BrandPrimary,
                     contentColor = Color.White,
                     shape = CircleShape,
-                    modifier = Modifier.padding(bottom = 16.dp, end = 4.dp)
+                    modifier = Modifier.padding(bottom = 80.dp, end = 4.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
@@ -668,42 +669,19 @@ fun WorklogScreen(
 
         // ─── Delete Confirmation Dialog ──────────────────────────────────────
         deletingWorklogId?.let { logId ->
-            AlertDialog(
+            FluidGlossAlertDialog(
                 onDismissRequest = { deletingWorklogId = null },
-                title = {
-                    Text(
-                        text = "Delete Worklog?",
-                        fontFamily = OutfitFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
+                title = "Delete Worklog?",
+                text = "This action cannot be undone. This will permanently delete this daily log and all associated labor and material entries.",
+                confirmText = "Delete",
+                dismissText = "Cancel",
+                onConfirm = {
+                    viewModel.deleteWorklog(logId)
+                    deletingWorklogId = null
                 },
-                text = {
-                    Text(
-                        text = "This action cannot be undone. This will permanently delete this daily log and all associated labor and material entries.",
-                        fontFamily = PlusJakartaSansFontFamily,
-                        fontSize = 13.sp,
-                        color = TextSecondary
-                    )
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            viewModel.deleteWorklog(logId)
-                            deletingWorklogId = null
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = RoseDanger)
-                    ) {
-                        Text("Delete", fontWeight = FontWeight.Bold)
-                    }
-                },
-                dismissButton = {
-                    OutlinedButton(onClick = { deletingWorklogId = null }) {
-                        Text("Cancel", color = TextSecondary)
-                    }
-                },
-                containerColor = Color.White,
-                shape = RoundedCornerShape(16.dp)
+                onDismiss = { deletingWorklogId = null },
+                isDestructive = true,
+                icon = Icons.Outlined.Delete
             )
         }
 

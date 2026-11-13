@@ -1,8 +1,10 @@
 package com.example.constructorapp.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -11,6 +13,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.AbsoluteRoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -29,12 +33,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation3.runtime.NavKey
@@ -49,6 +56,10 @@ import com.example.constructorapp.theme.*
 import com.example.constructorapp.ui.components.AmbientBlobBackground
 import com.example.constructorapp.ui.components.AppDrawerContent
 import com.example.constructorapp.ui.components.FloatingBottomNav
+import com.example.constructorapp.ui.components.FluidGlossAlertDialog
+import com.example.constructorapp.ui.components.FluidGlossDialog
+import com.example.constructorapp.ui.components.FluidGlossButton
+import com.example.constructorapp.ui.components.FluidGlossButtonVariant
 import com.example.constructorapp.ui.components.GlassCard
 import com.example.constructorapp.ui.viewmodel.ProjectViewModel
 import com.example.constructorapp.util.CurrencyFormatter
@@ -92,51 +103,7 @@ fun ProjectDetailScreen(
     val remainingEstimate = (budget - spentEstimate).coerceAtLeast(0.0)
     val spentPercentage = if (budget > 0) ((spentEstimate / budget) * 100.0).coerceIn(0.0, 100.0) else 0.0
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                drawerContainerColor = Color.Transparent,
-                drawerContentColor = TextPrimary,
-                drawerShape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp),
-                modifier = Modifier.width(310.dp)
-            ) {
-                AppDrawerContent(
-                    userEmail = SupabaseClient.userEmail,
-                    userDisplayName = SupabaseClient.userEmail?.substringBefore("@")?.replaceFirstChar { it.uppercase() } ?: "User",
-                    userRole = "admin",
-                    selectedRoute = "/projects",
-                    onNavigateRoute = { route ->
-                        coroutineScope.launch { drawerState.close() }
-                        when (route) {
-                            "/" -> onNavigateToTab(0)
-                            "/projects" -> onNavigateToTab(1)
-                            "/purchase-orders" -> onNavigateToTab(2)
-                            "/team-hub" -> onNavigateToTab(3)
-                            "/inventory" -> onNavigate(Inventory())
-                            "/company-materials" -> onNavigate(CompanyMaterials)
-                            "/contractors" -> onNavigate(Contractors())
-                            "/payday" -> onNavigate(Payday())
-                            "/expenses" -> onNavigate(Expenses(projectId = projectId))
-                            "/notifications" -> onNavigate(Notifications)
-                            "/profile" -> onNavigate(Profile)
-                            "/personal-pouch" -> onNavigate(PersonalPouchNav)
-                        }
-                    },
-                    onCloseDrawer = {
-                        coroutineScope.launch { drawerState.close() }
-                    },
-                    onLogout = {
-                        SupabaseClient.authToken = null
-                        SupabaseClient.userId = null
-                        SupabaseClient.userEmail = null
-                        onLogout()
-                    }
-                )
-            }
-        }
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize()) {
             // Layer 1: Ambient Drifting Blobs Canvas Background (Webapp exact ambient canvas)
             AmbientBlobBackground()
 
@@ -297,25 +264,7 @@ fun ProjectDetailScreen(
                     }
                 }
             }
-
-            // Layer 3: Floating Bottom Navigation Bar (Truly floating over scrolling content)
-            FloatingBottomNav(
-                selectedTab = 1,
-                onTabSelected = { index ->
-                    onNavigateToTab(index)
-                },
-                onMoreClick = {
-                    coroutineScope.launch {
-                        drawerState.open()
-                    }
-                },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
-            )
         }
-    }
 
     if (isEditProjectOpen) {
         EditProjectDialog(
@@ -1583,7 +1532,7 @@ fun AdaptiveNextTaskWidget(
         ModalBottomSheet(
             onDismissRequest = { isLinkDialogOpen = false },
             sheetState = sheetState,
-            containerColor = SlateSurface,
+            containerColor = GlassCardSurfaceElevated,
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
             dragHandle = {
                 BottomSheetDefaults.DragHandle(color = TextSecondary.copy(alpha = 0.35f))
@@ -2006,165 +1955,949 @@ fun AdaptiveNextTaskWidget(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // Bottom Action: Done Button
-                Button(
+                FluidGlossButton(
+                    text = "Done",
                     onClick = { isLinkDialogOpen = false },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(42.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
-                ) {
-                    Text("Done", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                }
+                    modifier = Modifier.fillMaxWidth(),
+                    variant = FluidGlossButtonVariant.Primary
+                )
             }
         }
     }
 
     // Modal Dialog: Evidence Warning
     if (showEvidenceWarning) {
-        AlertDialog(
+        FluidGlossAlertDialog(
             onDismissRequest = { showEvidenceWarning = false },
-            icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(28.dp)) },
-            title = { Text("Site Evidence Required", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary) },
-            text = {
-                Text(
-                    text = "Please link or log at least one worklog for this task before completing it, as required by site quality audit standards.",
-                    fontSize = 13.sp,
-                    color = TextSecondary
-                )
+            title = "Site Evidence Required",
+            text = "Please link or log at least one worklog for this task before completing it, as required by site quality audit standards.",
+            confirmText = "Link Worklog",
+            dismissText = "Cancel",
+            onConfirm = {
+                showEvidenceWarning = false
+                isLinkDialogOpen = true
             },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showEvidenceWarning = false
-                        isLinkDialogOpen = true
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
-                ) {
-                    Text("Link Worklog", fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showEvidenceWarning = false }) {
-                    Text("Cancel", color = TextSecondary)
-                }
-            },
-            containerColor = SlateSurface
+            onDismiss = { showEvidenceWarning = false },
+            icon = Icons.Default.Warning
         )
     }
 }
 
-// ─── D. Building Plan Summary Card ──────────────────────────────────────────
+// ─── D. Modern FluidGloss Building Plan & Quality Checks Module ──────────────
 
+private data class StageTaskBadge(
+    val bg: Color,
+    val border: Color,
+    val text: String,
+    val color: Color
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BuildingPlanSummaryCard(
     projectId: String,
     projectName: String,
     onNavigate: (NavKey) -> Unit
 ) {
-    GlassCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        borderColor = BrandPrimary.copy(alpha = 0.25f)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(BrandPrimaryContainer)
-                        .border(1.dp, BrandPrimary.copy(alpha = 0.25f), RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.Layers,
-                        contentDescription = null,
-                        tint = BrandPrimary,
-                        modifier = Modifier.size(22.dp)
+    var selectedTab by remember { mutableIntStateOf(0) } // 0: Quality Stages, 1: Blueprint Viewer
+    var selectedFloor by remember { mutableStateOf("Ground Floor Plan") }
+
+    // Template state
+    var selectedTemplateId by remember { mutableStateOf("tmpl-framed-villa") }
+    var isTemplateDialogOpen by remember { mutableStateOf(false) }
+
+    // Stages state
+    val initialStages = remember(selectedTemplateId) {
+        BuiltInPlanTemplates.find { it.id == selectedTemplateId }?.stages ?: BuiltInPlanTemplates.first().stages
+    }
+    var stages by remember(selectedTemplateId) { mutableStateOf(initialStages) }
+
+    // Expanded accordion states
+    val expandedStageIds = remember { mutableStateMapOf<String, Boolean>() }
+    LaunchedEffect(selectedTemplateId) {
+        stages.forEachIndexed { idx, stage ->
+            expandedStageIds[stage.id] = idx <= 1 // First two stages expanded by default
+        }
+    }
+
+    // Dynamic Calculations
+    val totalQualityChecks = remember(stages) {
+        stages.sumOf { s -> s.tasks.sumOf { t -> t.checklists.size } }
+    }
+    val totalCompletedChecks = remember(stages) {
+        stages.sumOf { s -> s.tasks.sumOf { t -> t.checklists.count { it.isCompleted } } }
+    }
+    val overallProgressPct = remember(totalQualityChecks, totalCompletedChecks) {
+        if (totalQualityChecks > 0) (totalCompletedChecks * 100) / totalQualityChecks else 0
+    }
+
+    // Find active stage
+    val activeStage = remember(stages) {
+        stages.find { stage -> stage.tasks.any { !it.isCompleted } } ?: stages.firstOrNull()
+    }
+    val activeStageIndex = remember(stages, activeStage) {
+        val idx = stages.indexOf(activeStage)
+        if (idx != -1) idx + 1 else 1
+    }
+
+    // Toggle Task Status
+    fun toggleTask(stageId: String, taskId: String, currentCompleted: Boolean) {
+        val newStatus = if (currentCompleted) "pending" else "completed"
+        stages = stages.map { stage ->
+            if (stage.id != stageId) stage
+            else stage.copy(
+                tasks = stage.tasks.map { task ->
+                    if (task.id != taskId) task
+                    else task.copy(
+                        status = newStatus,
+                        checklists = task.checklists.map { it.copy(isCompleted = newStatus == "completed") }
                     )
                 }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
+            )
+        }
+    }
+
+    // Toggle Checklist Item
+    fun toggleChecklist(stageId: String, taskId: String, checkId: String) {
+        stages = stages.map { stage ->
+            if (stage.id != stageId) stage
+            else stage.copy(
+                tasks = stage.tasks.map { task ->
+                    if (task.id != taskId) task
+                    else {
+                        val updatedChecks = task.checklists.map {
+                            if (it.id == checkId) it.copy(isCompleted = !it.isCompleted) else it
+                        }
+                        val allChecked = updatedChecks.isNotEmpty() && updatedChecks.all { it.isCompleted }
+                        val anyChecked = updatedChecks.any { it.isCompleted }
+                        val newStatus = when {
+                            allChecked -> "completed"
+                            anyChecked -> "in-progress"
+                            else -> "pending"
+                        }
+                        task.copy(status = newStatus, checklists = updatedChecks)
+                    }
+                }
+            )
+        }
+    }
+
+    GlassCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        borderColor = Color(0x66FFFFFF)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp)
+        ) {
+            // ─── Header: Icon, Title & Change Plan Action ─────────────────────
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(
+                                        BrandPrimary.copy(alpha = 0.20f),
+                                        BrandPrimaryDark.copy(alpha = 0.10f)
+                                    )
+                                )
+                            )
+                            .border(1.dp, BrandPrimary.copy(alpha = 0.35f), RoundedCornerShape(14.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Layers,
+                            contentDescription = null,
+                            tint = BrandPrimary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column {
+                        Text(
+                            text = "Building Plan & Quality Checks",
+                            fontFamily = OutfitFontFamily,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "Stage-by-stage civil execution & engineering audit checklists",
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 11.sp,
+                            color = TextSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                OutlinedButton(
+                    onClick = { isTemplateDialogOpen = true },
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                    modifier = Modifier.height(32.dp),
+                    border = BorderStroke(1.dp, BrandPrimary.copy(alpha = 0.35f)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandPrimary)
+                ) {
+                    Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(13.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Change", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+            HorizontalDivider(color = GlassBorder.copy(alpha = 0.6f))
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // ─── Site Execution Progress Banner ──────────────────────────────
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                color = Color(0x66FFFFFF),
+                border = BorderStroke(1.dp, Color(0x4DFFFFFF))
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Building Plan & Quality Checks",
-                            fontSize = 13.sp,
+                            text = "SITE EXECUTION PROGRESS",
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = BrandPrimary,
+                            letterSpacing = 0.8.sp
+                        )
+                        Text(
+                            text = "$overallProgressPct% COMPLETE",
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Black,
+                            color = if (overallProgressPct == 100) EmeraldSuccess else BrandPrimary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    val animatedProgress by animateFloatAsState(
+                        targetValue = overallProgressPct / 100f,
+                        animationSpec = tween(500),
+                        label = "overallProgress"
+                    )
+                    LinearProgressIndicator(
+                        progress = { animatedProgress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(7.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        color = if (overallProgressPct == 100) EmeraldSuccess else BrandPrimary,
+                        trackColor = Color(0x20E2E8F0)
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "$totalCompletedChecks of $totalQualityChecks Quality Inspections Passed",
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextSecondary
                         )
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(6.dp))
                                 .background(BrandPrimaryContainer)
                                 .border(1.dp, BrandPrimary.copy(alpha = 0.25f), RoundedCornerShape(6.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                .padding(horizontal = 7.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = "Stage 2 of 6",
-                                fontSize = 9.sp,
+                                text = "Stage $activeStageIndex of ${stages.size} Active",
+                                fontFamily = PlusJakartaSansFontFamily,
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = BrandPrimary
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Active: Foundation & Columns",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextSecondary
-                        )
-                        Text(
-                            text = "14/28 Verified",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = BrandPrimary
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(6.dp))
-                    LinearProgressIndicator(
-                        progress = { 0.50f },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(3.dp)),
-                        color = BrandPrimary,
-                        trackColor = SlateSurfaceSubtle
-                    )
                 }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // ─── Tab Selector: Stages vs Blueprint Viewer ─────────────────────
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0x50F1F5F9))
+                    .border(1.dp, Color(0x30E2E8F0), RoundedCornerShape(12.dp))
+                    .padding(4.dp)
+            ) {
+                TabPill(
+                    selected = selectedTab == 0,
+                    title = "Civil Stages & Quality",
+                    icon = Icons.Default.Checklist,
+                    modifier = Modifier.weight(1f),
+                    onClick = { selectedTab = 0 }
+                )
+                TabPill(
+                    selected = selectedTab == 1,
+                    title = "Architectural Blueprint",
+                    icon = Icons.Default.Layers,
+                    modifier = Modifier.weight(1f),
+                    onClick = { selectedTab = 1 }
+                )
             }
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            Button(
+            // ─── Tab Content ──────────────────────────────────────────────────
+            if (selectedTab == 0) {
+                // Accordion of Stages
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    stages.forEachIndexed { stageIdx, stage ->
+                        val isExpanded = expandedStageIds[stage.id] ?: (stageIdx <= 1)
+                        val totalTasks = stage.tasks.size
+                        val completedTasks = stage.tasks.count { it.isCompleted }
+                        val totalChecks = stage.tasks.sumOf { it.checklists.size }
+                        val completedChecks = stage.tasks.sumOf { it.checklists.count { c -> c.isCompleted } }
+                        val stagePct = if (totalChecks > 0) (completedChecks * 100) / totalChecks else 0
+                        val isStageDone = stagePct == 100
+
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            color = Color(0x66FFFFFF),
+                            border = BorderStroke(1.dp, if (isStageDone) EmeraldSuccess.copy(alpha = 0.35f) else Color(0x40000000))
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                // Stage Header Row (Clickable to toggle expand)
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { expandedStageIds[stage.id] = !isExpanded },
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(if (isStageDone) EmeraldSuccessContainer else BrandPrimaryContainer)
+                                            .border(
+                                                1.dp,
+                                                if (isStageDone) EmeraldSuccess.copy(alpha = 0.3f) else BrandPrimary.copy(alpha = 0.3f),
+                                                RoundedCornerShape(10.dp)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isStageDone) Icons.Default.CheckCircle else stage.icon,
+                                            contentDescription = null,
+                                            tint = if (isStageDone) EmeraldSuccess else BrandPrimary,
+                                            modifier = Modifier.size(19.dp)
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.width(10.dp))
+
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = stage.title,
+                                            fontFamily = OutfitFontFamily,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp,
+                                            color = TextPrimary
+                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Text(
+                                                text = "Weight: ${stage.weight}%",
+                                                fontFamily = PlusJakartaSansFontFamily,
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = TextSecondary
+                                            )
+                                            Text("•", fontSize = 10.sp, color = TextSecondary)
+                                            Text(
+                                                text = "$completedTasks/$totalTasks Tasks Done",
+                                                fontFamily = PlusJakartaSansFontFamily,
+                                                fontSize = 10.sp,
+                                                color = TextSecondary
+                                            )
+                                        }
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(if (isStageDone) EmeraldSuccessContainer else BrandPrimaryContainer)
+                                            .border(
+                                                1.dp,
+                                                if (isStageDone) EmeraldSuccess.copy(alpha = 0.3f) else BrandPrimary.copy(alpha = 0.3f),
+                                                RoundedCornerShape(6.dp)
+                                            )
+                                            .padding(horizontal = 7.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "$stagePct%",
+                                            fontFamily = PlusJakartaSansFontFamily,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isStageDone) EmeraldSuccess else BrandPrimary
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.width(6.dp))
+
+                                    Icon(
+                                        imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                        contentDescription = null,
+                                        tint = TextSecondary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+
+                                // Expanded Stage Tasks
+                                AnimatedVisibility(visible = isExpanded) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 10.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        stage.tasks.forEach { task ->
+                                            val taskChecksTotal = task.checklists.size
+                                            val taskChecksDone = task.checklists.count { it.isCompleted }
+
+                                            Surface(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = RoundedCornerShape(10.dp),
+                                                color = Color(0x80F8FAFC),
+                                                border = BorderStroke(1.dp, Color(0x30E2E8F0))
+                                            ) {
+                                                Column(modifier = Modifier.padding(10.dp)) {
+                                                    // Task Row: Checkbox, Title, and Status Badge
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        verticalAlignment = Alignment.Top
+                                                    ) {
+                                                        Checkbox(
+                                                            checked = task.isCompleted,
+                                                            onCheckedChange = {
+                                                                toggleTask(stage.id, task.id, task.isCompleted)
+                                                            },
+                                                            colors = CheckboxDefaults.colors(
+                                                                checkedColor = EmeraldSuccess,
+                                                                checkmarkColor = Color.White
+                                                            ),
+                                                            modifier = Modifier
+                                                                .size(20.dp)
+                                                                .padding(top = 1.dp)
+                                                        )
+
+                                                        Spacer(modifier = Modifier.width(8.dp))
+
+                                                        Column(modifier = Modifier.weight(1f)) {
+                                                            Text(
+                                                                text = task.title,
+                                                                fontFamily = PlusJakartaSansFontFamily,
+                                                                fontSize = 12.sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = if (task.isCompleted) TextSecondary else TextPrimary,
+                                                                textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null
+                                                            )
+                                                            if (!task.description.isNullOrBlank()) {
+                                                                Text(
+                                                                    text = task.description,
+                                                                    fontFamily = PlusJakartaSansFontFamily,
+                                                                    fontSize = 10.sp,
+                                                                    color = TextSecondary,
+                                                                    modifier = Modifier.padding(top = 2.dp)
+                                                                )
+                                                            }
+                                                        }
+
+                                                        Spacer(modifier = Modifier.width(6.dp))
+
+                                                        // Status Badge
+                                                        val badge = when (task.status) {
+                                                            "completed" -> StageTaskBadge(
+                                                                EmeraldSuccessContainer,
+                                                                EmeraldSuccess.copy(alpha = 0.3f),
+                                                                "completed",
+                                                                EmeraldSuccess
+                                                            )
+                                                            "in-progress" -> StageTaskBadge(
+                                                                Color(0xFFFEF3C7).copy(alpha = 0.4f),
+                                                                Color(0xFFF59E0B).copy(alpha = 0.4f),
+                                                                "in-progress",
+                                                                Color(0xFFD97706)
+                                                            )
+                                                            else -> StageTaskBadge(
+                                                                Color(0x40F1F5F9),
+                                                                Color(0x30E2E8F0),
+                                                                "pending",
+                                                                TextSecondary
+                                                            )
+                                                        }
+
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .clip(RoundedCornerShape(6.dp))
+                                                                .background(badge.bg)
+                                                                .border(1.dp, badge.border, RoundedCornerShape(6.dp))
+                                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                        ) {
+                                                            Text(
+                                                                text = badge.text,
+                                                                fontFamily = PlusJakartaSansFontFamily,
+                                                                fontSize = 9.sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = badge.color
+                                                            )
+                                                        }
+                                                    }
+
+                                                    // Quality Checkpoints under Task
+                                                    if (task.checklists.isNotEmpty()) {
+                                                        Spacer(modifier = Modifier.height(8.dp))
+                                                        HorizontalDivider(color = Color(0x20E2E8F0))
+                                                        Spacer(modifier = Modifier.height(6.dp))
+
+                                                        Row(
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            Row(
+                                                                verticalAlignment = Alignment.CenterVertically,
+                                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                            ) {
+                                                                Icon(
+                                                                    Icons.Default.CheckBox,
+                                                                    contentDescription = null,
+                                                                    tint = BrandPrimary,
+                                                                    modifier = Modifier.size(12.dp)
+                                                                )
+                                                                Text(
+                                                                    "Quality Checkpoints",
+                                                                    fontFamily = PlusJakartaSansFontFamily,
+                                                                    fontSize = 10.sp,
+                                                                    fontWeight = FontWeight.SemiBold,
+                                                                    color = TextSecondary
+                                                                )
+                                                            }
+                                                            Text(
+                                                                text = "$taskChecksDone/$taskChecksTotal Verified",
+                                                                fontFamily = PlusJakartaSansFontFamily,
+                                                                fontSize = 10.sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = BrandPrimary
+                                                            )
+                                                        }
+
+                                                        Spacer(modifier = Modifier.height(6.dp))
+
+                                                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                            task.checklists.forEach { check ->
+                                                                Row(
+                                                                    modifier = Modifier
+                                                                        .fillMaxWidth()
+                                                                        .clip(RoundedCornerShape(6.dp))
+                                                                        .background(if (check.isCompleted) EmeraldSuccess.copy(alpha = 0.08f) else Color(0x60FFFFFF))
+                                                                        .border(
+                                                                            1.dp,
+                                                                            if (check.isCompleted) EmeraldSuccess.copy(alpha = 0.25f) else Color(0x20000000),
+                                                                            RoundedCornerShape(6.dp)
+                                                                        )
+                                                                        .clickable {
+                                                                            toggleChecklist(stage.id, task.id, check.id)
+                                                                        }
+                                                                        .padding(horizontal = 8.dp, vertical = 5.dp),
+                                                                    verticalAlignment = Alignment.CenterVertically
+                                                                ) {
+                                                                    Checkbox(
+                                                                        checked = check.isCompleted,
+                                                                        onCheckedChange = {
+                                                                            toggleChecklist(stage.id, task.id, check.id)
+                                                                        },
+                                                                        colors = CheckboxDefaults.colors(
+                                                                            checkedColor = EmeraldSuccess,
+                                                                            checkmarkColor = Color.White
+                                                                        ),
+                                                                        modifier = Modifier.size(16.dp)
+                                                                    )
+                                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                                    Text(
+                                                                        text = check.title,
+                                                                        fontFamily = PlusJakartaSansFontFamily,
+                                                                        fontSize = 11.sp,
+                                                                        fontWeight = FontWeight.Medium,
+                                                                        color = if (check.isCompleted) TextSecondary else TextPrimary,
+                                                                        textDecoration = if (check.isCompleted) TextDecoration.LineThrough else null,
+                                                                        modifier = Modifier.weight(1f)
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // ─── Architectural Blueprint Tab ───────────────────────────────
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0x66FFFFFF),
+                    border = BorderStroke(1.dp, Color(0x40000000))
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "ARCHITECTURAL BLUEPRINT",
+                                fontFamily = PlusJakartaSansFontFamily,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = BrandPrimary
+                            )
+                            Text(
+                                text = "Scale 1:100",
+                                fontFamily = PlusJakartaSansFontFamily,
+                                fontSize = 10.sp,
+                                color = TextSecondary
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Floor Level Filter Chips
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf("Ground Floor Plan", "First Floor Plan", "Terrace Plan").forEach { floor ->
+                                FilterChip(
+                                    selected = selectedFloor == floor,
+                                    onClick = { selectedFloor = floor },
+                                    label = { Text(floor, fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = BrandPrimary,
+                                        selectedLabelColor = Color.White,
+                                        containerColor = Color(0x40F1F5F9),
+                                        labelColor = TextSecondary
+                                    )
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Blueprint Canvas Renderer
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(320.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFF0F172A))
+                                .border(1.dp, SkyInfo.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                        ) {
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                val canvasWidth = size.width
+                                val canvasHeight = size.height
+
+                                // Architectural Grid lines
+                                val gridSpacing = 40.dp.toPx()
+                                var x = 0f
+                                while (x < canvasWidth) {
+                                    drawLine(
+                                        color = Color(0x1A38BDF8),
+                                        start = Offset(x, 0f),
+                                        end = Offset(x, canvasHeight),
+                                        strokeWidth = 1f
+                                    )
+                                    x += gridSpacing
+                                }
+                                var y = 0f
+                                while (y < canvasHeight) {
+                                    drawLine(
+                                        color = Color(0x1A38BDF8),
+                                        start = Offset(0f, y),
+                                        end = Offset(canvasWidth, y),
+                                        strokeWidth = 1f
+                                    )
+                                    y += gridSpacing
+                                }
+
+                                // Outer Boundary Walls (Double line)
+                                val margin = 28.dp.toPx()
+                                val planW = canvasWidth - (margin * 2)
+                                val planH = canvasHeight - (margin * 2)
+
+                                drawRect(
+                                    color = SkyInfo,
+                                    topLeft = Offset(margin, margin),
+                                    size = Size(planW, planH),
+                                    style = Stroke(width = 4f)
+                                )
+
+                                // Internal Partitions
+                                val midX = margin + (planW * 0.55f)
+                                val midY = margin + (planH * 0.5f)
+
+                                // Living / Bedroom divider
+                                drawLine(
+                                    color = SkyInfo,
+                                    start = Offset(midX, margin),
+                                    end = Offset(midX, margin + planH),
+                                    strokeWidth = 3f
+                                )
+
+                                // Kitchen / Living horizontal divider
+                                drawLine(
+                                    color = SkyInfo,
+                                    start = Offset(margin, midY),
+                                    end = Offset(midX, midY),
+                                    strokeWidth = 3f
+                                )
+
+                                // Master Bedroom toilet block
+                                val toiletY = margin + (planH * 0.65f)
+                                drawLine(
+                                    color = SkyInfo,
+                                    start = Offset(midX, toiletY),
+                                    end = Offset(margin + planW, toiletY),
+                                    strokeWidth = 2.5f
+                                )
+
+                                // Column markers (Red concrete columns at junctions)
+                                val colSize = 10.dp.toPx()
+                                val colPoints = listOf(
+                                    Offset(margin, margin),
+                                    Offset(midX, margin),
+                                    Offset(margin + planW, margin),
+                                    Offset(margin, midY),
+                                    Offset(midX, midY),
+                                    Offset(margin, margin + planH),
+                                    Offset(midX, margin + planH),
+                                    Offset(margin + planW, margin + planH),
+                                    Offset(margin + planW, toiletY)
+                                )
+                                colPoints.forEach { pt ->
+                                    drawRect(
+                                        color = RoseDanger,
+                                        topLeft = Offset(pt.x - (colSize / 2), pt.y - (colSize / 2)),
+                                        size = Size(colSize, colSize)
+                                    )
+                                }
+
+                                // Door swing arc (dashed)
+                                drawArc(
+                                    color = BrandPrimary,
+                                    startAngle = 0f,
+                                    sweepAngle = 90f,
+                                    useCenter = false,
+                                    topLeft = Offset(margin + 20f, margin + 20f),
+                                    size = Size(60f, 60f),
+                                    style = Stroke(
+                                        width = 2f,
+                                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                                    )
+                                )
+                            }
+
+                            // Overlay Room Labels
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(32.dp)
+                            ) {
+                                Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                                    // Living Hall
+                                    Box(
+                                        modifier = Modifier.weight(1.2f).fillMaxHeight(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("LIVING ROOM", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                            Text("16'0\" x 14'6\"", fontSize = 9.sp, color = SkyInfo)
+                                        }
+                                    }
+                                    // Master Bedroom
+                                    Box(
+                                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("MASTER BED", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                            Text("14'0\" x 12'0\"", fontSize = 9.sp, color = SkyInfo)
+                                        }
+                                    }
+                                }
+
+                                Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                                    // Modular Kitchen
+                                    Box(
+                                        modifier = Modifier.weight(1.2f).fillMaxHeight(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("KITCHEN & DINING", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                            Text("12'0\" x 10'0\"", fontSize = 9.sp, color = SkyInfo)
+                                        }
+                                    }
+                                    // Attached Bath & Utility
+                                    Box(
+                                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("TOILET", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                            Text("8'0\" x 5'0\"", fontSize = 8.sp, color = SkyInfo)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // ─── Action Button: Deep Navigation to Full Dedicated Screen ──────
+            FluidGlossButton(
+                text = "Open Dedicated Fullscreen Plan",
                 onClick = { onNavigate(BuildingPlan(projectId, projectName)) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(38.dp),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
-            ) {
-                Text("View Building Plan", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                Spacer(modifier = Modifier.width(6.dp))
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(15.dp)
+                trailingIcon = {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                },
+                variant = FluidGlossButtonVariant.Primary,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+
+    // ─── Template Selection Dialog ("Change Building Plan") ──────────────────
+    if (isTemplateDialogOpen) {
+        FluidGlossDialog(
+            onDismissRequest = { isTemplateDialogOpen = false },
+            title = "Change Building Plan",
+            icon = Icons.Default.Tune,
+            confirmButton = {
+                FluidGlossButton(
+                    text = "Close",
+                    onClick = { isTemplateDialogOpen = false },
+                    variant = FluidGlossButtonVariant.Secondary,
+                    modifier = Modifier.fillMaxWidth()
                 )
+            }
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Select a master construction workflow template to track stage-by-stage civil execution and quality checklists.",
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 12.sp,
+                    color = TextSecondary
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+
+                BuiltInPlanTemplates.forEach { template ->
+                    val isSelected = template.id == selectedTemplateId
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (isSelected) BrandPrimaryContainer else SlateSurfaceSubtle)
+                            .border(
+                                1.dp,
+                                if (isSelected) BrandPrimary else GlassBorder,
+                                RoundedCornerShape(10.dp)
+                            )
+                            .clickable {
+                                selectedTemplateId = template.id
+                                isTemplateDialogOpen = false
+                            }
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = isSelected,
+                            onClick = {
+                                selectedTemplateId = template.id
+                                isTemplateDialogOpen = false
+                            },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = BrandPrimary,
+                                unselectedColor = TextSecondary
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(
+                                    text = template.name,
+                                    fontFamily = OutfitFontFamily,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary
+                                )
+                            }
+                            Text(
+                                text = template.description,
+                                fontFamily = PlusJakartaSansFontFamily,
+                                fontSize = 11.sp,
+                                color = TextSecondary,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
             }
         }
     }

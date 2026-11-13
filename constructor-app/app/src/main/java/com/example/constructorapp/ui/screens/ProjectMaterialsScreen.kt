@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.AbsoluteRoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -26,9 +27,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -42,6 +45,11 @@ import com.example.constructorapp.theme.*
 import com.example.constructorapp.ui.components.AmbientBlobBackground
 import com.example.constructorapp.ui.components.AppDrawerContent
 import com.example.constructorapp.ui.components.FloatingBottomNav
+import com.example.constructorapp.ui.components.FluidGlossButton
+import com.example.constructorapp.ui.components.FluidGlossButtonSize
+import com.example.constructorapp.ui.components.FluidGlossButtonVariant
+import com.example.constructorapp.ui.components.FluidGlossDialog
+import com.example.constructorapp.ui.components.FluidGlossTextField
 import com.example.constructorapp.ui.components.GlassCard
 import com.example.constructorapp.ui.viewmodel.ProjectViewModel
 import com.example.constructorapp.util.CurrencyFormatter
@@ -106,43 +114,7 @@ fun ProjectMaterialsScreen(
         }
     }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        gesturesEnabled = drawerState.isOpen,
-        drawerContent = {
-            ModalDrawerSheet(
-                drawerContainerColor = Color.Transparent,
-                drawerContentColor = TextPrimary,
-                drawerShape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp),
-                modifier = Modifier.width(310.dp)
-            ) {
-                AppDrawerContent(
-                    userEmail = SupabaseClient.userEmail,
-                    userDisplayName = SupabaseClient.userEmail?.substringBefore("@")?.replaceFirstChar { it.uppercase() } ?: "User",
-                    userRole = "admin",
-                    selectedRoute = "/projects",
-                    onNavigateRoute = { route ->
-                        scope.launch { drawerState.close() }
-                        when (route) {
-                            "/" -> onNavigateToTab(0)
-                            "/projects" -> onNavigateToTab(1)
-                            "/purchase-orders" -> onNavigateToTab(2)
-                            "/team-hub" -> onNavigateToTab(3)
-                            else -> onNavigateToTab(1)
-                        }
-                    },
-                    onCloseDrawer = {
-                        scope.launch { drawerState.close() }
-                    },
-                    onLogout = {
-                        scope.launch { drawerState.close() }
-                        onLogout()
-                    }
-                )
-            }
-        }
-    ) {
-        Box(
+    Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(SlateBackground)
@@ -201,15 +173,15 @@ fun ProjectMaterialsScreen(
                             }
                         }
 
-                        Button(
+                        FluidGlossButton(
                             onClick = { showAddDialog = true },
+                            variant = FluidGlossButtonVariant.Primary,
+                            size = FluidGlossButtonSize.Small,
                             shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                            modifier = Modifier.height(36.dp)
+                            leadingIcon = {
+                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            }
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
                             Text("Add Item", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
@@ -222,10 +194,10 @@ fun ProjectMaterialsScreen(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedTextField(
+                    FluidGlossTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = { Text("Search materials or categories...", fontSize = 13.sp, color = TextSecondary) },
+                        placeholder = "Search materials or categories...",
                         leadingIcon = {
                             Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp))
                         },
@@ -238,18 +210,7 @@ fun ProjectMaterialsScreen(
                         },
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = Color.White.copy(alpha = 0.85f),
-                            unfocusedContainerColor = Color.White.copy(alpha = 0.65f),
-                            focusedBorderColor = BrandPrimary,
-                            unfocusedBorderColor = Color(0x1A0F172A),
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary,
-                            cursorColor = BrandPrimary
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp)
+                        modifier = Modifier.fillMaxWidth()
                     )
 
                     // Stock Filter Chips
@@ -337,10 +298,10 @@ fun ProjectMaterialsScreen(
                                 )
                                 if (materials.isEmpty()) {
                                     Spacer(modifier = Modifier.height(16.dp))
-                                    Button(
+                                    FluidGlossButton(
                                         onClick = { showAddDialog = true },
-                                        shape = RoundedCornerShape(12.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
+                                        variant = FluidGlossButtonVariant.Primary,
+                                        shape = RoundedCornerShape(12.dp)
                                     ) {
                                         Text("Add Your First Item", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                     }
@@ -384,18 +345,7 @@ fun ProjectMaterialsScreen(
                     .padding(bottom = 90.dp)
             )
 
-            // Layer 3: Floating Bottom Navigation Bar (Truly floating over scrolling content)
-            FloatingBottomNav(
-                selectedTab = 1,
-                onTabSelected = { index -> onNavigateToTab(index) },
-                onMoreClick = { scope.launch { drawerState.open() } },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
-            )
         }
-    }
 
     // ─── Dialogs ─────────────────────────────────────────────────────────────
 
@@ -535,14 +485,8 @@ fun MaterialInventoryCard(
 ) {
     val isLowStock = material.effectiveQuantity <= material.effectiveMinQuantity
 
-    Surface(
+    GlassCard(
         shape = RoundedCornerShape(18.dp),
-        color = if (isLowStock) Color(0xFFFEF2F2).copy(alpha = 0.95f) else Color.White.copy(alpha = 0.88f),
-        border = BorderStroke(
-            1.dp,
-            if (isLowStock) Color(0xFFEF4444).copy(alpha = 0.35f) else Color.White.copy(alpha = 0.85f)
-        ),
-        shadowElevation = 2.dp,
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onCardClick() }
@@ -719,45 +663,30 @@ fun MaterialInventoryCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedButton(
+                FluidGlossButton(
                     onClick = onAddStock,
+                    variant = FluidGlossButtonVariant.Success,
+                    size = FluidGlossButtonSize.Small,
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color(0xFFECFDF5),
-                        contentColor = Color(0xFF059669)
-                    ),
-                    border = BorderStroke(1.dp, Color(0xFF10B981).copy(alpha = 0.35f)),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(34.dp)
+                    modifier = Modifier.weight(1f),
+                    leadingIcon = {
+                        Icon(Icons.Default.ArrowUpward, contentDescription = null, modifier = Modifier.size(14.dp))
+                    }
                 ) {
-                    Icon(Icons.Default.ArrowUpward, contentDescription = null, modifier = Modifier.size(13.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
                     Text("Add Stock", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
 
-                OutlinedButton(
+                FluidGlossButton(
                     onClick = onUseStock,
                     enabled = material.effectiveQuantity > 0,
+                    variant = FluidGlossButtonVariant.Destructive,
+                    size = FluidGlossButtonSize.Small,
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color(0xFFFEF2F2),
-                        contentColor = Color(0xFFDC2626),
-                        disabledContainerColor = Color(0xFFF1F5F9),
-                        disabledContentColor = Color(0xFF94A3B8)
-                    ),
-                    border = BorderStroke(
-                        1.dp,
-                        if (material.effectiveQuantity > 0) Color(0xFFEF4444).copy(alpha = 0.35f) else Color(0x100F172A)
-                    ),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(34.dp)
+                    modifier = Modifier.weight(1f),
+                    leadingIcon = {
+                        Icon(Icons.Default.ArrowDownward, contentDescription = null, modifier = Modifier.size(14.dp))
+                    }
                 ) {
-                    Icon(Icons.Default.ArrowDownward, contentDescription = null, modifier = Modifier.size(13.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
                     Text("Use Stock", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
@@ -836,281 +765,214 @@ fun AddMaterialDialog(
         }
     }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = Color.White,
-            border = BorderStroke(1.dp, Color(0x180F172A)),
-            shadowElevation = 8.dp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp)
+    FluidGlossDialog(
+        onDismissRequest = onDismiss,
+        title = "Add New Item",
+        subtitle = "Add a new material to track in your project inventory",
+        icon = Icons.Default.Inventory,
+        iconTint = BrandPrimary,
+        confirmButton = {
+            FluidGlossButton(
+                onClick = {
+                    val initQty = initialQtyStr.toDoubleOrNull() ?: 0.0
+                    val minQty = minQtyStr.toDoubleOrNull() ?: 0.0
+                    val cost = costStr.toDoubleOrNull() ?: 0.0
+                    val totalCost = totalCostStr.toDoubleOrNull()
+                    if (name.isBlank()) return@FluidGlossButton
+
+                    onAdd(
+                        name.trim(),
+                        category.trim(),
+                        initQty,
+                        minQty,
+                        unit.trim().ifBlank { "units" },
+                        supplier.trim(),
+                        cost,
+                        logExpense,
+                        totalCost,
+                        expenseDate,
+                        paymentStatus,
+                        invoiceNo.trim().ifBlank { null }
+                    )
+                },
+                variant = FluidGlossButtonVariant.Primary,
+                enabled = name.isNotBlank() && initialQtyStr.isNotBlank()
+            ) {
+                Text("Add Item to Inventory", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            FluidGlossButton(
+                onClick = onDismiss,
+                variant = FluidGlossButtonVariant.Secondary
+            ) {
+                Text("Cancel")
+            }
+        }
+    ) {
+        Text("ITEM DETAILS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = BrandPrimary, letterSpacing = 1.sp)
+        FluidGlossTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = "Item Name *",
+            placeholder = "e.g. Maha PPC Cement, Steel 12mm",
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        FluidGlossTextField(
+            value = category,
+            onValueChange = { category = it },
+            label = "Category",
+            placeholder = "e.g. Cement, Steel, Structural",
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+        Text("INVENTORY CONTROL", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = BrandPrimary, letterSpacing = 1.sp)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FluidGlossTextField(
+                value = initialQtyStr,
+                onValueChange = { initialQtyStr = it },
+                label = "Initial Stock *",
+                placeholder = "0",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+            FluidGlossTextField(
+                value = minQtyStr,
+                onValueChange = { minQtyStr = it },
+                label = "Min Alert *",
+                placeholder = "5",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+            FluidGlossTextField(
+                value = unit,
+                onValueChange = { unit = it },
+                label = "Unit *",
+                placeholder = "bags, kg",
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+        Text("PROCUREMENT & SUPPLIER", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = BrandPrimary, letterSpacing = 1.sp)
+        FluidGlossTextField(
+            value = supplier,
+            onValueChange = { supplier = it },
+            label = "Supplier Name",
+            placeholder = "e.g. Palanivel Steels",
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        FluidGlossTextField(
+            value = costStr,
+            onValueChange = { costStr = it },
+            label = "Cost per Unit (₹)",
+            placeholder = "0.00",
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+        // Expense Logging Toggle
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Record as Project Expense", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                Text("Auto-creates an expense record for this initial batch", fontSize = 10.sp, color = TextSecondary)
+            }
+            Switch(
+                checked = logExpense,
+                onCheckedChange = { logExpense = it },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = BrandPrimary
+                )
+            )
+        }
+
+        AnimatedVisibility(visible = logExpense) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                    .padding(top = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Title
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Inventory, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Add New Item", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                    }
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = TextSecondary, modifier = Modifier.size(18.dp))
-                    }
-                }
-
-                Text("Add a new material to track in your project inventory.", fontSize = 11.sp, color = TextSecondary)
-
-                HorizontalDivider(color = Color(0x100F172A))
-
-                // Item Details
-                Text("ITEM DETAILS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = BrandPrimary, letterSpacing = 1.sp)
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Item Name *") },
-                    placeholder = { Text("e.g. Maha PPC Cement, Steel 12mm") },
-                    singleLine = true,
-                    colors = lightDialogTextFieldColors(),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = category,
-                    onValueChange = { category = it },
-                    label = { Text("Category") },
-                    placeholder = { Text("e.g. Cement, Steel, Structural") },
-                    singleLine = true,
-                    colors = lightDialogTextFieldColors(),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                HorizontalDivider(color = Color(0x100F172A))
-
-                // Inventory Control
-                Text("INVENTORY CONTROL", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = BrandPrimary, letterSpacing = 1.sp)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = initialQtyStr,
-                        onValueChange = { initialQtyStr = it },
-                        label = { Text("Initial Stock *") },
-                        placeholder = { Text("0") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true,
-                        colors = lightDialogTextFieldColors(),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    OutlinedTextField(
-                        value = minQtyStr,
-                        onValueChange = { minQtyStr = it },
-                        label = { Text("Min Alert *") },
-                        placeholder = { Text("5") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true,
-                        colors = lightDialogTextFieldColors(),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    OutlinedTextField(
-                        value = unit,
-                        onValueChange = { unit = it },
-                        label = { Text("Unit *") },
-                        placeholder = { Text("bags, kg") },
-                        singleLine = true,
-                        colors = lightDialogTextFieldColors(),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                HorizontalDivider(color = Color(0x100F172A))
-
-                // Procurement & Supplier
-                Text("PROCUREMENT & SUPPLIER", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = BrandPrimary, letterSpacing = 1.sp)
-                OutlinedTextField(
-                    value = supplier,
-                    onValueChange = { supplier = it },
-                    label = { Text("Supplier Name") },
-                    placeholder = { Text("e.g. Palanivel Steels") },
-                    singleLine = true,
-                    colors = lightDialogTextFieldColors(),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = costStr,
-                    onValueChange = { costStr = it },
-                    label = { Text("Cost per Unit (₹)") },
-                    placeholder = { Text("0.00") },
+                FluidGlossTextField(
+                    value = totalCostStr,
+                    onValueChange = { totalCostStr = it },
+                    label = "Total Purchase Cost (₹)",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
-                    colors = lightDialogTextFieldColors(),
-                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                HorizontalDivider(color = Color(0x100F172A))
-
-                // Expense Logging Toggle
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Record as Project Expense", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                        Text("Auto-creates an expense record for this initial batch", fontSize = 10.sp, color = TextSecondary)
-                    }
-                    Switch(
-                        checked = logExpense,
-                        onCheckedChange = { logExpense = it },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = BrandPrimary
-                        )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FluidGlossTextField(
+                        value = expenseDate,
+                        onValueChange = { expenseDate = it },
+                        label = "Purchase Date",
+                        placeholder = "YYYY-MM-DD",
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
                     )
-                }
 
-                AnimatedVisibility(visible = logExpense) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color(0xFFF8FAFC), RoundedCornerShape(12.dp))
-                            .border(BorderStroke(1.dp, Color(0x150F172A)), RoundedCornerShape(12.dp))
-                            .padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = totalCostStr,
-                            onValueChange = { totalCostStr = it },
-                            label = { Text("Total Purchase Cost (₹)") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            singleLine = true,
-                            colors = lightDialogTextFieldColors(),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
+                    // Payment Status
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Payment Status", fontSize = 11.sp, color = TextSecondary)
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                                .background(Color(0xFFF1F5F9), RoundedCornerShape(10.dp))
+                                .border(BorderStroke(1.dp, Color(0x150F172A)), RoundedCornerShape(10.dp)),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            OutlinedTextField(
-                                value = expenseDate,
-                                onValueChange = { expenseDate = it },
-                                label = { Text("Purchase Date") },
-                                placeholder = { Text("YYYY-MM-DD") },
-                                singleLine = true,
-                                colors = lightDialogTextFieldColors(),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.weight(1f)
-                            )
-
-                            // Payment Status
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("Payment Status", fontSize = 11.sp, color = TextSecondary)
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(50.dp)
-                                        .background(Color(0xFFF1F5F9), RoundedCornerShape(10.dp))
-                                        .border(BorderStroke(1.dp, Color(0x150F172A)), RoundedCornerShape(10.dp)),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .fillMaxHeight()
-                                            .clip(RoundedCornerShape(topStart = 10.dp, bottomStart = 10.dp))
-                                            .background(if (paymentStatus == "paid") BrandPrimary else Color.Transparent)
-                                            .clickable { paymentStatus = "paid" },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text("Paid", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (paymentStatus == "paid") Color.White else TextSecondary)
-                                    }
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .fillMaxHeight()
-                                            .clip(RoundedCornerShape(topEnd = 10.dp, bottomEnd = 10.dp))
-                                            .background(if (paymentStatus == "pending") Color(0xFFF59E0B) else Color.Transparent)
-                                            .clickable { paymentStatus = "pending" },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text("Pending", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (paymentStatus == "pending") Color.White else TextSecondary)
-                                    }
-                                }
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .clip(RoundedCornerShape(topStart = 10.dp, bottomStart = 10.dp))
+                                    .background(if (paymentStatus == "paid") BrandPrimary else Color.Transparent)
+                                    .clickable { paymentStatus = "paid" },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("Paid", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (paymentStatus == "paid") Color.White else TextSecondary)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .clip(RoundedCornerShape(topEnd = 10.dp, bottomEnd = 10.dp))
+                                    .background(if (paymentStatus == "pending") Color(0xFFF59E0B) else Color.Transparent)
+                                    .clickable { paymentStatus = "pending" },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("Pending", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (paymentStatus == "pending") Color.White else TextSecondary)
                             }
                         }
-
-                        OutlinedTextField(
-                            value = invoiceNo,
-                            onValueChange = { invoiceNo = it },
-                            label = { Text("Bill / Invoice # (Optional)") },
-                            placeholder = { Text("e.g. INV-2026-001") },
-                            singleLine = true,
-                            colors = lightDialogTextFieldColors(),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        )
                     }
                 }
 
-                // Submit Button
-                Button(
-                    onClick = {
-                        val initQty = initialQtyStr.toDoubleOrNull() ?: 0.0
-                        val minQty = minQtyStr.toDoubleOrNull() ?: 0.0
-                        val cost = costStr.toDoubleOrNull() ?: 0.0
-                        val totalCost = totalCostStr.toDoubleOrNull()
-
-                        if (name.isBlank()) {
-                            return@Button
-                        }
-
-                        onAdd(
-                            name.trim(),
-                            category.trim(),
-                            initQty,
-                            minQty,
-                            unit.trim().ifBlank { "units" },
-                            supplier.trim(),
-                            cost,
-                            logExpense,
-                            totalCost,
-                            expenseDate,
-                            paymentStatus,
-                            invoiceNo.trim().ifBlank { null }
-                        )
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                    enabled = name.isNotBlank() && initialQtyStr.isNotBlank(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp)
-                ) {
-                    Text("Add Item to Inventory", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                }
+                FluidGlossTextField(
+                    value = invoiceNo,
+                    onValueChange = { invoiceNo = it },
+                    label = "Bill / Invoice # (Optional)",
+                    placeholder = "e.g. INV-2026-001",
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }
@@ -1160,271 +1022,207 @@ fun StockUpdateDialog(
         }
     }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = Color.White,
-            border = BorderStroke(1.dp, Color(0x180F172A)),
-            shadowElevation = 8.dp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+    FluidGlossDialog(
+        onDismissRequest = onDismiss,
+        title = if (isAdd) "Add Stock: ${material.name}" else "Use Stock: ${material.name}",
+        subtitle = if (isAdd) "Add new inventory to stock and log purchase rate" else "Record material consumption for site execution",
+        icon = if (isAdd) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+        iconTint = if (isAdd) EmeraldSuccess else RoseDanger,
+        confirmButton = {
+            FluidGlossButton(
+                onClick = {
+                    val amt = amountStr.toDoubleOrNull() ?: 0.0
+                    if (amt <= 0) return@FluidGlossButton
+                    val rate = unitRateStr.toDoubleOrNull()
+                    val restockAmt = restockAmountStr.toDoubleOrNull()
+                    onConfirm(
+                        amt,
+                        rate,
+                        updateActivePrice,
+                        date,
+                        supplier.trim().ifBlank { null },
+                        purpose.trim(),
+                        logExpense,
+                        restockAmt,
+                        paymentStatus,
+                        invoiceNo.trim().ifBlank { null }
+                    )
+                },
+                variant = if (isAdd) FluidGlossButtonVariant.Success else FluidGlossButtonVariant.Destructive,
+                enabled = amountStr.isNotBlank() && purpose.isNotBlank()
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = if (isAdd) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
-                            contentDescription = null,
-                            tint = if (isAdd) Color(0xFF10B981) else Color(0xFFEF4444),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (isAdd) "Add Stock: ${material.name}" else "Use Stock: ${material.name}",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
-                    }
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = TextSecondary, modifier = Modifier.size(18.dp))
-                    }
-                }
-
                 Text(
-                    text = if (isAdd) "Add new inventory to stock and log purchase rate." else "Record material consumption for site execution.",
-                    fontSize = 11.sp,
-                    color = TextSecondary
+                    text = if (isAdd) "Confirm Add Stock" else "Confirm Use Stock",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
                 )
+            }
+        },
+        dismissButton = {
+            FluidGlossButton(
+                onClick = onDismiss,
+                variant = FluidGlossButtonVariant.Secondary
+            ) {
+                Text("Cancel")
+            }
+        }
+    ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FluidGlossTextField(
+                value = amountStr,
+                onValueChange = { amountStr = it },
+                label = "Quantity (${material.effectiveUnit}) *",
+                placeholder = "0",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
 
-                HorizontalDivider(color = Color(0x100F172A))
+            if (isAdd) {
+                FluidGlossTextField(
+                    value = unitRateStr,
+                    onValueChange = { unitRateStr = it },
+                    label = "Unit Rate (₹)",
+                    placeholder = "0.00",
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(10.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FluidGlossTextField(
+                value = date,
+                onValueChange = { date = it },
+                label = if (isAdd) "Purchase Date" else "Usage Date",
+                placeholder = "YYYY-MM-DD",
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+
+            if (isAdd) {
+                FluidGlossTextField(
+                    value = supplier,
+                    onValueChange = { supplier = it },
+                    label = "Supplier",
+                    placeholder = "Supplier name",
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+
+        FluidGlossTextField(
+            value = purpose,
+            onValueChange = { purpose = it },
+            label = "Purpose / Reason *",
+            placeholder = if (isAdd) "e.g. New delivery for slab" else "e.g. Ground floor columns casting",
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        if (isAdd) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Update active inventory price to this rate", fontSize = 11.sp, color = TextSecondary)
+                Switch(
+                    checked = updateActivePrice,
+                    onCheckedChange = { updateActivePrice = it },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = BrandPrimary
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Record Purchase as Expense", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                    Text("Log purchase total to project expenses", fontSize = 10.sp, color = TextSecondary)
+                }
+                Switch(
+                    checked = logExpense,
+                    onCheckedChange = { logExpense = it },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = BrandPrimary
+                    )
+                )
+            }
+
+            AnimatedVisibility(visible = logExpense) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    OutlinedTextField(
-                        value = amountStr,
-                        onValueChange = { amountStr = it },
-                        label = { Text("Quantity (${material.effectiveUnit}) *") },
-                        placeholder = { Text("0") },
+                    FluidGlossTextField(
+                        value = restockAmountStr,
+                        onValueChange = { restockAmountStr = it },
+                        label = "Total Bill (₹)",
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
-                        colors = lightDialogTextFieldColors(),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     )
 
-                    if (isAdd) {
-                        OutlinedTextField(
-                            value = unitRateStr,
-                            onValueChange = { unitRateStr = it },
-                            label = { Text("Unit Rate (₹)") },
-                            placeholder = { Text("0.00") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            singleLine = true,
-                            colors = lightDialogTextFieldColors(),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = date,
-                        onValueChange = { date = it },
-                        label = { Text(if (isAdd) "Purchase Date" else "Usage Date") },
-                        singleLine = true,
-                        colors = lightDialogTextFieldColors(),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    if (isAdd) {
-                        OutlinedTextField(
-                            value = supplier,
-                            onValueChange = { supplier = it },
-                            label = { Text("Supplier") },
-                            placeholder = { Text("Supplier name") },
-                            singleLine = true,
-                            colors = lightDialogTextFieldColors(),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-
-                OutlinedTextField(
-                    value = purpose,
-                    onValueChange = { purpose = it },
-                    label = { Text("Purpose / Reason *") },
-                    placeholder = { Text(if (isAdd) "e.g. New delivery for slab" else "e.g. Ground floor columns casting") },
-                    singleLine = true,
-                    colors = lightDialogTextFieldColors(),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                if (isAdd) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Update active inventory price to this rate", fontSize = 11.sp, color = TextSecondary)
-                        Switch(
-                            checked = updateActivePrice,
-                            onCheckedChange = { updateActivePrice = it },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = BrandPrimary
-                            )
-                        )
-                    }
-
-                    HorizontalDivider(color = Color(0x100F172A))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Record Purchase as Expense", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                            Text("Log purchase total to project expenses", fontSize = 10.sp, color = TextSecondary)
-                        }
-                        Switch(
-                            checked = logExpense,
-                            onCheckedChange = { logExpense = it },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = BrandPrimary
-                            )
-                        )
-                    }
-
-                    AnimatedVisibility(visible = logExpense) {
-                        Column(
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Payment Status toggle
+                        Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color(0xFFF8FAFC), RoundedCornerShape(12.dp))
-                                .border(BorderStroke(1.dp, Color(0x150F172A)), RoundedCornerShape(12.dp))
-                                .padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                .weight(1f)
+                                .height(48.dp)
+                                .background(Color(0xFFF1F5F9), RoundedCornerShape(10.dp))
+                                .border(BorderStroke(1.dp, Color(0x150F172A)), RoundedCornerShape(10.dp)),
+                            contentAlignment = Alignment.Center
                         ) {
-                            OutlinedTextField(
-                                value = restockAmountStr,
-                                onValueChange = { restockAmountStr = it },
-                                label = { Text("Total Bill (₹)") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true,
-                                colors = lightDialogTextFieldColors(),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                // Payment Status toggle
+                            Row(modifier = Modifier.fillMaxSize()) {
                                 Box(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(48.dp)
-                                        .background(Color(0xFFF1F5F9), RoundedCornerShape(10.dp))
-                                        .border(BorderStroke(1.dp, Color(0x150F172A)), RoundedCornerShape(10.dp)),
+                                        .fillMaxHeight()
+                                        .clip(RoundedCornerShape(topStart = 10.dp, bottomStart = 10.dp))
+                                        .background(if (paymentStatus == "paid") BrandPrimary else Color.Transparent)
+                                        .clickable { paymentStatus = "paid" },
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Row(modifier = Modifier.fillMaxSize()) {
-                                        Box(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .fillMaxHeight()
-                                                .clip(RoundedCornerShape(topStart = 10.dp, bottomStart = 10.dp))
-                                                .background(if (paymentStatus == "paid") BrandPrimary else Color.Transparent)
-                                                .clickable { paymentStatus = "paid" },
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text("Paid", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (paymentStatus == "paid") Color.White else TextSecondary)
-                                        }
-                                        Box(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .fillMaxHeight()
-                                                .clip(RoundedCornerShape(topEnd = 10.dp, bottomEnd = 10.dp))
-                                                .background(if (paymentStatus == "pending") Color(0xFFF59E0B) else Color.Transparent)
-                                                .clickable { paymentStatus = "pending" },
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text("Pending", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (paymentStatus == "pending") Color.White else TextSecondary)
-                                        }
-                                    }
+                                    Text("Paid", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (paymentStatus == "paid") Color.White else TextSecondary)
                                 }
-
-                                OutlinedTextField(
-                                    value = invoiceNo,
-                                    onValueChange = { invoiceNo = it },
-                                    label = { Text("Bill / Inv #") },
-                                    placeholder = { Text("INV-102") },
-                                    singleLine = true,
-                                    colors = lightDialogTextFieldColors(),
-                                    shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier.weight(1f)
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight()
+                                        .clip(RoundedCornerShape(topEnd = 10.dp, bottomEnd = 10.dp))
+                                        .background(if (paymentStatus == "pending") Color(0xFFF59E0B) else Color.Transparent)
+                                        .clickable { paymentStatus = "pending" },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("Pending", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (paymentStatus == "pending") Color.White else TextSecondary)
+                                }
                             }
                         }
-                    }
-                }
 
-                Button(
-                    onClick = {
-                        val amt = amountStr.toDoubleOrNull() ?: 0.0
-                        if (amt <= 0) return@Button
-                        val rate = unitRateStr.toDoubleOrNull()
-                        val restockAmt = restockAmountStr.toDoubleOrNull()
-                        onConfirm(
-                            amt,
-                            rate,
-                            updateActivePrice,
-                            date,
-                            supplier.trim().ifBlank { null },
-                            purpose.trim(),
-                            logExpense,
-                            restockAmt,
-                            paymentStatus,
-                            invoiceNo.trim().ifBlank { null }
+                        FluidGlossTextField(
+                            value = invoiceNo,
+                            onValueChange = { invoiceNo = it },
+                            label = "Bill / Inv #",
+                            placeholder = "INV-102",
+                            singleLine = true,
+                            modifier = Modifier.weight(1f)
                         )
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isAdd) Color(0xFF10B981) else Color(0xFFEF4444)
-                    ),
-                    enabled = amountStr.isNotBlank() && purpose.isNotBlank(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp)
-                ) {
-                    Text(
-                        text = if (isAdd) "Confirm Add Stock" else "Confirm Use Stock",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    }
                 }
             }
         }
@@ -1458,172 +1256,130 @@ fun EditMaterialDialog(
 
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = Color.White,
-            border = BorderStroke(1.dp, Color(0x180F172A)),
-            shadowElevation = 8.dp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+    FluidGlossDialog(
+        onDismissRequest = onDismiss,
+        title = "Edit Material",
+        subtitle = "Update specifications, thresholds, and unit costs",
+        icon = Icons.Default.Edit,
+        iconTint = BrandPrimary,
+        confirmButton = {
+            FluidGlossButton(
+                onClick = {
+                    val s = stockStr.toDoubleOrNull() ?: material.effectiveQuantity
+                    val m = minStockStr.toDoubleOrNull() ?: material.effectiveMinQuantity
+                    val c = costStr.toDoubleOrNull() ?: material.effectiveCost
+                    onSave(name.trim(), category.trim(), s, m, unit.trim(), supplier.trim(), c)
+                },
+                variant = FluidGlossButtonVariant.Primary,
+                enabled = name.isNotBlank()
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                Text("Save Changes", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            FluidGlossButton(
+                onClick = onDismiss,
+                variant = FluidGlossButtonVariant.Secondary
+            ) {
+                Text("Cancel")
+            }
+        }
+    ) {
+        FluidGlossTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = "Name",
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        FluidGlossTextField(
+            value = category,
+            onValueChange = { category = it },
+            label = "Category",
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FluidGlossTextField(
+                value = stockStr,
+                onValueChange = { stockStr = it },
+                label = "Stock",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+            FluidGlossTextField(
+                value = minStockStr,
+                onValueChange = { minStockStr = it },
+                label = "Min Stock",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+            FluidGlossTextField(
+                value = unit,
+                onValueChange = { unit = it },
+                label = "Unit",
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FluidGlossTextField(
+                value = supplier,
+                onValueChange = { supplier = it },
+                label = "Supplier",
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+            FluidGlossTextField(
+                value = costStr,
+                onValueChange = { costStr = it },
+                label = "Unit Cost (₹)",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        if (!showDeleteConfirm) {
+            FluidGlossButton(
+                onClick = { showDeleteConfirm = true },
+                variant = FluidGlossButtonVariant.Destructive,
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = {
+                    Icon(Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                }
+            ) {
+                Text("Delete Material", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FluidGlossButton(
+                    onClick = { showDeleteConfirm = false },
+                    variant = FluidGlossButtonVariant.Secondary,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Text("Edit Material", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = TextSecondary, modifier = Modifier.size(18.dp))
-                    }
+                    Text("Cancel", fontSize = 11.sp)
                 }
 
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Name") },
-                    singleLine = true,
-                    colors = lightDialogTextFieldColors(),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = category,
-                    onValueChange = { category = it },
-                    label = { Text("Category") },
-                    singleLine = true,
-                    colors = lightDialogTextFieldColors(),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                FluidGlossButton(
+                    onClick = onDelete,
+                    variant = FluidGlossButtonVariant.Destructive,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    OutlinedTextField(
-                        value = stockStr,
-                        onValueChange = { stockStr = it },
-                        label = { Text("Stock") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true,
-                        colors = lightDialogTextFieldColors(),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    OutlinedTextField(
-                        value = minStockStr,
-                        onValueChange = { minStockStr = it },
-                        label = { Text("Min Stock") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true,
-                        colors = lightDialogTextFieldColors(),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    OutlinedTextField(
-                        value = unit,
-                        onValueChange = { unit = it },
-                        label = { Text("Unit") },
-                        singleLine = true,
-                        colors = lightDialogTextFieldColors(),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = supplier,
-                        onValueChange = { supplier = it },
-                        label = { Text("Supplier") },
-                        singleLine = true,
-                        colors = lightDialogTextFieldColors(),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    OutlinedTextField(
-                        value = costStr,
-                        onValueChange = { costStr = it },
-                        label = { Text("Unit Cost (₹)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true,
-                        colors = lightDialogTextFieldColors(),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Button(
-                    onClick = {
-                        val s = stockStr.toDoubleOrNull() ?: material.effectiveQuantity
-                        val m = minStockStr.toDoubleOrNull() ?: material.effectiveMinQuantity
-                        val c = costStr.toDoubleOrNull() ?: material.effectiveCost
-                        onSave(name.trim(), category.trim(), s, m, unit.trim(), supplier.trim(), c)
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                    enabled = name.isNotBlank(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(42.dp)
-                ) {
-                    Text("Save Changes", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                }
-
-                if (!showDeleteConfirm) {
-                    OutlinedButton(
-                        onClick = { showDeleteConfirm = true },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFEF4444)),
-                        border = BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.4f)),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(40.dp)
-                    ) {
-                        Icon(Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Delete Material", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = { showDeleteConfirm = false },
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Cancel", fontSize = 11.sp)
-                        }
-
-                        Button(
-                            onClick = onDelete,
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Confirm Delete", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
+                    Text("Confirm Delete", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -1652,192 +1408,164 @@ fun MaterialHistoryDialog(
         }
     }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = Color.White,
-            border = BorderStroke(1.dp, Color(0x180F172A)),
-            shadowElevation = 8.dp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.85f)
-                .padding(vertical = 16.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(20.dp)
+    FluidGlossDialog(
+        onDismissRequest = onDismiss,
+        title = "Stock History",
+        subtitle = material.name,
+        icon = Icons.Default.History,
+        iconTint = BrandPrimary,
+        dismissButton = {
+            FluidGlossButton(
+                onClick = onDismiss,
+                variant = FluidGlossButtonVariant.Secondary,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                // Header
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.History, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Stock History", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                        }
-                        Text(material.name, fontSize = 12.sp, color = TextSecondary)
-                    }
-
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = TextSecondary, modifier = Modifier.size(18.dp))
-                    }
+                Text("Close")
+            }
+        }
+    ) {
+        // Summary Banner wrapped in GlassCard
+        GlassCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("ACTIVE RATE", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        CurrencyFormatter.formatFull(material.effectiveCost),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Summary Banner
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFFF8FAFC),
-                    border = BorderStroke(1.dp, Color(0x120F172A)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceAround
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("ACTIVE RATE", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                CurrencyFormatter.formatFull(material.effectiveCost),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
-                            )
-                        }
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("CURRENT STOCK", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                "${material.effectiveQuantity} ${material.effectiveUnit}",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = BrandPrimary
-                            )
-                        }
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("MIN LEVEL", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                "${material.effectiveMinQuantity} ${material.effectiveUnit}",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextSecondary
-                            )
-                        }
-                    }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("CURRENT STOCK", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        "${material.effectiveQuantity} ${material.effectiveUnit}",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = BrandPrimary
+                    )
                 }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("MIN LEVEL", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        "${material.effectiveMinQuantity} ${material.effectiveUnit}",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextSecondary
+                    )
+                }
+            }
+        }
 
-                Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-                // Logs List
-                if (isLoadingLogs) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = BrandPrimary, modifier = Modifier.size(32.dp))
-                    }
-                } else if (logs.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("No stock logs found for this item.", fontSize = 12.sp, color = TextSecondary)
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+        // Logs List
+        if (isLoadingLogs) {
+            Box(modifier = Modifier.fillMaxWidth().height(140.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = BrandPrimary, modifier = Modifier.size(32.dp))
+            }
+        } else if (logs.isEmpty()) {
+            Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+                Text("No stock logs found for this item.", fontSize = 12.sp, color = TextSecondary)
+            }
+        } else {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                logs.forEach { log ->
+                    val isAdd = log.changeAmount > 0
+                    val parsed = remember(log.purpose, isAdd) { parseLogPurpose(log.purpose, isAdd) }
+
+                    GlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        items(logs) { log ->
-                            val isAdd = log.changeAmount > 0
-                            val parsed = remember(log.purpose, isAdd) { parseLogPurpose(log.purpose, isAdd) }
-
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = Color(0xFFF8FAFC),
-                                border = BorderStroke(1.dp, Color(0x120F172A)),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                                 Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                        ) {
-                                            Surface(
-                                                shape = RoundedCornerShape(6.dp),
-                                                color = if (isAdd) Color(0xFFECFDF5) else Color(0xFFFEF2F2),
-                                                border = BorderStroke(1.dp, if (isAdd) Color(0xFF10B981).copy(alpha = 0.3f) else Color(0xFFEF4444).copy(alpha = 0.3f))
-                                            ) {
-                                                Text(
-                                                    text = if (isAdd) "Restock" else "Usage",
-                                                    fontSize = 10.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = if (isAdd) Color(0xFF059669) else Color(0xFFDC2626),
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                )
-                                            }
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = if (isAdd) Color(0xFFECFDF5) else Color(0xFFFEF2F2),
+                                        border = BorderStroke(1.dp, if (isAdd) Color(0xFF10B981).copy(alpha = 0.3f) else Color(0xFFEF4444).copy(alpha = 0.3f))
+                                    ) {
+                                        Text(
+                                            text = if (isAdd) "Restock" else "Usage",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isAdd) Color(0xFF059669) else Color(0xFFDC2626),
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                    Text(
+                                        text = parsed.displayNote,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = TextPrimary,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+
+                                if (parsed.supplier != null || parsed.unitCost != null) {
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        parsed.supplier?.let { supp ->
                                             Text(
-                                                text = parsed.displayNote,
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                color = TextPrimary,
-                                                maxLines = 2,
-                                                overflow = TextOverflow.Ellipsis
+                                                text = "Supplier: $supp",
+                                                fontSize = 10.sp,
+                                                color = TextSecondary
                                             )
                                         }
-
-                                        if (parsed.supplier != null || parsed.unitCost != null) {
-                                            Spacer(modifier = Modifier.height(2.dp))
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                            ) {
-                                                parsed.supplier?.let { supp ->
-                                                    Text(
-                                                        text = "Supplier: $supp",
-                                                        fontSize = 10.sp,
-                                                        color = TextSecondary
-                                                    )
-                                                }
-                                                parsed.unitCost?.let { cost ->
-                                                    Text(
-                                                        text = "@ ${CurrencyFormatter.formatFull(cost)}/unit",
-                                                        fontSize = 10.sp,
-                                                        color = BrandPrimary
-                                                    )
-                                                }
-                                            }
-                                        }
-
-                                        log.createdAt?.let { dateStr ->
-                                            Spacer(modifier = Modifier.height(4.dp))
+                                        parsed.unitCost?.let { cost ->
                                             Text(
-                                                text = dateStr.take(16).replace("T", " "),
+                                                text = "@ ${CurrencyFormatter.formatFull(cost)}/unit",
                                                 fontSize = 10.sp,
-                                                color = TextSecondary.copy(alpha = 0.8f)
+                                                color = BrandPrimary
                                             )
                                         }
                                     }
+                                }
 
+                                log.createdAt?.let { dateStr ->
+                                    Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = "${if (isAdd) "+" else ""}${log.changeAmount} ${material.effectiveUnit}",
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isAdd) Color(0xFF059669) else Color(0xFFDC2626)
+                                        text = dateStr.take(16).replace("T", " "),
+                                        fontSize = 10.sp,
+                                        color = TextSecondary.copy(alpha = 0.8f)
                                     )
                                 }
                             }
+
+                            Text(
+                                text = "${if (isAdd) "+" else ""}${log.changeAmount} ${material.effectiveUnit}",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isAdd) Color(0xFF059669) else Color(0xFFDC2626)
+                            )
                         }
                     }
                 }

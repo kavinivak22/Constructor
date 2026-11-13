@@ -35,6 +35,9 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.constructorapp.data.remote.ProjectDto
 import com.example.constructorapp.theme.*
+import com.example.constructorapp.ui.components.FluidGlossButton
+import com.example.constructorapp.ui.components.FluidGlossButtonVariant
+import com.example.constructorapp.ui.components.FluidGlossTextField
 import com.example.constructorapp.util.CurrencyFormatter
 import java.io.File
 import java.text.SimpleDateFormat
@@ -142,7 +145,7 @@ fun CreateProjectDialog(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = SlateSurface,
+        containerColor = GlassCardSurfaceElevated,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         dragHandle = {
             BottomSheetDefaults.DragHandle(color = TextSecondary.copy(alpha = 0.4f))
@@ -345,25 +348,15 @@ fun CreateProjectDialog(
                         color = BrandPrimary
                     )
 
-                    OutlinedTextField(
+                    FluidGlossTextField(
                         value = name,
                         onValueChange = { name = it },
-                        label = {
-                            Text(
-                                "Project Name *",
-                                fontFamily = PlusJakartaSansFontFamily,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 12.sp
-                            )
-                        },
-                        placeholder = { Text("e.g. Skyline Residency", color = TextMutedDark) },
+                        label = "Project Name *",
+                        placeholder = "e.g. Skyline Residency",
                         leadingIcon = {
                             Icon(Icons.Default.Business, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(18.dp))
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = calculatorFieldColors(),
-                        singleLine = true
+                        modifier = Modifier.fillMaxWidth()
                     )
 
                     // Project Type Selector Pills
@@ -419,26 +412,16 @@ fun CreateProjectDialog(
                         color = BrandPrimary
                     )
 
-                    OutlinedTextField(
+                    FluidGlossTextField(
                         value = budgetStr,
                         onValueChange = { budgetStr = it },
-                        label = {
-                            Text(
-                                "Target Budget (₹) *",
-                                fontFamily = PlusJakartaSansFontFamily,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 12.sp
-                            )
-                        },
-                        placeholder = { Text("e.g. 2500000 or 25L or 1.5Cr", color = TextMutedDark) },
+                        label = "Target Budget (₹) *",
+                        placeholder = "e.g. 2500000 or 25L or 1.5Cr",
                         leadingIcon = {
                             Text("₹", fontFamily = OutfitFontFamily, fontWeight = FontWeight.Bold, color = BrandPrimary, fontSize = 16.sp)
                         },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = calculatorFieldColors(),
-                        singleLine = true
+                        modifier = Modifier.fillMaxWidth()
                     )
 
                     if (parsedBudget > 0.0) {
@@ -585,29 +568,19 @@ fun CreateProjectDialog(
                         color = BrandPrimary
                     )
 
-                    OutlinedTextField(
+                    FluidGlossTextField(
                         value = clientName,
                         onValueChange = { clientName = it },
-                        label = {
-                            Text(
-                                "Client Name",
-                                fontFamily = PlusJakartaSansFontFamily,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 12.sp
-                            )
-                        },
-                        placeholder = { Text("e.g. Apex Real Estate", color = TextMutedDark) },
+                        label = "Client Name",
+                        placeholder = "e.g. Apex Real Estate",
                         leadingIcon = {
                             Icon(Icons.Default.Person, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(18.dp))
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = calculatorFieldColors(),
-                        singleLine = true
+                        modifier = Modifier.fillMaxWidth()
                     )
 
                     // Client Phone strictly accepts numerical input
-                    OutlinedTextField(
+                    FluidGlossTextField(
                         value = clientPhone,
                         onValueChange = { input ->
                             val digitsOnly = input.filter { it.isDigit() }
@@ -615,15 +588,8 @@ fun CreateProjectDialog(
                                 clientPhone = digitsOnly
                             }
                         },
-                        label = {
-                            Text(
-                                "Client Contact Phone (Numbers only)",
-                                fontFamily = PlusJakartaSansFontFamily,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 12.sp
-                            )
-                        },
-                        placeholder = { Text("e.g. 9876543210", color = TextMutedDark) },
+                        label = "Client Contact Phone (Numbers only)",
+                        placeholder = "e.g. 9876543210",
                         leadingIcon = {
                             Icon(Icons.Default.Phone, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(18.dp))
                         },
@@ -631,31 +597,18 @@ fun CreateProjectDialog(
                             keyboardType = KeyboardType.Number,
                             imeAction = ImeAction.Next
                         ),
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = calculatorFieldColors(),
-                        singleLine = true
+                        modifier = Modifier.fillMaxWidth()
                     )
 
-                    OutlinedTextField(
+                    FluidGlossTextField(
                         value = location,
                         onValueChange = { location = it },
-                        label = {
-                            Text(
-                                "Location / City",
-                                fontFamily = PlusJakartaSansFontFamily,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 12.sp
-                            )
-                        },
-                        placeholder = { Text("e.g. Coimbatore, Tamil Nadu", color = TextMutedDark) },
+                        label = "Location / City",
+                        placeholder = "e.g. Coimbatore, Tamil Nadu",
                         leadingIcon = {
                             Icon(Icons.Default.LocationOn, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(18.dp))
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = calculatorFieldColors(),
-                        singleLine = true
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
 
@@ -672,25 +625,18 @@ fun CreateProjectDialog(
                         color = BrandPrimary
                     )
 
-                    OutlinedTextField(
+                    FluidGlossTextField(
                         value = description,
                         onValueChange = { description = it },
-                        label = {
-                            Text(
-                                "Description & Work Scope",
-                                fontFamily = PlusJakartaSansFontFamily,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 12.sp
-                            )
-                        },
-                        placeholder = { Text("Structural specifications, deliverables, civil work summary...", color = TextMutedDark) },
+                        label = "Description & Work Scope",
+                        placeholder = "Structural specifications, deliverables, civil work summary...",
                         leadingIcon = {
                             Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(18.dp))
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
+                        singleLine = false,
                         minLines = 3,
-                        colors = calculatorFieldColors()
+                        maxLines = 6
                     )
                 }
 
@@ -702,31 +648,22 @@ fun CreateProjectDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 12.dp),
-                color = SlateSurface
+                color = Color.Transparent
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    OutlinedButton(
+                    FluidGlossButton(
+                        text = "Cancel",
                         onClick = onDismiss,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, SlateDivider)
-                    ) {
-                        Text(
-                            text = "Cancel",
-                            fontFamily = PlusJakartaSansFontFamily,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextSecondary,
-                            fontSize = 14.sp
-                        )
-                    }
+                        variant = FluidGlossButtonVariant.Secondary,
+                        modifier = Modifier.weight(1f)
+                    )
 
-                    Button(
+                    FluidGlossButton(
+                        text = "Create Project",
                         onClick = {
                             if (isFormValid) {
                                 // Persist image locally to ensure URI permanence across app restarts
@@ -771,21 +708,12 @@ fun CreateProjectDialog(
                             }
                         },
                         enabled = isFormValid,
-                        modifier = Modifier
-                            .weight(1.5f)
-                            .height(48.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Create Project",
-                            fontFamily = PlusJakartaSansFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
-                    }
+                        leadingIcon = {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        },
+                        variant = FluidGlossButtonVariant.Primary,
+                        modifier = Modifier.weight(1.5f)
+                    )
                 }
             }
         }

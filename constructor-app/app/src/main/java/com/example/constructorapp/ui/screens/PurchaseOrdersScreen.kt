@@ -132,7 +132,8 @@ fun PurchaseOrdersScreen(
                 onClick = { isCreateDialogOpen = true },
                 containerColor = BrandPrimary,
                 contentColor = Color.White,
-                shape = CircleShape
+                shape = CircleShape,
+                modifier = Modifier.padding(bottom = 80.dp)
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Create Purchase Order")
             }
@@ -199,7 +200,7 @@ fun PurchaseOrdersScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 90.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     items(filteredOrders) { po ->

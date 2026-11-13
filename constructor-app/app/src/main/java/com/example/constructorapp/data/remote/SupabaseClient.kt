@@ -40,6 +40,10 @@ object SupabaseClient {
         get() = sessionManager.getUserEmail()
         set(value) { sessionManager.setUserEmail(value) }
 
+    var companyId: String?
+        get() = sessionManager.getCompanyId()
+        set(value) { sessionManager.setCompanyId(value) }
+
     val authHeader: String
         get() = authToken?.takeIf { it.isNotBlank() }?.let { "Bearer $it" } ?: "Bearer $API_KEY"
 
@@ -195,6 +199,7 @@ class SessionManager {
     @Volatile private var inMemoryRefreshToken: String? = null
     @Volatile private var inMemoryUserId: String? = null
     @Volatile private var inMemoryUserEmail: String? = null
+    @Volatile private var inMemoryCompanyId: String? = null
 
     fun init(context: Context) {
         prefs = context.getSharedPreferences("constructor_auth_prefs", Context.MODE_PRIVATE)
@@ -202,12 +207,14 @@ class SessionManager {
         inMemoryRefreshToken = prefs?.getString("refresh_token", null)
         inMemoryUserId = prefs?.getString("user_id", null)
         inMemoryUserEmail = prefs?.getString("user_email", null)
+        inMemoryCompanyId = prefs?.getString("company_id", null)
     }
 
     fun getAccessToken(): String? = inMemoryAccessToken
     fun getRefreshToken(): String? = inMemoryRefreshToken
     fun getUserId(): String? = inMemoryUserId
     fun getUserEmail(): String? = inMemoryUserEmail
+    fun getCompanyId(): String? = inMemoryCompanyId
 
     fun isSessionValid(): Boolean {
         val token = inMemoryAccessToken ?: return false
@@ -257,17 +264,24 @@ class SessionManager {
         prefs?.edit()?.putString("user_email", email)?.apply()
     }
 
-    fun saveTokens(accessToken: String, refreshToken: String, userId: String?, email: String?) {
+    fun setCompanyId(companyId: String?) {
+        inMemoryCompanyId = companyId
+        prefs?.edit()?.putString("company_id", companyId)?.apply()
+    }
+
+    fun saveTokens(accessToken: String, refreshToken: String, userId: String?, email: String?, companyId: String? = null) {
         inMemoryAccessToken = accessToken
         inMemoryRefreshToken = refreshToken
         inMemoryUserId = userId
         inMemoryUserEmail = email
+        inMemoryCompanyId = companyId
 
         prefs?.edit()
             ?.putString("access_token", accessToken)
             ?.putString("refresh_token", refreshToken)
             ?.putString("user_id", userId)
             ?.putString("user_email", email)
+            ?.putString("company_id", companyId)
             ?.apply()
     }
 
@@ -276,6 +290,7 @@ class SessionManager {
         inMemoryRefreshToken = null
         inMemoryUserId = null
         inMemoryUserEmail = null
+        inMemoryCompanyId = null
         prefs?.edit()?.clear()?.apply()
     }
 }

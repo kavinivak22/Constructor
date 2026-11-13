@@ -36,7 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.constructorapp.data.local.entity.ProjectEntity
+import com.example.constructorapp.data.model.ProjectEntity
 import com.example.constructorapp.data.remote.DocumentDto
 import com.example.constructorapp.theme.*
 import com.example.constructorapp.ui.components.*

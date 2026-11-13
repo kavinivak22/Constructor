@@ -398,56 +398,15 @@ fun LogoutConfirmDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    AlertDialog(
+    FluidGlossAlertDialog(
         onDismissRequest = onDismiss,
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Logout,
-                    contentDescription = null,
-                    tint = RoseDanger,
-                    modifier = Modifier.size(20.dp)
-                )
-                Text(
-                    text = "Log Out?",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 17.sp,
-                    color = TextPrimary
-                )
-            }
-        },
-        text = {
-            Text(
-                text = "Are you sure you want to log out?",
-                fontSize = 13.sp,
-                color = TextSecondary
-            )
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = RoseDanger,
-                    contentColor = Color.White
-                ),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Text("Log Out", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-            }
-        },
-        dismissButton = {
-            OutlinedButton(
-                onClick = onDismiss,
-                shape = RoundedCornerShape(10.dp),
-                border = BorderStroke(1.dp, SlateBorder)
-            ) {
-                Text("Cancel", fontSize = 13.sp, color = TextPrimary)
-            }
-        },
-        containerColor = Color.White,
-        shape = RoundedCornerShape(20.dp)
+        title = "Log Out?",
+        text = "Are you sure you want to log out?",
+        confirmText = "Log Out",
+        dismissText = "Cancel",
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
+        isDestructive = true,
+        icon = Icons.AutoMirrored.Filled.Logout
     )
 }

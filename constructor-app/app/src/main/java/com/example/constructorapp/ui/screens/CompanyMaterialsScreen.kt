@@ -27,10 +27,17 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import com.example.constructorapp.data.local.AppDatabase
 import com.example.constructorapp.data.local.entity.CompanyMaterialPriceEntity
 import com.example.constructorapp.theme.*
 import com.example.constructorapp.ui.components.AmbientBlobBackground
+import com.example.constructorapp.ui.components.FluidGlossButton
+import com.example.constructorapp.ui.components.FluidGlossButtonSize
+import com.example.constructorapp.ui.components.FluidGlossButtonVariant
+import com.example.constructorapp.ui.components.FluidGlossDialog
+import com.example.constructorapp.ui.components.FluidGlossTextField
 import com.example.constructorapp.ui.components.GlassCard
 import com.example.constructorapp.ui.viewmodel.MaterialsUiState
 import com.example.constructorapp.ui.viewmodel.MaterialsViewModel
@@ -92,7 +99,7 @@ fun CompanyMaterialsScreen(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = SlateSurface.copy(alpha = 0.85f),
+                        containerColor = Color.Transparent,
                         titleContentColor = TextPrimary
                     )
                 )
@@ -102,7 +109,8 @@ fun CompanyMaterialsScreen(
                     onClick = { viewModel.setAddCatalogDialogOpen(true) },
                     containerColor = BrandPrimary,
                     contentColor = Color.White,
-                    shape = CircleShape
+                    shape = CircleShape,
+                    modifier = Modifier.padding(bottom = 80.dp)
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Add Material")
                 }
@@ -115,31 +123,21 @@ fun CompanyMaterialsScreen(
                     .padding(paddingValues)
             ) {
                 // Search bar
-                OutlinedTextField(
+                FluidGlossTextField(
                     value = state.searchQuery,
                     onValueChange = { viewModel.setSearchQuery(it) },
-                    placeholder = { Text("Search materials by name or supplier...", fontSize = 13.sp, color = TextSecondary) },
+                    placeholder = "Search materials by name or supplier...",
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp)) },
-                    trailingIcon = {
-                        if (state.searchQuery.isNotBlank()) {
+                    trailingIcon = if (state.searchQuery.isNotBlank()) {
+                        {
                             IconButton(onClick = { viewModel.setSearchQuery("") }) {
                                 Icon(Icons.Default.Clear, contentDescription = "Clear", tint = TextSecondary, modifier = Modifier.size(16.dp))
                             }
                         }
-                    },
+                    } else null,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .height(50.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = BrandPrimary,
-                        unfocusedBorderColor = GlassBorder,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
-                        focusedContainerColor = SlateSurface.copy(alpha = 0.6f),
-                        unfocusedContainerColor = SlateSurface.copy(alpha = 0.6f)
-                    ),
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                     singleLine = true
                 )
 
@@ -180,19 +178,18 @@ fun CompanyMaterialsScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                             Text("No materials in catalog", color = TextSecondary, fontSize = 14.sp)
                             Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedButton(
+                            FluidGlossButton(
+                                text = "+ Add First Material",
                                 onClick = { viewModel.setAddCatalogDialogOpen(true) },
-                                shape = RoundedCornerShape(12.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorder)
-                            ) {
-                                Text("+ Add First Material", color = BrandPrimary, fontSize = 12.sp)
-                            }
+                                variant = FluidGlossButtonVariant.Outlined,
+                                size = FluidGlossButtonSize.Medium
+                            )
                         }
                     }
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 90.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         items(filteredPrices, key = { it.id }) { price ->
@@ -316,101 +313,102 @@ fun AddCompanyMaterialDialog(
     var supplier by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .clip(RoundedCornerShape(20.dp))
-                .border(1.dp, GlassBorder, RoundedCornerShape(20.dp)),
-            color = SlateSurface
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Text("Add Catalog Material", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                Spacer(modifier = Modifier.height(14.dp))
-
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Material Name (e.g. OPC 53 Grade Cement)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = nameTa,
-                    onValueChange = { nameTa = it },
-                    label = { Text("Tamil Name (Optional)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = category,
-                        onValueChange = { category = it },
-                        label = { Text("Category") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    OutlinedTextField(
-                        value = unit,
-                        onValueChange = { unit = it },
-                        label = { Text("Unit") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = rateText,
-                    onValueChange = { rateText = it },
-                    label = { Text("Standard Rate (₹)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = supplier,
-                    onValueChange = { supplier = it },
-                    label = { Text("Preferred Supplier (Optional)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-
-                if (error != null) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(error!!, color = RoseDanger, fontSize = 12.sp)
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss) { Text("Cancel", color = TextSecondary) }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            val rate = rateText.toDoubleOrNull()
-                            if (name.isBlank()) {
-                                error = "Please enter material name"
-                                return@Button
-                            }
-                            if (rate == null || rate <= 0.0) {
-                                error = "Please enter valid rate"
-                                return@Button
-                            }
-                            onConfirm(name, nameTa.takeIf { it.isNotBlank() }, category, unit, rate, supplier.takeIf { it.isNotBlank() })
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Add to Catalog", fontWeight = FontWeight.Bold)
+    FluidGlossDialog(
+        onDismissRequest = onDismiss,
+        title = "Add Catalog Material",
+        icon = Icons.Default.Inventory2,
+        confirmButton = {
+            FluidGlossButton(
+                text = "Add to Catalog",
+                onClick = {
+                    val rate = rateText.toDoubleOrNull()
+                    if (name.isBlank()) {
+                        error = "Please enter material name"
+                        return@FluidGlossButton
                     }
-                }
-            }
+                    if (rate == null || rate <= 0.0) {
+                        error = "Please enter valid rate"
+                        return@FluidGlossButton
+                    }
+                    onConfirm(
+                        name,
+                        nameTa.takeIf { it.isNotBlank() },
+                        category,
+                        unit,
+                        rate,
+                        supplier.takeIf { it.isNotBlank() }
+                    )
+                },
+                variant = FluidGlossButtonVariant.Primary,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        dismissButton = {
+            FluidGlossButton(
+                text = "Cancel",
+                onClick = onDismiss,
+                variant = FluidGlossButtonVariant.Secondary,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    ) {
+        FluidGlossTextField(
+            value = name,
+            onValueChange = { name = it; error = null },
+            label = "Material Name (e.g. OPC 53 Grade Cement)",
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        FluidGlossTextField(
+            value = nameTa,
+            onValueChange = { nameTa = it },
+            label = "Tamil Name (Optional)",
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FluidGlossTextField(
+                value = category,
+                onValueChange = { category = it },
+                label = "Category",
+                modifier = Modifier.weight(1f),
+                singleLine = true
+            )
+            FluidGlossTextField(
+                value = unit,
+                onValueChange = { unit = it },
+                label = "Unit",
+                modifier = Modifier.weight(1f),
+                singleLine = true
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+
+        FluidGlossTextField(
+            value = rateText,
+            onValueChange = { rateText = it; error = null },
+            label = "Standard Rate (₹)",
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        FluidGlossTextField(
+            value = supplier,
+            onValueChange = { supplier = it },
+            label = "Preferred Supplier (Optional)",
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        if (error != null) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(error!!, color = RoseDanger, fontSize = 12.sp)
         }
     }
 }

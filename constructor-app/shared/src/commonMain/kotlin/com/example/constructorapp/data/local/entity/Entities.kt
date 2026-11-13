@@ -133,26 +133,6 @@ data class WorklogWithDetails(
     val photos: List<WorklogPhotoEntity> = emptyList()
 )
 
-data class ProjectEntity(
-    val id: String = "proj-${ClockUtils.nowMillis()}",
-    val companyId: String = "company-default",
-    val name: String,
-    val description: String? = null,
-    val startDate: String? = null,
-    val endDate: String? = null,
-    val status: String = "In Progress",
-    val progress: Int = 0,
-    val clientName: String? = null,
-    val clientPhone: String? = null,
-    val location: String? = null,
-    val budget: Double = 0.0,
-    val spent: Double = 0.0,
-    val siteId: String? = null,
-    val thumbnailUrl: String? = null,
-    val syncStatus: Int = 0,
-    val lastUpdatedLocally: Long = ClockUtils.nowMillis()
-)
-
 internal object ClockUtils {
     private var counter = 1000L
     fun nowMillis(): Long = 1731478000000L + (++counter)

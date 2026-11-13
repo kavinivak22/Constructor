@@ -47,6 +47,10 @@ import com.example.constructorapp.data.remote.SupabaseClient
 import com.example.constructorapp.theme.*
 import com.example.constructorapp.ui.components.AlertFlipper
 import com.example.constructorapp.ui.components.DashboardAlert
+import com.example.constructorapp.ui.components.FluidGlossButton
+import com.example.constructorapp.ui.components.FluidGlossButtonVariant
+import com.example.constructorapp.ui.components.FluidGlossDialog
+import com.example.constructorapp.ui.components.FluidGlossTextField
 import com.example.constructorapp.ui.components.GlassCard
 import com.example.constructorapp.ui.components.sampleAlerts
 import com.example.constructorapp.ui.main.ActivityType
@@ -1146,64 +1150,64 @@ fun ExpenseQuickDialog(
     val parsedAmount = CurrencyFormatter.parseInr(amountStr) ?: 0.0
     val isFormValid = parsedAmount > 0.0
 
-    AlertDialog(
+    FluidGlossDialog(
         onDismissRequest = onDismiss,
-        title = { Text("+ Quick Site Expense", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 18.sp) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
-                    value = amountStr,
-                    onValueChange = { amountStr = it },
-                    label = { Text("Amount (₹) *") },
-                    placeholder = { Text("e.g. 1500") },
-                    leadingIcon = { Text("₹", fontWeight = FontWeight.Bold, color = BrandPrimary) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = calculatorFieldColors()
-                )
-
-                Text("Expense Category", fontSize = 11.sp, color = TextSecondary)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf("Urgent Hardware", "Transport", "Tea/Snacks").forEach { cat ->
-                        FilterChip(
-                            selected = category == cat,
-                            onClick = { category = cat },
-                            label = { Text(cat, fontSize = 10.sp) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = BrandPrimary,
-                                selectedLabelColor = Color.White
-                            )
-                        )
-                    }
-                }
-
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Notes / Purpose") },
-                    placeholder = { Text("e.g. Binding wire & nails for beam") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = calculatorFieldColors()
-                )
-            }
-        },
+        title = "Quick Site Expense",
+        icon = Icons.Default.ReceiptLong,
         confirmButton = {
-            Button(
+            FluidGlossButton(
+                text = "Record Expense",
                 onClick = {
                     if (isFormValid) {
                         onSubmit(parsedAmount, category, description, selectedProjectId)
                     }
                 },
                 enabled = isFormValid,
-                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
-            ) {
-                Text("Record Expense")
-            }
+                variant = FluidGlossButtonVariant.Primary,
+                modifier = Modifier.fillMaxWidth()
+            )
         },
         dismissButton = {
-            OutlinedButton(onClick = onDismiss) {
-                Text("Cancel", color = TextSecondary)
+            FluidGlossButton(
+                text = "Cancel",
+                onClick = onDismiss,
+                variant = FluidGlossButtonVariant.Secondary,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            FluidGlossTextField(
+                value = amountStr,
+                onValueChange = { amountStr = it },
+                label = "Amount (₹) *",
+                placeholder = "e.g. 1500",
+                leadingIcon = { Text("₹", fontWeight = FontWeight.Bold, color = BrandPrimary) },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Text("Expense Category", fontSize = 11.sp, color = TextSecondary, fontWeight = FontWeight.SemiBold)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("Urgent Hardware", "Transport", "Tea/Snacks").forEach { cat ->
+                    FilterChip(
+                        selected = category == cat,
+                        onClick = { category = cat },
+                        label = { Text(cat, fontSize = 10.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = BrandPrimary,
+                            selectedLabelColor = Color.White
+                        )
+                    )
+                }
             }
-        },
-        containerColor = SlateSurface
-    )
+
+            FluidGlossTextField(
+                value = description,
+                onValueChange = { description = it },
+                label = "Notes / Purpose",
+                placeholder = "e.g. Binding wire & nails for beam",
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
 }

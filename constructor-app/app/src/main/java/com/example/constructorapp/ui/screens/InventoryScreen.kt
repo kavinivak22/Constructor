@@ -30,6 +30,9 @@ import com.example.constructorapp.data.local.AppDatabase
 import com.example.constructorapp.data.local.entity.InventoryAssetEntity
 import com.example.constructorapp.theme.*
 import com.example.constructorapp.ui.components.AmbientBlobBackground
+import com.example.constructorapp.ui.components.FluidGlossButton
+import com.example.constructorapp.ui.components.FluidGlossButtonVariant
+import com.example.constructorapp.ui.components.FluidGlossTextField
 import com.example.constructorapp.ui.components.GlassCard
 import com.example.constructorapp.ui.viewmodel.InventoryUiState
 import com.example.constructorapp.ui.viewmodel.InventoryViewModel
@@ -102,7 +105,7 @@ fun InventoryScreen(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = SlateSurface.copy(alpha = 0.85f),
+                        containerColor = Color.Transparent,
                         titleContentColor = TextPrimary
                     )
                 )
@@ -121,7 +124,7 @@ fun InventoryScreen(
                         "machinery" -> 2
                         else -> 0
                     },
-                    containerColor = SlateSurface.copy(alpha = 0.7f),
+                    containerColor = Color.Transparent,
                     contentColor = BrandPrimary
                 ) {
                     Tab(
@@ -146,11 +149,13 @@ fun InventoryScreen(
 
                 // Search & Filter Bar
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
-                    OutlinedTextField(
+                    FluidGlossTextField(
                         value = state.searchQuery,
                         onValueChange = { viewModel.setSearchQuery(it) },
-                        placeholder = { Text("Search ${state.activeTab}s...", fontSize = 13.sp, color = TextSecondary) },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp)) },
+                        placeholder = "Search ${state.activeTab}s...",
+                        leadingIcon = {
+                            Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp))
+                        },
                         trailingIcon = {
                             if (state.searchQuery.isNotBlank()) {
                                 IconButton(onClick = { viewModel.setSearchQuery("") }) {
@@ -158,18 +163,8 @@ fun InventoryScreen(
                                 }
                             }
                         },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = BrandPrimary,
-                            unfocusedBorderColor = GlassBorder,
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary,
-                            focusedContainerColor = SlateSurface.copy(alpha = 0.6f),
-                            unfocusedContainerColor = SlateSurface.copy(alpha = 0.6f)
-                        ),
                         singleLine = true
                     )
 
@@ -217,19 +212,22 @@ fun InventoryScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                             Text("No ${state.activeTab} items found", color = TextSecondary, fontSize = 14.sp)
                             Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedButton(
+                            FluidGlossButton(
                                 onClick = { viewModel.setTransferDialogOpen(true) },
+                                variant = FluidGlossButtonVariant.Outlined,
                                 shape = RoundedCornerShape(12.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorder)
+                                leadingIcon = {
+                                    Icon(Icons.Default.LocalShipping, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(16.dp))
+                                }
                             ) {
-                                Text("Transfer Asset into Yard", color = BrandPrimary, fontSize = 12.sp)
+                                Text("Transfer Asset into Yard", color = BrandPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 90.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         items(state.filteredAssets, key = { it.id }) { asset ->
@@ -322,7 +320,8 @@ fun InventoryAssetCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
-                    .background(SlateSurfaceSubtle.copy(alpha = 0.5f))
+                    .background(Color(0x80FFFFFF))
+                    .border(1.dp, GlassBorder, RoundedCornerShape(10.dp))
                     .padding(8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {

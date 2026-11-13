@@ -25,6 +25,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.constructorapp.data.remote.ProjectMaterialDto
 import com.example.constructorapp.theme.*
+import com.example.constructorapp.ui.components.AmbientBlobBackground
+import com.example.constructorapp.ui.components.FluidGlossButton
+import com.example.constructorapp.ui.components.FluidGlossButtonSize
+import com.example.constructorapp.ui.components.FluidGlossButtonVariant
+import com.example.constructorapp.ui.components.FluidGlossDropdownMenu
+import com.example.constructorapp.ui.components.FluidGlossDropdownMenuItem
+import com.example.constructorapp.ui.components.FluidGlossTextField
+import com.example.constructorapp.ui.components.GlassCard
 import com.example.constructorapp.ui.viewmodel.ProjectViewModel
 import java.text.NumberFormat
 import java.util.Locale
@@ -105,152 +113,148 @@ fun MaterialEstimationScreen(
     var aiSpecificReqs by remember { mutableStateOf("Framed RCC structure with red brick masonry, teak wood doors, vitrified tile flooring.") }
     var isGeneratingAi by remember { mutableStateOf(false) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Material Estimation",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = TextPrimary
-                        )
-                        Text(
-                            text = "Civil Calculation & AI Takeoff",
-                            fontSize = 11.sp,
-                            color = TextSecondary
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = TextPrimary
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = SlateSurface,
-                    titleContentColor = TextPrimary
-                )
-            )
-        },
-        containerColor = SlateBackground
-    ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Target Project Selection Card
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = SlateSurface)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "TARGET PROJECT",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = BrandPrimary,
-                            letterSpacing = 1.sp
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
+    Box(modifier = Modifier.fillMaxSize()) {
+        AmbientBlobBackground()
 
-                        if (projects.isEmpty()) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Column {
                             Text(
-                                text = "Loading projects or none found...",
-                                fontSize = 13.sp,
+                                text = "Material Estimation",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = "Civil Calculation & AI Takeoff",
+                                fontSize = 11.sp,
                                 color = TextSecondary
                             )
-                        } else {
-                            var expanded by remember { mutableStateOf(false) }
-                            val currentProject = projects.find { it.id == selectedProjectId } ?: projects.first()
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = BrandPrimary
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = TextPrimary
+                    )
+                )
+            },
+            containerColor = Color.Transparent
+        ) { paddingValues ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 90.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Target Project Selection Card
+                item {
+                    GlassCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "TARGET PROJECT",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = BrandPrimary,
+                                letterSpacing = 1.sp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
 
-                            Box(modifier = Modifier.fillMaxWidth()) {
-                                OutlinedButton(
-                                    onClick = { expanded = true },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = ButtonDefaults.outlinedButtonColors(
-                                        containerColor = SlateBackground,
-                                        contentColor = TextPrimary
-                                    )
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
+                            if (projects.isEmpty()) {
+                                Text(
+                                    text = "Loading projects or none found...",
+                                    fontSize = 13.sp,
+                                    color = TextSecondary
+                                )
+                            } else {
+                                var expanded by remember { mutableStateOf(false) }
+                                val currentProject = projects.find { it.id == selectedProjectId } ?: projects.first()
+
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    FluidGlossButton(
+                                        onClick = { expanded = true },
+                                        variant = FluidGlossButtonVariant.Outlined,
+                                        modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        Text(currentProject.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                                        Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = BrandPrimary)
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(currentProject.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = TextPrimary)
+                                            Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = BrandPrimary)
+                                        }
                                     }
-                                }
 
-                                DropdownMenu(
-                                    expanded = expanded,
-                                    onDismissRequest = { expanded = false },
-                                    modifier = Modifier.background(SlateSurface)
-                                ) {
-                                    projects.forEach { proj ->
-                                        DropdownMenuItem(
-                                            text = { Text(proj.name, color = TextPrimary) },
-                                            onClick = {
-                                                selectedProjectId = proj.id
-                                                expanded = false
-                                            }
-                                        )
+                                    FluidGlossDropdownMenu(
+                                        expanded = expanded,
+                                        onDismissRequest = { expanded = false }
+                                    ) {
+                                        projects.forEach { proj ->
+                                            FluidGlossDropdownMenuItem(
+                                                text = proj.name,
+                                                selected = proj.id == selectedProjectId,
+                                                onClick = {
+                                                    selectedProjectId = proj.id
+                                                    expanded = false
+                                                }
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            // Mode Selector Tabs (Civil Calculators vs AI Estimator)
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(SlateSurface)
-                        .padding(4.dp)
-                ) {
-                    TabPill(
-                        selected = selectedMode == 0,
-                        title = "Civil Calculators",
-                        icon = Icons.Default.Calculate,
-                        modifier = Modifier.weight(1f),
-                        onClick = { selectedMode = 0 }
-                    )
-                    TabPill(
-                        selected = selectedMode == 1,
-                        title = "AI Spec Estimator",
-                        icon = Icons.Default.AutoAwesome,
-                        modifier = Modifier.weight(1f),
-                        onClick = { selectedMode = 1 }
-                    )
-                }
-            }
-
-            if (selectedMode == 0) {
-                // Calculator Sub-Tabs
+                // Mode Selector Tabs (Civil Calculators vs AI Estimator)
                 item {
-                    ScrollableTabRow(
-                        selectedTabIndex = calculatorTab,
-                        containerColor = SlateBackground,
-                        contentColor = BrandPrimary,
-                        edgePadding = 0.dp,
-                        divider = {}
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xB8FFFFFF))
+                            .border(1.dp, GlassBorder, RoundedCornerShape(12.dp))
+                            .padding(4.dp)
                     ) {
+                        TabPill(
+                            selected = selectedMode == 0,
+                            title = "Civil Calculators",
+                            icon = Icons.Default.Calculate,
+                            modifier = Modifier.weight(1f),
+                            onClick = { selectedMode = 0 }
+                        )
+                        TabPill(
+                            selected = selectedMode == 1,
+                            title = "AI Spec Estimator",
+                            icon = Icons.Default.AutoAwesome,
+                            modifier = Modifier.weight(1f),
+                            onClick = { selectedMode = 1 }
+                        )
+                    }
+                }
+
+                if (selectedMode == 0) {
+                    // Calculator Sub-Tabs
+                    item {
+                        ScrollableTabRow(
+                            selectedTabIndex = calculatorTab,
+                            containerColor = Color.Transparent,
+                            contentColor = BrandPrimary,
+                            edgePadding = 0.dp,
+                            divider = {}
+                        ) {
                         val tabs = listOf("Concrete", "Brickwork", "Plastering", "Steel / Rebar")
                         tabs.forEachIndexed { index, title ->
                             Tab(
@@ -271,11 +275,7 @@ fun MaterialEstimationScreen(
 
                 // Calculator Active View
                 item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = SlateSurface)
-                    ) {
+                    GlassCard(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             when (calculatorTab) {
                                 0 -> {
@@ -284,29 +284,29 @@ fun MaterialEstimationScreen(
                                     Spacer(modifier = Modifier.height(12.dp))
 
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        OutlinedTextField(
+                                        FluidGlossTextField(
                                             value = concLength,
                                             onValueChange = { concLength = it },
-                                            label = { Text("Length (ft)", fontSize = 11.sp) },
+                                            label = "Length (ft)",
                                             modifier = Modifier.weight(1f),
                                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                            colors = calculatorFieldColors()
+                                            singleLine = true
                                         )
-                                        OutlinedTextField(
+                                        FluidGlossTextField(
                                             value = concWidth,
                                             onValueChange = { concWidth = it },
-                                            label = { Text("Width (ft)", fontSize = 11.sp) },
+                                            label = "Width (ft)",
                                             modifier = Modifier.weight(1f),
                                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                            colors = calculatorFieldColors()
+                                            singleLine = true
                                         )
-                                        OutlinedTextField(
+                                        FluidGlossTextField(
                                             value = concDepth,
                                             onValueChange = { concDepth = it },
-                                            label = { Text("Depth (ft)", fontSize = 11.sp) },
+                                            label = "Depth (ft)",
                                             modifier = Modifier.weight(1f),
                                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                            colors = calculatorFieldColors()
+                                            singleLine = true
                                         )
                                     }
 
@@ -358,7 +358,7 @@ fun MaterialEstimationScreen(
                                     )
 
                                     Spacer(modifier = Modifier.height(12.dp))
-                                    Button(
+                                    FluidGlossButton(
                                         onClick = {
                                             if (cementBags > 0) {
                                                 materialList.add(EstimatedMaterialItem("Cement Bags (Concrete ${concMix.take(3)})", "Cement", Math.round(cementBags * 10) / 10.0, "bags", 410.0))
@@ -367,12 +367,10 @@ fun MaterialEstimationScreen(
                                                 Toast.makeText(context, "Added concrete materials to import list", Toast.LENGTH_SHORT).show()
                                             }
                                         },
-                                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                                        variant = FluidGlossButtonVariant.Primary,
                                         modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(10.dp)
+                                        leadingIcon = { Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp)) }
                                     ) {
-                                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(6.dp))
                                         Text("Push to Materials Import List")
                                     }
                                 }
@@ -382,21 +380,21 @@ fun MaterialEstimationScreen(
                                     Spacer(modifier = Modifier.height(12.dp))
 
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        OutlinedTextField(
+                                        FluidGlossTextField(
                                             value = brickLength,
                                             onValueChange = { brickLength = it },
-                                            label = { Text("Wall Length (ft)", fontSize = 11.sp) },
+                                            label = "Wall Length (ft)",
                                             modifier = Modifier.weight(1f),
                                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                            colors = calculatorFieldColors()
+                                            singleLine = true
                                         )
-                                        OutlinedTextField(
+                                        FluidGlossTextField(
                                             value = brickHeight,
                                             onValueChange = { brickHeight = it },
-                                            label = { Text("Wall Height (ft)", fontSize = 11.sp) },
+                                            label = "Wall Height (ft)",
                                             modifier = Modifier.weight(1f),
                                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                            colors = calculatorFieldColors()
+                                            singleLine = true
                                         )
                                     }
 
@@ -435,7 +433,7 @@ fun MaterialEstimationScreen(
                                     )
 
                                     Spacer(modifier = Modifier.height(12.dp))
-                                    Button(
+                                    FluidGlossButton(
                                         onClick = {
                                             if (bricksCount > 0) {
                                                 materialList.add(EstimatedMaterialItem("Standard Clay Bricks", "Masonry", Math.round(bricksCount * 1.05).toDouble(), "nos", 9.5))
@@ -444,12 +442,10 @@ fun MaterialEstimationScreen(
                                                 Toast.makeText(context, "Added brickwork materials to import list", Toast.LENGTH_SHORT).show()
                                             }
                                         },
-                                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                                        variant = FluidGlossButtonVariant.Primary,
                                         modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(10.dp)
+                                        leadingIcon = { Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp)) }
                                     ) {
-                                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(6.dp))
                                         Text("Push to Materials Import List")
                                     }
                                 }
@@ -458,13 +454,13 @@ fun MaterialEstimationScreen(
                                     Text("Plastering Mortar Estimation", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 15.sp)
                                     Spacer(modifier = Modifier.height(12.dp))
 
-                                    OutlinedTextField(
+                                    FluidGlossTextField(
                                         value = plasterArea,
                                         onValueChange = { plasterArea = it },
-                                        label = { Text("Plastering Surface Area (sq.ft)", fontSize = 11.sp) },
+                                        label = "Plastering Surface Area (sq.ft)",
                                         modifier = Modifier.fillMaxWidth(),
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                        colors = calculatorFieldColors()
+                                        singleLine = true
                                     )
 
                                     Spacer(modifier = Modifier.height(10.dp))
@@ -502,7 +498,7 @@ fun MaterialEstimationScreen(
                                     )
 
                                     Spacer(modifier = Modifier.height(12.dp))
-                                    Button(
+                                    FluidGlossButton(
                                         onClick = {
                                             if (pCementBags > 0) {
                                                 materialList.add(EstimatedMaterialItem("Plastering Cement (${plasterThickness.take(4)})", "Cement", Math.round(pCementBags * 10) / 10.0, "bags", 410.0))
@@ -510,12 +506,10 @@ fun MaterialEstimationScreen(
                                                 Toast.makeText(context, "Added plastering materials to import list", Toast.LENGTH_SHORT).show()
                                             }
                                         },
-                                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                                        variant = FluidGlossButtonVariant.Primary,
                                         modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(10.dp)
+                                        leadingIcon = { Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp)) }
                                     ) {
-                                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(6.dp))
                                         Text("Push to Materials Import List")
                                     }
                                 }
@@ -524,13 +518,13 @@ fun MaterialEstimationScreen(
                                     Text("RCC Steel & Rebar Weight Takeoff", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 15.sp)
                                     Spacer(modifier = Modifier.height(12.dp))
 
-                                    OutlinedTextField(
+                                    FluidGlossTextField(
                                         value = steelRccVolume,
                                         onValueChange = { steelRccVolume = it },
-                                        label = { Text("RCC Volume (cu.meters)", fontSize = 11.sp) },
+                                        label = "RCC Volume (cu.meters)",
                                         modifier = Modifier.fillMaxWidth(),
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                        colors = calculatorFieldColors()
+                                        singleLine = true
                                     )
 
                                     Spacer(modifier = Modifier.height(10.dp))
@@ -571,7 +565,7 @@ fun MaterialEstimationScreen(
                                     )
 
                                     Spacer(modifier = Modifier.height(12.dp))
-                                    Button(
+                                    FluidGlossButton(
                                         onClick = {
                                             if (totalSteelKg > 0) {
                                                 materialList.add(EstimatedMaterialItem("Fe 550D TMT Steel (${steelMemberType.substringBefore(" ")})", "Steel", Math.round(totalSteelKg * 10) / 10.0, "kg", 68.0))
@@ -579,12 +573,10 @@ fun MaterialEstimationScreen(
                                                 Toast.makeText(context, "Added steel materials to import list", Toast.LENGTH_SHORT).show()
                                             }
                                         },
-                                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                                        variant = FluidGlossButtonVariant.Primary,
                                         modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(10.dp)
+                                        leadingIcon = { Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp)) }
                                     ) {
-                                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(6.dp))
                                         Text("Push to Materials Import List")
                                     }
                                 }
@@ -595,11 +587,7 @@ fun MaterialEstimationScreen(
             } else {
                 // AI Spec Estimator Form
                 item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = SlateSurface)
-                    ) {
+                    GlassCard(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = PurpleAccent, modifier = Modifier.size(20.dp))
@@ -608,46 +596,46 @@ fun MaterialEstimationScreen(
                             }
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            OutlinedTextField(
+                            FluidGlossTextField(
                                 value = aiProjectType,
                                 onValueChange = { aiProjectType = it },
-                                label = { Text("Project Type / Building Classification", fontSize = 11.sp) },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = calculatorFieldColors()
+                                label = "Project Type / Building Classification",
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
                             )
                             Spacer(modifier = Modifier.height(8.dp))
 
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedTextField(
+                                FluidGlossTextField(
                                     value = aiProjectSize,
                                     onValueChange = { aiProjectSize = it },
-                                    label = { Text("Built-up Area (sq.ft)", fontSize = 11.sp) },
-                                    modifier = Modifier.weight(1f),
+                                    label = "Built-up Area (sq.ft)",
+                                    singleLine = true,
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    colors = calculatorFieldColors()
+                                    modifier = Modifier.weight(1f)
                                 )
-                                OutlinedTextField(
+                                FluidGlossTextField(
                                     value = aiProjectLocation,
                                     onValueChange = { aiProjectLocation = it },
-                                    label = { Text("Site Location", fontSize = 11.sp) },
-                                    modifier = Modifier.weight(1f),
-                                    colors = calculatorFieldColors()
+                                    label = "Site Location",
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f)
                                 )
                             }
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            OutlinedTextField(
+                            FluidGlossTextField(
                                 value = aiSpecificReqs,
                                 onValueChange = { aiSpecificReqs = it },
-                                label = { Text("Engineering & Material Requirements", fontSize = 11.sp) },
-                                modifier = Modifier.fillMaxWidth(),
+                                label = "Engineering & Material Requirements",
+                                singleLine = false,
                                 minLines = 3,
-                                colors = calculatorFieldColors()
+                                modifier = Modifier.fillMaxWidth()
                             )
 
                             Spacer(modifier = Modifier.height(16.dp))
 
-                            Button(
+                            FluidGlossButton(
                                 onClick = {
                                     isGeneratingAi = true
                                     val size = aiProjectSize.toDoubleOrNull() ?: 1000.0
@@ -667,20 +655,13 @@ fun MaterialEstimationScreen(
                                     isGeneratingAi = false
                                     Toast.makeText(context, "Generated benchmark material takeoff for $size sq.ft", Toast.LENGTH_SHORT).show()
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = PurpleAccent),
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(10.dp),
-                                enabled = !isGeneratingAi
+                                variant = FluidGlossButtonVariant.Primary,
+                                loading = isGeneratingAi,
+                                enabled = !isGeneratingAi,
+                                leadingIcon = if (!isGeneratingAi) { { Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp)) } } else null,
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                if (isGeneratingAi) {
-                                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Generating Takeoff...")
-                                } else {
-                                    Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Generate AI Materials Takeoff")
-                                }
+                                Text(if (isGeneratingAi) "Generating Takeoff..." else "Generate AI Materials Takeoff")
                             }
                         }
                     }
@@ -709,7 +690,7 @@ fun MaterialEstimationScreen(
                         )
                     }
 
-                    FilledTonalButton(
+                    FluidGlossButton(
                         onClick = {
                             materialList.add(
                                 EstimatedMaterialItem(
@@ -721,15 +702,10 @@ fun MaterialEstimationScreen(
                                 )
                             )
                         },
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = SlateSurfaceSubtle,
-                            contentColor = TextPrimary
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                        variant = FluidGlossButtonVariant.Secondary,
+                        size = FluidGlossButtonSize.Small,
+                        leadingIcon = { Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp)) }
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
                         Text("Add Item", fontSize = 12.sp)
                     }
                 }
@@ -748,11 +724,7 @@ fun MaterialEstimationScreen(
                 val totalCost = materialList.sumOf { it.quantity * it.unitRate }
                 val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
 
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = SlateSurface)
-                ) {
+                GlassCard(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -770,15 +742,15 @@ fun MaterialEstimationScreen(
 
                         Spacer(modifier = Modifier.height(14.dp))
 
-                        Button(
+                        FluidGlossButton(
                             onClick = {
                                 if (selectedProjectId.isEmpty()) {
                                     Toast.makeText(context, "Please select a target project first", Toast.LENGTH_SHORT).show()
-                                    return@Button
+                                    return@FluidGlossButton
                                 }
                                 if (materialList.isEmpty()) {
                                     Toast.makeText(context, "No materials to import", Toast.LENGTH_SHORT).show()
-                                    return@Button
+                                    return@FluidGlossButton
                                 }
                                 isImporting = true
                                 var count = 0
@@ -797,26 +769,20 @@ fun MaterialEstimationScreen(
                                 isImporting = false
                                 Toast.makeText(context, "Successfully queued ${materialList.size} items to project materials!", Toast.LENGTH_LONG).show()
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldSuccess),
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            enabled = !isImporting && materialList.isNotEmpty()
+                            variant = FluidGlossButtonVariant.Success,
+                            loading = isImporting,
+                            enabled = !isImporting && materialList.isNotEmpty(),
+                            leadingIcon = if (!isImporting) { { Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(18.dp)) } } else null,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            if (isImporting) {
-                                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Importing to Project...")
-                            } else {
-                                Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Import to Project Inventory (${materialList.size} Items)")
-                            }
+                            Text("Import to Project Inventory (${materialList.size} Items)")
                         }
                     }
                 }
             }
         }
     }
+}
 }
 
 @Composable
@@ -825,10 +791,9 @@ fun MaterialRowCard(
     onDelete: () -> Unit,
     onUpdate: (EstimatedMaterialItem) -> Unit
 ) {
-    Card(
+    GlassCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = SlateSurface)
+        shape = RoundedCornerShape(14.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
@@ -857,28 +822,28 @@ fun MaterialRowCard(
             Spacer(modifier = Modifier.height(10.dp))
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
+                FluidGlossTextField(
                     value = item.quantity.toString(),
                     onValueChange = {
                         val q = it.toDoubleOrNull() ?: item.quantity
                         onUpdate(item.copy(quantity = q))
                     },
-                    label = { Text("Qty (${item.unit})", fontSize = 10.sp) },
+                    label = "Qty (${item.unit})",
                     modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    colors = calculatorFieldColors()
+                    singleLine = true
                 )
 
-                OutlinedTextField(
+                FluidGlossTextField(
                     value = item.unitRate.toString(),
                     onValueChange = {
                         val r = it.toDoubleOrNull() ?: item.unitRate
                         onUpdate(item.copy(unitRate = r))
                     },
-                    label = { Text("Rate (₹)", fontSize = 10.sp) },
+                    label = "Rate (₹)",
                     modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    colors = calculatorFieldColors()
+                    singleLine = true
                 )
 
                 Column(
@@ -906,8 +871,8 @@ fun ResultBox(title: String, items: List<Pair<String, String>>) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(SlateBackground)
-            .border(1.dp, SlateBorder, RoundedCornerShape(12.dp))
+            .background(Color(0x80FFFFFF))
+            .border(1.dp, GlassBorder, RoundedCornerShape(12.dp))
             .padding(14.dp)
     ) {
         Text(title, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = BrandPrimary)

@@ -11,6 +11,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +22,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.constructorapp.theme.*
+import com.example.constructorapp.ui.components.FluidGlossButton
+import com.example.constructorapp.ui.components.FluidGlossButtonVariant
+import com.example.constructorapp.ui.components.FluidGlossDialog
+import com.example.constructorapp.ui.components.GlassCard
 import com.example.constructorapp.ui.viewmodel.ReminderViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -262,76 +268,80 @@ fun AddEditReminderScreen(
 
     // Coordinates Picker Dialog (Simulates Maps API Picker)
     if (showLocationPickerDialog) {
-        AlertDialog(
+        FluidGlossDialog(
             onDismissRequest = { showLocationPickerDialog = false },
-            title = {
-                Text(
-                    text = "Select Coordinates / Preset",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
+            title = "Select Coordinates / Preset",
+            icon = Icons.Default.Place,
+            dismissButton = {
+                FluidGlossButton(
+                    text = "Cancel",
+                    onClick = { showLocationPickerDialog = false },
+                    variant = FluidGlossButtonVariant.Secondary,
+                    modifier = Modifier.fillMaxWidth()
                 )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = "Choose a default coordinate pair or preset for constructor site mapping:",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+            }
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = "Choose a default coordinate pair or preset for constructor site mapping:",
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 13.sp,
+                    color = TextSecondary
+                )
 
-                    val presets = listOf(
-                        "Googleplex Site" to "37.4220,-122.0841",
-                        "NYC Construction Site" to "40.7128,-74.0060",
-                        "London Office" to "51.5074,-0.1278",
-                        "Sydney Project Site" to "-33.8688,151.2093"
-                    )
+                val presets = listOf(
+                    "Googleplex Site" to "37.4220,-122.0841",
+                    "NYC Construction Site" to "40.7128,-74.0060",
+                    "London Office" to "51.5074,-0.1278",
+                    "Sydney Project Site" to "-33.8688,151.2093"
+                )
 
-                    presets.forEach { (name, coords) ->
-                        Card(
+                presets.forEach { (name, coords) ->
+                    GlassCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        onClick = {
+                            location = coords
+                            showLocationPickerDialog = false
+                        }
+                    ) {
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
-                                    location = coords
-                                    showLocationPickerDialog = false
-                                },
-                            shape = RoundedCornerShape(8.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column {
-                                    Text(
-                                        text = name,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp
-                                    )
-                                    Text(
-                                        text = coords,
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                Icon(
-                                    imageVector = Icons.Default.Map,
-                                    contentDescription = "Select",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
+                            Column {
+                                Text(
+                                    text = name,
+                                    fontFamily = PlusJakartaSansFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = TextPrimary
+                                )
+                                Text(
+                                    text = coords,
+                                    fontFamily = PlusJakartaSansFontFamily,
+                                    fontSize = 12.sp,
+                                    color = TextSecondary
                                 )
                             }
+                            Icon(
+                                imageVector = Icons.Default.Map,
+                                contentDescription = "Select",
+                                tint = BrandPrimary,
+                                modifier = Modifier.size(18.dp)
+                            )
                         }
                     }
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { showLocationPickerDialog = false }) {
-                    Text("Cancel")
-                }
             }
-        )
+        }
     }
 }

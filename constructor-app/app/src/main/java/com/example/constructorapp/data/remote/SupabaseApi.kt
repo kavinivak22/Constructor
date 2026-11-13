@@ -10,6 +10,46 @@ interface SupabaseApi {
         @Body request: LoginRequest
     ): Response<LoginResponse>
 
+    @POST("auth/v1/signup")
+    suspend fun signup(
+        @Body request: SignupRequest
+    ): Response<SignupResponse>
+
+    @POST("auth/v1/recover")
+    suspend fun resetPassword(
+        @Body request: PasswordResetRequest
+    ): Response<Unit>
+
+    // User Profile Endpoints
+    @GET("rest/v1/users")
+    suspend fun getUserProfile(
+        @Header("Authorization") authHeader: String,
+        @Query("id") idFilter: String, // e.g. "eq.$userId"
+        @Query("select") select: String = "id,email,display_name,company_id,role,status,phone,photo_url"
+    ): Response<List<UserProfileDto>>
+
+    @POST("rest/v1/users")
+    @Headers("Prefer: resolution=merge-duplicates,return=representation")
+    suspend fun upsertUserProfile(
+        @Header("Authorization") authHeader: String,
+        @Body user: UserProfileDto
+    ): Response<List<UserProfileDto>>
+
+    // Company Endpoints
+    @POST("rest/v1/companies")
+    @Headers("Prefer: return=representation")
+    suspend fun createCompany(
+        @Header("Authorization") authHeader: String,
+        @Body company: CompanyCreateRequest
+    ): Response<List<CompanyDto>>
+
+    @GET("rest/v1/companies")
+    suspend fun getCompany(
+        @Header("Authorization") authHeader: String,
+        @Query("id") idFilter: String, // e.g. "eq.$companyId"
+        @Query("select") select: String = "*"
+    ): Response<List<CompanyDto>>
+
     // Projects Endpoints
     @GET("rest/v1/projects")
     suspend fun getProjects(
@@ -280,6 +320,13 @@ interface SupabaseApi {
         @Query("select") select: String = "*"
     ): Response<List<ContractorDto>>
 
+    @POST("rest/v1/contractors")
+    @Headers("Prefer: return=representation")
+    suspend fun createContractor(
+        @Header("Authorization") authHeader: String,
+        @Body contractor: Map<String, @JvmSuppressWildcards Any?>
+    ): Response<List<ContractorDto>>
+
     // Payout Runs
     @GET("rest/v1/payout_runs")
     suspend fun getPayoutRuns(
@@ -336,6 +383,13 @@ interface SupabaseApi {
     suspend fun deleteProjectDocument(
         @Header("Authorization") authHeader: String,
         @Query("id") idFilter: String
+    ): Response<Unit>
+
+    @PATCH("rest/v1/documents")
+    suspend fun updateProjectDocument(
+        @Header("Authorization") authHeader: String,
+        @Query("id") idFilter: String,
+        @Body updates: Map<String, @JvmSuppressWildcards Any?>
     ): Response<Unit>
 
     // Purchase Orders

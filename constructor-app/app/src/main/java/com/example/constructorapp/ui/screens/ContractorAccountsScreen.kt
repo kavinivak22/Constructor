@@ -30,11 +30,18 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import com.example.constructorapp.data.local.AppDatabase
 import com.example.constructorapp.data.local.entity.ContractorEntity
 import com.example.constructorapp.data.local.entity.ContractorLedgerEntryEntity
 import com.example.constructorapp.theme.*
 import com.example.constructorapp.ui.components.AmbientBlobBackground
+import com.example.constructorapp.ui.components.FluidGlossButton
+import com.example.constructorapp.ui.components.FluidGlossButtonSize
+import com.example.constructorapp.ui.components.FluidGlossButtonVariant
+import com.example.constructorapp.ui.components.FluidGlossDialog
+import com.example.constructorapp.ui.components.FluidGlossTextField
 import com.example.constructorapp.ui.components.GlassCard
 import com.example.constructorapp.ui.viewmodel.ContractorsUiState
 import com.example.constructorapp.ui.viewmodel.ContractorsViewModel
@@ -93,7 +100,7 @@ fun ContractorAccountsScreen(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = SlateSurface.copy(alpha = 0.85f),
+                        containerColor = Color.Transparent,
                         titleContentColor = TextPrimary
                     )
                 )
@@ -104,7 +111,7 @@ fun ContractorAccountsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 90.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 // 2-Tile KPI Summary Strip (Rate vs NMR)
@@ -149,30 +156,19 @@ fun ContractorAccountsScreen(
                 // Search & Trade Filter Bar
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(
+                        FluidGlossTextField(
                             value = state.searchQuery,
                             onValueChange = { viewModel.setSearchQuery(it) },
-                            placeholder = { Text("Search contractor by name or trade...", fontSize = 13.sp, color = TextSecondary) },
+                            placeholder = "Search contractor by name or trade...",
                             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp)) },
-                            trailingIcon = {
-                                if (state.searchQuery.isNotBlank()) {
+                            trailingIcon = if (state.searchQuery.isNotBlank()) {
+                                {
                                     IconButton(onClick = { viewModel.setSearchQuery("") }) {
                                         Icon(Icons.Default.Clear, contentDescription = "Clear", tint = TextSecondary, modifier = Modifier.size(16.dp))
                                     }
                                 }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(50.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = BrandPrimary,
-                                unfocusedBorderColor = GlassBorder,
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary,
-                                focusedContainerColor = SlateSurface.copy(alpha = 0.6f),
-                                unfocusedContainerColor = SlateSurface.copy(alpha = 0.6f)
-                            ),
+                            } else null,
+                            modifier = Modifier.fillMaxWidth(),
                             singleLine = true
                         )
 
@@ -225,7 +221,7 @@ fun ContractorAccountsScreen(
                                 "nmr" -> 2
                                 else -> 0
                             },
-                            containerColor = SlateSurface.copy(alpha = 0.7f),
+                            containerColor = Color.Transparent,
                             contentColor = BrandPrimary
                         ) {
                             Tab(
@@ -361,17 +357,13 @@ fun ContractorDetailCard(
                     ) {
                         Icon(Icons.Default.Phone, contentDescription = "Dial", tint = BrandPrimary, modifier = Modifier.size(18.dp))
                     }
-                    Button(
+                    FluidGlossButton(
+                        text = "Add Entry",
                         onClick = onAddEntry,
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                        modifier = Modifier.height(36.dp)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Add Entry", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
+                        variant = FluidGlossButtonVariant.Primary,
+                        size = FluidGlossButtonSize.Small,
+                        leadingIcon = { Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    )
                 }
             }
 
@@ -532,91 +524,89 @@ fun AddContractorDialog(
     var gst by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .clip(RoundedCornerShape(20.dp))
-                .border(1.dp, GlassBorder, RoundedCornerShape(20.dp)),
-            color = SlateSurface
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(20.dp)
-                    .verticalScroll(rememberScrollState())
-            ) {
-                Text("Add New Contractor", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                Spacer(modifier = Modifier.height(14.dp))
-
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Contractor / Agency Name") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = category,
-                    onValueChange = { category = it },
-                    label = { Text("Trade / Category (e.g. Masonry, Electrical)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = contact,
-                    onValueChange = { contact = it },
-                    label = { Text("Contact Person") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = phone,
-                    onValueChange = { phone = it },
-                    label = { Text("Phone Number") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = bank,
-                    onValueChange = { bank = it },
-                    label = { Text("Bank & Account Details") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-
-                if (error != null) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(error!!, color = RoseDanger, fontSize = 12.sp)
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss) { Text("Cancel", color = TextSecondary) }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            if (name.isBlank() || phone.isBlank()) {
-                                error = "Name and Phone are required"
-                                return@Button
-                            }
-                            onConfirm(name, category.takeIf { it.isNotBlank() }, contact.takeIf { it.isNotBlank() }, phone, email.takeIf { it.isNotBlank() }, bank.takeIf { it.isNotBlank() }, gst.takeIf { it.isNotBlank() })
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Save Contractor", fontWeight = FontWeight.Bold)
+    FluidGlossDialog(
+        onDismissRequest = onDismiss,
+        title = "Add New Contractor",
+        icon = Icons.Default.PersonAdd,
+        confirmButton = {
+            FluidGlossButton(
+                text = "Save Contractor",
+                onClick = {
+                    if (name.isBlank() || phone.isBlank()) {
+                        error = "Name and Phone are required"
+                        return@FluidGlossButton
                     }
-                }
-            }
+                    onConfirm(
+                        name,
+                        category.takeIf { it.isNotBlank() },
+                        contact.takeIf { it.isNotBlank() },
+                        phone,
+                        email.takeIf { it.isNotBlank() },
+                        bank.takeIf { it.isNotBlank() },
+                        gst.takeIf { it.isNotBlank() }
+                    )
+                },
+                variant = FluidGlossButtonVariant.Primary,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        dismissButton = {
+            FluidGlossButton(
+                text = "Cancel",
+                onClick = onDismiss,
+                variant = FluidGlossButtonVariant.Secondary,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    ) {
+        FluidGlossTextField(
+            value = name,
+            onValueChange = { name = it; error = null },
+            label = "Contractor / Agency Name",
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        FluidGlossTextField(
+            value = category,
+            onValueChange = { category = it },
+            label = "Trade / Category (e.g. Masonry, Electrical)",
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        FluidGlossTextField(
+            value = contact,
+            onValueChange = { contact = it },
+            label = "Contact Person",
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        FluidGlossTextField(
+            value = phone,
+            onValueChange = { phone = it; error = null },
+            label = "Phone Number",
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        FluidGlossTextField(
+            value = bank,
+            onValueChange = { bank = it },
+            label = "Bank & Account Details",
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        if (error != null) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(error!!, color = RoseDanger, fontSize = 12.sp)
         }
     }
 }
@@ -642,103 +632,92 @@ fun AddLedgerEntryDialog(
     var reference by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .clip(RoundedCornerShape(20.dp))
-                .border(1.dp, GlassBorder, RoundedCornerShape(20.dp)),
-            color = SlateSurface
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(20.dp)
-                    .verticalScroll(rememberScrollState())
-            ) {
-                Text("Add Ledger Entry", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                Text("Contractor: $contractorName", fontSize = 12.sp, color = TextSecondary)
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Account classification selector
-                Text("Ledger Account", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary)
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("rate" to "Rate Contract", "nmr" to "NMR Daily Labor").forEach { (pc, label) ->
-                        FilterChip(
-                            selected = payoutClass == pc,
-                            onClick = { payoutClass = pc },
-                            label = { Text(label, fontSize = 11.sp) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                containerColor = SlateSurfaceSubtle,
-                                labelColor = TextSecondary,
-                                selectedContainerColor = if (pc == "rate") Color(0xFF8B5CF6) else Color(0xFF14B8A6),
-                                selectedLabelColor = Color.White
-                            )
-                        )
+    FluidGlossDialog(
+        onDismissRequest = onDismiss,
+        title = "Add Ledger Entry",
+        subtitle = "Contractor: $contractorName",
+        icon = Icons.Default.ReceiptLong,
+        confirmButton = {
+            FluidGlossButton(
+                text = "Add Transaction",
+                onClick = {
+                    val amt = amountText.toDoubleOrNull()
+                    if (description.isBlank() || amt == null || amt <= 0.0) {
+                        error = "Description and valid amount are required"
+                        return@FluidGlossButton
                     }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Description (e.g. 500 Sq.Ft Plastering)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    onConfirm(entryType, description, amt, status, payoutClass, reference.takeIf { it.isNotBlank() })
+                },
+                variant = FluidGlossButtonVariant.Primary,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        dismissButton = {
+            FluidGlossButton(
+                text = "Cancel",
+                onClick = onDismiss,
+                variant = FluidGlossButtonVariant.Secondary,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    ) {
+        Text("Ledger Account", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary)
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("rate" to "Rate Contract", "nmr" to "NMR Daily Labor").forEach { (pc, label) ->
+                FilterChip(
+                    selected = payoutClass == pc,
+                    onClick = { payoutClass = pc },
+                    label = { Text(label, fontSize = 11.sp) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = SlateSurfaceSubtle,
+                        labelColor = TextSecondary,
+                        selectedContainerColor = if (pc == "rate") Color(0xFF8B5CF6) else Color(0xFF14B8A6),
+                        selectedLabelColor = Color.White
+                    )
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = amountText,
-                    onValueChange = { amountText = it },
-                    label = { Text("Amount (₹)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Status selector
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("pending" to "Pending Due", "paid" to "Settled / Paid").forEach { (st, label) ->
-                        FilterChip(
-                            selected = status == st,
-                            onClick = { status = st },
-                            label = { Text(label, fontSize = 11.sp) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                containerColor = SlateSurfaceSubtle,
-                                labelColor = TextSecondary,
-                                selectedContainerColor = if (st == "paid") EmeraldSuccess else AmberWarning,
-                                selectedLabelColor = Color.White
-                            )
-                        )
-                    }
-                }
-
-                if (error != null) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(error!!, color = RoseDanger, fontSize = 12.sp)
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss) { Text("Cancel", color = TextSecondary) }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            val amt = amountText.toDoubleOrNull()
-                            if (description.isBlank() || amt == null || amt <= 0.0) {
-                                error = "Description and valid amount are required"
-                                return@Button
-                            }
-                            onConfirm(entryType, description, amt, status, payoutClass, reference.takeIf { it.isNotBlank() })
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Add Transaction", fontWeight = FontWeight.Bold)
-                    }
-                }
             }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        FluidGlossTextField(
+            value = description,
+            onValueChange = { description = it; error = null },
+            label = "Description (e.g. 500 Sq.Ft Plastering)",
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        FluidGlossTextField(
+            value = amountText,
+            onValueChange = { amountText = it; error = null },
+            label = "Amount (₹)",
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("pending" to "Pending Due", "paid" to "Settled / Paid").forEach { (st, label) ->
+                FilterChip(
+                    selected = status == st,
+                    onClick = { status = st },
+                    label = { Text(label, fontSize = 11.sp) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = SlateSurfaceSubtle,
+                        labelColor = TextSecondary,
+                        selectedContainerColor = if (st == "paid") EmeraldSuccess else AmberWarning,
+                        selectedLabelColor = Color.White
+                    )
+                )
+            }
+        }
+
+        if (error != null) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(error!!, color = RoseDanger, fontSize = 12.sp)
         }
     }
 }

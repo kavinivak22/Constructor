@@ -88,7 +88,8 @@ fun RemindersScreen(
                     onClick = onAddReminderClick,
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = Color.White,
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.padding(bottom = 80.dp)
                 ) {
                     Icon(imageVector = Icons.Default.Add, contentDescription = "Add Reminder")
                 }
@@ -216,7 +217,7 @@ fun RemindersListTab(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 90.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(filteredReminders, key = { it.id }) { reminder ->

@@ -30,6 +30,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.constructorapp.theme.*
+import com.example.constructorapp.ui.components.FluidGlossButton
+import com.example.constructorapp.ui.components.FluidGlossButtonVariant
+import com.example.constructorapp.ui.components.FluidGlossDialog
 import com.example.constructorapp.ui.components.GlassCard
 
 // ─── Legacy Data Classes (Kept for unit test compatibility) ───────────────────
@@ -699,7 +702,7 @@ fun BuildingPlanScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 90.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             // ─── 1. Overall Construction Stages & Quality Card ───────────────────
@@ -1316,91 +1319,89 @@ fun BuildingPlanScreen(
 
     // ─── 5. Template Selection Dialog ("Change Building Plan") ──────────────
     if (isTemplateDialogOpen) {
-        AlertDialog(
+        FluidGlossDialog(
             onDismissRequest = { isTemplateDialogOpen = false },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Icon(Icons.Default.Tune, contentDescription = null, tint = BrandPrimary)
-                    Text("Change Building Plan", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                }
-            },
-            text = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Select a master construction workflow template to track stage-by-stage civil execution and quality checklists.",
-                        fontSize = 12.sp,
-                        color = TextSecondary
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
+            title = "Change Building Plan",
+            icon = Icons.Default.Tune,
+            confirmButton = {
+                FluidGlossButton(
+                    text = "Close",
+                    onClick = { isTemplateDialogOpen = false },
+                    variant = FluidGlossButtonVariant.Secondary,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Select a master construction workflow template to track stage-by-stage civil execution and quality checklists.",
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 12.sp,
+                    color = TextSecondary
+                )
+                Spacer(modifier = Modifier.height(6.dp))
 
-                    BuiltInPlanTemplates.forEach { template ->
-                        val isSelected = template.id == selectedTemplateId
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (isSelected) BrandPrimaryContainer else SlateSurfaceSubtle)
-                                .border(
-                                    1.dp,
-                                    if (isSelected) BrandPrimary else GlassBorder,
-                                    RoundedCornerShape(10.dp)
-                                )
-                                .clickable {
-                                    selectedTemplateId = template.id
-                                    isTemplateDialogOpen = false
-                                }
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = isSelected,
-                                onClick = {
-                                    selectedTemplateId = template.id
-                                    isTemplateDialogOpen = false
-                                },
-                                colors = RadioButtonDefaults.colors(
-                                    selectedColor = BrandPrimary,
-                                    unselectedColor = TextSecondary
-                                )
+                BuiltInPlanTemplates.forEach { template ->
+                    val isSelected = template.id == selectedTemplateId
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (isSelected) BrandPrimaryContainer else SlateSurfaceSubtle)
+                            .border(
+                                1.dp,
+                                if (isSelected) BrandPrimary else GlassBorder,
+                                RoundedCornerShape(10.dp)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text(
-                                        text = template.name,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = TextPrimary
-                                    )
-                                }
+                            .clickable {
+                                selectedTemplateId = template.id
+                                isTemplateDialogOpen = false
+                            }
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = isSelected,
+                            onClick = {
+                                selectedTemplateId = template.id
+                                isTemplateDialogOpen = false
+                            },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = BrandPrimary,
+                                unselectedColor = TextSecondary
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text(
-                                    text = template.description,
-                                    fontSize = 11.sp,
-                                    color = TextSecondary,
-                                    modifier = Modifier.padding(top = 2.dp)
-                                )
-                                Text(
-                                    text = "${template.stages.size} Stages • ${template.buildingType}",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = BrandPrimary,
-                                    modifier = Modifier.padding(top = 4.dp)
+                                    text = template.name,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary
                                 )
                             }
+                            Text(
+                                text = template.description,
+                                fontSize = 11.sp,
+                                color = TextSecondary,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                            Text(
+                                text = "${template.stages.size} Stages • ${template.buildingType}",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = BrandPrimary,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
                         }
                     }
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { isTemplateDialogOpen = false }) {
-                    Text("Close", fontWeight = FontWeight.Bold, color = BrandPrimary)
-                }
-            },
-            containerColor = SlateSurface
-        )
+            }
+        }
     }
 }
 

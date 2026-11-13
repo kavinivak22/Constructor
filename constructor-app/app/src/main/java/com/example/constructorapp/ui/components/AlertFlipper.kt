@@ -166,21 +166,6 @@ fun AlertCardBody(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
                 )
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(Color.Black.copy(alpha = 0.08f))
-                        .padding(horizontal = 5.dp, vertical = 1.dp)
-                ) {
-                    Text(
-                        text = alert.variant.name.lowercase(),
-                        fontFamily = PlusJakartaSansFontFamily,
-                        fontSize = 8.5.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colors.text,
-                        letterSpacing = 0.4.sp
-                    )
-                }
                 Text(
                     text = "• ${alert.time}",
                     fontFamily = PlusJakartaSansFontFamily,
@@ -574,109 +559,14 @@ fun AlertFlipper(
         val alert = inspectingAlert!!
         val colors = getAlertColors(alert.variant)
 
-        AlertDialog(
+        FluidGlossDialog(
             onDismissRequest = { inspectingAlert = null },
-            icon = {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(colors.background)
-                        .border(1.dp, colors.border, RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = alert.icon,
-                        contentDescription = null,
-                        tint = colors.text,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            },
-            title = {
-                Text(
-                    text = alert.title,
-                    fontFamily = OutfitFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
-                    fontSize = 16.sp
-                )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(50))
-                                .background(colors.border)
-                                .padding(horizontal = 8.dp, vertical = 3.dp)
-                        ) {
-                            Text(
-                                text = alert.variant.name.uppercase(),
-                                fontFamily = PlusJakartaSansFontFamily,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = colors.text,
-                                letterSpacing = 0.5.sp
-                            )
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Outlined.Schedule,
-                                contentDescription = null,
-                                tint = TextSecondary,
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = alert.time,
-                                fontFamily = PlusJakartaSansFontFamily,
-                                fontSize = 11.sp,
-                                color = TextSecondary
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = alert.description,
-                        fontFamily = PlusJakartaSansFontFamily,
-                        fontSize = 13.sp,
-                        color = TextPrimary,
-                        lineHeight = 18.sp
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Color(0xFFF8FAFC))
-                            .border(1.dp, SlateBorder, RoundedCornerShape(10.dp))
-                            .padding(10.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Outlined.Shield,
-                                contentDescription = null,
-                                tint = EmeraldSuccess,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Actionable reminder logged in Constructor site registry.",
-                                fontFamily = PlusJakartaSansFontFamily,
-                                fontSize = 11.sp,
-                                color = TextSecondary
-                            )
-                        }
-                    }
-                }
-            },
+            title = alert.title,
+            icon = alert.icon,
+            iconTint = colors.text,
             confirmButton = {
-                Button(
+                FluidGlossButton(
+                    text = "Dismiss Alert",
                     onClick = {
                         onAlertDismiss(alert.id)
                         inspectingAlert = null
@@ -684,33 +574,87 @@ fun AlertFlipper(
                             currentIndex = (activeCount - 2).coerceAtLeast(0)
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = RoseDanger),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        "Dismiss Alert",
-                        fontFamily = PlusJakartaSansFontFamily,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+                    variant = FluidGlossButtonVariant.Destructive
+                )
             },
             dismissButton = {
-                OutlinedButton(
+                FluidGlossButton(
+                    text = "Got it",
                     onClick = { inspectingAlert = null },
-                    shape = RoundedCornerShape(8.dp),
-                    border = BorderStroke(1.dp, SlateBorder)
+                    variant = FluidGlossButtonVariant.Secondary
+                )
+            }
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        "Got it",
-                        fontFamily = PlusJakartaSansFontFamily,
-                        fontSize = 12.sp,
-                        color = TextPrimary
-                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(colors.border)
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = alert.variant.name.uppercase(),
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.text,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Outlined.Schedule,
+                            contentDescription = null,
+                            tint = TextSecondary,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = alert.time,
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+                    }
                 }
-            },
-            containerColor = Color.White,
-            shape = RoundedCornerShape(16.dp)
-        )
+
+                Text(
+                    text = alert.description,
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 13.sp,
+                    color = TextPrimary,
+                    lineHeight = 18.sp
+                )
+
+                GlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Shield,
+                            contentDescription = null,
+                            tint = EmeraldSuccess,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Actionable reminder logged in Constructor site registry.",
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+                    }
+                }
+            }
+        }
     }
 }

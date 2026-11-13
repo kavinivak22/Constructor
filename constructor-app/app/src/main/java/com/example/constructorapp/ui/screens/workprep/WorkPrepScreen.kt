@@ -2,6 +2,7 @@ package com.example.constructorapp.ui.screens.workprep
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -34,6 +35,13 @@ import com.example.constructorapp.data.repository.ProjectRepository
 import com.example.constructorapp.data.repository.WorkPrepRepository
 import com.example.constructorapp.theme.*
 import com.example.constructorapp.ui.components.AmbientBlobBackground
+import com.example.constructorapp.ui.components.FluidGlossButton
+import com.example.constructorapp.ui.components.FluidGlossButtonSize
+import com.example.constructorapp.ui.components.FluidGlossButtonVariant
+import com.example.constructorapp.ui.components.FluidGlossDropdownMenu
+import com.example.constructorapp.ui.components.FluidGlossDropdownMenuItem
+import com.example.constructorapp.ui.components.FluidGlossExposedDropdown
+import com.example.constructorapp.ui.components.FluidGlossTextField
 import com.example.constructorapp.ui.components.GlassCard
 import com.example.constructorapp.ui.viewmodel.ProjectViewModel
 import com.example.constructorapp.ui.viewmodel.WorkPrepUiState
@@ -87,32 +95,26 @@ fun WorkPrepScreen(
                         }
                     },
                     actions = {
-                        // Project Filter Dropdown Trigger
-                        ExposedDropdownMenuBox(
-                            expanded = projectDropdownExpanded,
-                            onExpandedChange = { projectDropdownExpanded = !projectDropdownExpanded }
-                        ) {
-                            IconButton(
-                                onClick = { projectDropdownExpanded = true },
-                                modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                            ) {
+                        Box {
+                            IconButton(onClick = { projectDropdownExpanded = true }) {
                                 Icon(Icons.Default.FilterList, contentDescription = "Filter Project", tint = BrandPrimary)
                             }
-                            ExposedDropdownMenu(
+                            FluidGlossDropdownMenu(
                                 expanded = projectDropdownExpanded,
-                                onDismissRequest = { projectDropdownExpanded = false },
-                                modifier = Modifier.background(SlateSurfaceSubtle)
+                                onDismissRequest = { projectDropdownExpanded = false }
                             ) {
-                                DropdownMenuItem(
-                                    text = { Text("All Sites", color = TextPrimary) },
+                                FluidGlossDropdownMenuItem(
+                                    text = "All Sites",
+                                    selected = state.selectedProjectId == "all" || state.selectedProjectId.isEmpty(),
                                     onClick = {
                                         viewModel.filterByProject("all")
                                         projectDropdownExpanded = false
                                     }
                                 )
                                 state.projects.forEach { proj ->
-                                    DropdownMenuItem(
-                                        text = { Text(proj.name, color = TextPrimary) },
+                                    FluidGlossDropdownMenuItem(
+                                        text = proj.name,
+                                        selected = state.selectedProjectId == proj.id,
                                         onClick = {
                                             viewModel.filterByProject(proj.id)
                                             projectDropdownExpanded = false
@@ -122,7 +124,10 @@ fun WorkPrepScreen(
                             }
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = SlateSurface)
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = TextPrimary
+                    )
                 )
             },
             containerColor = Color.Transparent
@@ -131,6 +136,7 @@ fun WorkPrepScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
+                    .padding(bottom = 80.dp)
             ) {
                 // Top Readiness Gauge Card
                 ReadinessGaugeHeader(state = state)
@@ -159,51 +165,48 @@ fun WorkPrepScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(SlateSurface)
+                        .background(Color(0xB8FFFFFF))
+                        .border(1.dp, GlassBorder)
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (state.currentStep > 1) {
-                        OutlinedButton(
+                        FluidGlossButton(
                             onClick = { viewModel.prevStep() },
+                            variant = FluidGlossButtonVariant.Outlined,
                             shape = RoundedCornerShape(10.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, SlateBorder)
+                            leadingIcon = { Icon(Icons.Default.ChevronLeft, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         ) {
-                            Icon(Icons.Default.ChevronLeft, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Back", color = TextSecondary)
+                            Text("Back")
                         }
                     } else {
                         Spacer(modifier = Modifier.width(1.dp))
                     }
 
                     if (state.currentStep < 4) {
-                        Button(
+                        FluidGlossButton(
                             onClick = { viewModel.nextStep() },
+                            variant = FluidGlossButtonVariant.Primary,
                             shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
+                            trailingIcon = { Icon(Icons.Default.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         ) {
-                            Text("Next Step", fontWeight = FontWeight.Bold, color = Color.White)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(Icons.Default.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Text("Next Step")
                         }
                     } else {
-                        Button(
+                        FluidGlossButton(
                             onClick = {
                                 viewModel.dispatchPrep {
                                     // Dispatched successfully
                                 }
                             },
+                            variant = FluidGlossButtonVariant.Success,
                             shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldSuccess)
+                            leadingIcon = { Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White) }
                         ) {
-                            Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
-                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = if (state.isDispatched) "Dispatched" else "Confirm & Dispatch",
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
@@ -434,11 +437,9 @@ private fun Step1ScopeSection(
             }
 
             items(state.suggestedTasks) { sug ->
-                Card(
+                GlassCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = SlateSurfaceSubtle),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, BrandPrimary.copy(alpha = 0.35f))
+                    shape = RoundedCornerShape(14.dp)
                 ) {
                     Row(
                         modifier = Modifier
@@ -451,14 +452,13 @@ private fun Step1ScopeSection(
                             Text(sug.taskTitle, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextPrimary)
                             Text("${sug.projectName} • ${sug.processTitle}", fontSize = 11.sp, color = TextSecondary)
                         }
-                        Button(
+                        FluidGlossButton(
                             onClick = { viewModel.addSuggestedTask(sug) },
+                            variant = FluidGlossButtonVariant.Primary,
+                            size = FluidGlossButtonSize.Small,
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                            leadingIcon = { Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp)) }
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
                             Text("Add Task", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
@@ -491,25 +491,18 @@ private fun Step1ScopeSection(
         // Quick Add Task Form (Expandable)
         if (isQuickTaskExpanded) {
             item {
-                Card(
+                GlassCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = SlateSurface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, BrandPrimary.copy(alpha = 0.5f))
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("Add New Task for Tomorrow", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = BrandPrimary)
-                        OutlinedTextField(
+                        FluidGlossTextField(
                             value = quickTaskTitle,
                             onValueChange = { quickTaskTitle = it },
-                            label = { Text("Task Title *") },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = BrandPrimary,
-                                unfocusedBorderColor = SlateBorder,
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary
-                            )
+                            label = "Task Title *",
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
                         )
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             listOf("High", "Medium", "Low").forEach { p ->
@@ -533,7 +526,7 @@ private fun Step1ScopeSection(
                                 }
                             }
                         }
-                        Button(
+                        FluidGlossButton(
                             onClick = {
                                 if (quickTaskTitle.isNotBlank()) {
                                     val pId = if (state.selectedProjectId == "all") state.projects.firstOrNull()?.id ?: "" else state.selectedProjectId
@@ -542,10 +535,10 @@ private fun Step1ScopeSection(
                                     isQuickTaskExpanded = false
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth(),
+                            variant = FluidGlossButtonVariant.Primary,
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                            enabled = quickTaskTitle.isNotBlank()
+                            enabled = quickTaskTitle.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("Create & Schedule Task", fontWeight = FontWeight.Bold)
                         }
@@ -567,13 +560,9 @@ private fun Step1ScopeSection(
             }
         } else {
             items(state.tasks) { task ->
-                var contractorExpanded by remember { mutableStateOf(false) }
-
-                Card(
+                GlassCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = if (task.isSelected) SlateSurface else SlateSurfaceSubtle),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, if (task.isSelected) BrandPrimary.copy(alpha = 0.5f) else SlateBorder)
+                    shape = RoundedCornerShape(14.dp)
                 ) {
                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(
@@ -601,41 +590,15 @@ private fun Step1ScopeSection(
                             ) {
                                 Text("Assign Contractor:", fontSize = 12.sp, color = TextSecondary)
 
-                                ExposedDropdownMenuBox(
-                                    expanded = contractorExpanded,
-                                    onExpandedChange = { contractorExpanded = !contractorExpanded }
-                                ) {
-                                    OutlinedTextField(
-                                        value = task.assignedContractorName ?: "Select Contractor",
-                                        onValueChange = {},
-                                        readOnly = true,
-                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = contractorExpanded) },
-                                        modifier = Modifier
-                                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                                            .width(180.dp),
-                                        shape = RoundedCornerShape(8.dp),
-                                        colors = OutlinedTextFieldDefaults.colors(
-                                            focusedBorderColor = BrandPrimary,
-                                            unfocusedBorderColor = SlateBorder,
-                                            focusedTextColor = TextPrimary,
-                                            unfocusedTextColor = TextPrimary
-                                        )
-                                    )
-                                    ExposedDropdownMenu(
-                                        expanded = contractorExpanded,
-                                        onDismissRequest = { contractorExpanded = false }
-                                    ) {
-                                        state.contractorCalls.forEach { c ->
-                                            DropdownMenuItem(
-                                                text = { Text(c.name) },
-                                                onClick = {
-                                                    viewModel.assignContractorToTask(task.id, c.contractorId)
-                                                    contractorExpanded = false
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
+                                FluidGlossExposedDropdown(
+                                    items = state.contractorCalls,
+                                    selectedItem = state.contractorCalls.find { it.contractorId == task.assignedContractorId },
+                                    onItemSelected = { c -> viewModel.assignContractorToTask(task.id, c.contractorId) },
+                                    itemLabel = { it.name },
+                                    placeholder = "Select Contractor",
+                                    modifier = Modifier.width(180.dp),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
                             }
                         }
                     }
@@ -689,11 +652,9 @@ private fun Step2CallTrackerSection(
             }
         } else {
             items(state.contractorCalls) { call ->
-                Card(
+                GlassCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = SlateSurface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, SlateBorder)
+                    shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(
@@ -737,25 +698,27 @@ private fun Step2CallTrackerSection(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(SlateSurfaceSubtle)
+                                .background(Color(0x80FFFFFF))
+                                .border(1.dp, GlassBorder, RoundedCornerShape(8.dp))
                                 .padding(horizontal = 12.dp, vertical = 6.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text("Confirmed Workers Headcount:", fontSize = 12.sp, color = TextSecondary)
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                OutlinedButton(
+                                FluidGlossButton(
                                     onClick = {
                                         if (call.confirmedWorkerCount > 0) {
                                             viewModel.updateCallStatus(call.callId, call.callStatus, call.confirmedWorkerCount - 1)
                                         }
                                     },
-                                    modifier = Modifier.size(32.dp),
-                                    contentPadding = PaddingValues(0.dp),
+                                    variant = FluidGlossButtonVariant.Outlined,
+                                    size = FluidGlossButtonSize.Small,
                                     shape = CircleShape,
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, SlateBorder)
+                                    contentPadding = PaddingValues(0.dp),
+                                    modifier = Modifier.size(32.dp)
                                 ) {
-                                    Text("-", fontSize = 16.sp, color = TextPrimary)
+                                    Text("-", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                                 }
                                 Text(
                                     text = "${call.confirmedWorkerCount}",
@@ -763,16 +726,17 @@ private fun Step2CallTrackerSection(
                                     fontWeight = FontWeight.Bold,
                                     color = TextPrimary
                                 )
-                                OutlinedButton(
+                                FluidGlossButton(
                                     onClick = {
                                         viewModel.updateCallStatus(call.callId, call.callStatus, call.confirmedWorkerCount + 1)
                                     },
-                                    modifier = Modifier.size(32.dp),
-                                    contentPadding = PaddingValues(0.dp),
+                                    variant = FluidGlossButtonVariant.Outlined,
+                                    size = FluidGlossButtonSize.Small,
                                     shape = CircleShape,
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, SlateBorder)
+                                    contentPadding = PaddingValues(0.dp),
+                                    modifier = Modifier.size(32.dp)
                                 ) {
-                                    Text("+", fontSize = 16.sp, color = TextPrimary)
+                                    Text("+", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -853,11 +817,11 @@ private fun Step3StockAuditSection(
         // Deficit Alert Banner
         if (deficitCount > 0) {
             item {
-                Card(
+                GlassCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = RoseDanger.copy(alpha = 0.15f)),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, RoseDanger.copy(alpha = 0.4f))
+                    backgroundColor = RoseDanger.copy(alpha = 0.15f),
+                    borderColor = RoseDanger.copy(alpha = 0.4f)
                 ) {
                     Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Warning, contentDescription = null, tint = RoseDanger, modifier = Modifier.size(24.dp))
@@ -882,19 +846,14 @@ private fun Step3StockAuditSection(
 
         // Search Filter
         item {
-            OutlinedTextField(
+            FluidGlossTextField(
                 value = state.searchQuery,
                 onValueChange = { viewModel.setSearchQuery(it) },
-                placeholder = { Text("Filter materials by name...", color = TextSecondary) },
+                placeholder = "Filter materials by name...",
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary) },
-                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
                 shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = BrandPrimary,
-                    unfocusedBorderColor = SlateBorder,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary
-                )
+                modifier = Modifier.fillMaxWidth()
             )
         }
 
@@ -911,14 +870,10 @@ private fun Step3StockAuditSection(
             }
         } else {
             items(state.stockAudits) { audit ->
-                Card(
+                GlassCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = SlateSurface),
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.dp,
-                        if (audit.isDeficit) RoseDanger.copy(alpha = 0.5f) else SlateBorder
-                    )
+                    borderColor = if (audit.isDeficit) RoseDanger.copy(alpha = 0.5f) else GlassBorder
                 ) {
                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(
@@ -1001,11 +956,9 @@ private fun Step4DispatchManifestSection(
 
         // Summary Preview Card
         item {
-            Card(
+            GlassCard(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = SlateSurfaceSubtle),
-                border = androidx.compose.foundation.BorderStroke(1.dp, SlateBorder)
+                shape = RoundedCornerShape(14.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Manifest Summary Text", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
@@ -1016,7 +969,7 @@ private fun Step4DispatchManifestSection(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
-                            .background(SlateSurface)
+                            .background(GlassSurfaceSubtle)
                             .padding(12.dp)
                     )
                 }
@@ -1025,7 +978,7 @@ private fun Step4DispatchManifestSection(
 
         // Action: Share via WhatsApp / SMS Intent
         item {
-            Button(
+            FluidGlossButton(
                 onClick = {
                     val sendIntent = Intent().apply {
                         action = Intent.ACTION_SEND
@@ -1035,22 +988,23 @@ private fun Step4DispatchManifestSection(
                     context.startActivity(Intent.createChooser(sendIntent, "Share Tomorrow's Prep Manifest"))
                 },
                 modifier = Modifier.fillMaxWidth(),
+                variant = FluidGlossButtonVariant.Success,
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)) // WhatsApp Green
+                leadingIcon = {
+                    Icon(Icons.Default.Share, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                }
             ) {
-                Icon(Icons.Default.Share, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Share via WhatsApp / SMS", fontWeight = FontWeight.Bold, color = Color.White)
+                Text("Share via WhatsApp / SMS", fontWeight = FontWeight.Bold)
             }
         }
 
         if (state.isDispatched) {
             item {
-                Card(
+                GlassCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = EmeraldSuccess.copy(alpha = 0.15f)),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, EmeraldSuccess.copy(alpha = 0.4f))
+                    backgroundColor = EmeraldSuccess.copy(alpha = 0.15f),
+                    borderColor = EmeraldSuccess.copy(alpha = 0.4f)
                 ) {
                     Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.CheckCircle, contentDescription = null, tint = EmeraldSuccess, modifier = Modifier.size(24.dp))

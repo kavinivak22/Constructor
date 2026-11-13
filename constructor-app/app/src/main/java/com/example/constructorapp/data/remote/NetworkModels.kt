@@ -23,6 +23,60 @@ data class SupabaseUser(
 )
 
 @Serializable
+data class SignupRequest(
+    val email: String,
+    val password: String,
+    val data: Map<String, String>? = null
+)
+
+@Serializable
+data class SignupResponse(
+    @SerialName("access_token") val accessToken: String? = null,
+    @SerialName("refresh_token") val refreshToken: String? = null,
+    val user: SupabaseUser? = null
+)
+
+@Serializable
+data class PasswordResetRequest(
+    val email: String
+)
+
+@Serializable
+data class CompanyCreateRequest(
+    val name: String,
+    val address: String,
+    val phone: String,
+    val website: String? = null,
+    @SerialName("business_type") val businessType: String,
+    @SerialName("company_size") val companySize: String,
+    @SerialName("owner_id") val ownerId: String
+)
+
+@Serializable
+data class CompanyDto(
+    val id: String,
+    val name: String,
+    val address: String? = null,
+    val phone: String? = null,
+    val website: String? = null,
+    @SerialName("business_type") val businessType: String? = null,
+    @SerialName("company_size") val companySize: String? = null,
+    @SerialName("owner_id") val ownerId: String? = null
+)
+
+@Serializable
+data class UserProfileDto(
+    val id: String,
+    val email: String? = null,
+    @SerialName("display_name") val displayName: String? = null,
+    @SerialName("company_id") val companyId: String? = null,
+    val role: String? = null,
+    val status: String? = null,
+    val phone: String? = null,
+    @SerialName("photo_url") val photoUrl: String? = null
+)
+
+@Serializable
 data class ProjectDto(
     val id: String,
     val name: String,
@@ -262,10 +316,10 @@ data class ContractorDto(
     val id: String,
     val name: String,
     val phone: String? = null,
-    val trade: String? = null,
+    @SerialName("category") val trade: String? = null,
     @SerialName("payout_type") val payoutType: String = "NMR",
     @SerialName("default_rate") val defaultRate: Double = 0.0,
-    @SerialName("company_id") val companyId: String? = null
+    @SerialName("companyId") val companyId: String? = null
 )
 
 @Serializable

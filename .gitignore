@@ -46,3 +46,9 @@ firestore-debug.log
 
 # zip backups
 *.zip
+
+# gradle & android/kmp builds
+.gradle/
+build/
+**/build/
+*.hprof

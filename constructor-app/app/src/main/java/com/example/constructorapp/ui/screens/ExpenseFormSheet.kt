@@ -23,7 +23,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.constructorapp.data.local.ProjectEntity
+import com.example.constructorapp.data.local.entity.ExpenseEntity
 import com.example.constructorapp.theme.*
+import com.example.constructorapp.ui.components.FluidGlossButton
+import com.example.constructorapp.ui.components.FluidGlossButtonVariant
+import com.example.constructorapp.ui.components.FluidGlossTextField
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -32,8 +37,11 @@ import java.util.Locale
 @Composable
 fun ExpenseFormSheet(
     initialProjectId: String? = null,
+    expenseToEdit: ExpenseEntity? = null,
+    projects: List<ProjectEntity> = emptyList(),
     onDismiss: () -> Unit,
     onSubmit: (
+        id: String?,
         projectId: String?,
         amount: Double,
         category: String,
@@ -47,16 +55,37 @@ fun ExpenseFormSheet(
     ) -> Unit
 ) {
     val context = LocalContext.current
-    var amountText by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf("materials") }
-    var description by remember { mutableStateOf("") }
-    var expenseDate by remember { mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())) }
-    var paymentMode by remember { mutableStateOf("cash") }
-    var paymentStatus by remember { mutableStateOf("paid") }
-    var notes by remember { mutableStateOf("") }
-    var receiver by remember { mutableStateOf("") }
+    var selectedProjectId by remember(expenseToEdit, initialProjectId) {
+        mutableStateOf(expenseToEdit?.projectId ?: initialProjectId)
+    }
+    var amountText by remember(expenseToEdit) {
+        mutableStateOf(expenseToEdit?.amount?.let { if (it % 1.0 == 0.0) it.toLong().toString() else it.toString() } ?: "")
+    }
+    var selectedCategory by remember(expenseToEdit) {
+        mutableStateOf(expenseToEdit?.category ?: "materials")
+    }
+    var description by remember(expenseToEdit) {
+        mutableStateOf(expenseToEdit?.description ?: "")
+    }
+    var expenseDate by remember(expenseToEdit) {
+        mutableStateOf(expenseToEdit?.expenseDate ?: SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()))
+    }
+    var paymentMode by remember(expenseToEdit) {
+        mutableStateOf(expenseToEdit?.paymentMode ?: "cash")
+    }
+    var paymentStatus by remember(expenseToEdit) {
+        mutableStateOf(expenseToEdit?.paymentStatus ?: "paid")
+    }
+    var notes by remember(expenseToEdit) {
+        mutableStateOf(expenseToEdit?.notes ?: "")
+    }
+    var receiver by remember(expenseToEdit) {
+        mutableStateOf(expenseToEdit?.receiver ?: "")
+    }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val isEditing = expenseToEdit != null
 
     val photoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -66,69 +95,129 @@ fun ExpenseFormSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = SlateSurface,
-        dragHandle = { BottomSheetDefaults.DragHandle(color = TextSecondary) }
+        containerColor = GlassCardSurfaceElevated,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        dragHandle = { BottomSheetDefaults.DragHandle(color = TextSecondary.copy(alpha = 0.4f)) }
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 8.dp)
+                .navigationBarsPadding()
+                .imePadding()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 20.dp)
                 .verticalScroll(rememberScrollState())
         ) {
+            // Header Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Log Project Expense",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "Close", tint = TextSecondary)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(BrandPrimaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isEditing) Icons.Default.Edit else Icons.Default.ReceiptLong,
+                            contentDescription = null,
+                            tint = BrandPrimary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = if (isEditing) "Edit Expense" else "Log Project Expense",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = if (isEditing) "Update cash outflow details" else "Record site expenditure, bills & payouts",
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+                    }
+                }
+                IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Default.Close, contentDescription = "Close", tint = TextSecondary, modifier = Modifier.size(18.dp))
                 }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
 
+            // Project Selector (if projects available)
+            if (projects.isNotEmpty()) {
+                Text("Select Project Site", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    projects.forEach { proj ->
+                        val isSelected = selectedProjectId == proj.id
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { selectedProjectId = proj.id },
+                            label = { Text(proj.name, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium) },
+                            leadingIcon = {
+                                Icon(Icons.Default.Business, contentDescription = null, modifier = Modifier.size(13.dp))
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = SlateSurfaceSubtle,
+                                labelColor = TextSecondary,
+                                selectedContainerColor = BrandPrimary,
+                                selectedLabelColor = Color.White
+                            )
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
             // Amount Input with INR prefix
-            OutlinedTextField(
+            FluidGlossTextField(
                 value = amountText,
                 onValueChange = { amountText = it },
-                label = { Text("Amount (₹)") },
+                label = "Amount (₹)",
+                placeholder = "0.00",
                 leadingIcon = {
                     Text("₹", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = EmeraldSuccess, modifier = Modifier.padding(start = 12.dp))
                 },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = BrandPrimary,
-                    unfocusedBorderColor = GlassBorder,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary
-                ),
                 singleLine = true
             )
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Category Chips Selector
-            Text("Expense Category", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary)
+            Text("Expense Category", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
             Spacer(modifier = Modifier.height(6.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                listOf("materials", "labor", "equipment", "permits", "subcontractor", "other").forEach { cat ->
-                    val isSelected = selectedCategory == cat
+                listOf(
+                    "materials" to "Materials",
+                    "labor" to "Labor",
+                    "equipment" to "Equipment",
+                    "permits" to "Permits",
+                    "subcontractor" to "Subcontractor",
+                    "other" to "Other"
+                ).forEach { (catKey, catLabel) ->
+                    val isSelected = selectedCategory.equals(catKey, ignoreCase = true)
                     FilterChip(
                         selected = isSelected,
-                        onClick = { selectedCategory = cat },
-                        label = { Text(cat.replaceFirstChar { it.uppercase() }, fontSize = 11.sp) },
+                        onClick = { selectedCategory = catKey },
+                        label = { Text(catLabel, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium) },
                         colors = FilterChipDefaults.filterChipColors(
                             containerColor = SlateSurfaceSubtle,
                             labelColor = TextSecondary,
@@ -139,77 +228,77 @@ fun ExpenseFormSheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Description
-            OutlinedTextField(
+            FluidGlossTextField(
                 value = description,
                 onValueChange = { description = it },
-                label = { Text("Description (e.g. 50 bags sand delivery)") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = BrandPrimary,
-                    unfocusedBorderColor = GlassBorder,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary
-                )
+                label = "Description (e.g. 50 bags sand delivery)",
+                placeholder = "Enter expense description",
+                modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
             // Date and Payment Mode Row
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
+                FluidGlossTextField(
                     value = expenseDate,
                     onValueChange = { expenseDate = it },
-                    label = { Text("Expense Date") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = BrandPrimary,
-                        unfocusedBorderColor = GlassBorder,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
-                    )
+                    label = "Expense Date",
+                    placeholder = "YYYY-MM-DD",
+                    modifier = Modifier.weight(1f)
                 )
 
-                OutlinedTextField(
+                FluidGlossTextField(
                     value = paymentMode,
                     onValueChange = { paymentMode = it },
-                    label = { Text("Mode (cash/upi/bank)") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = BrandPrimary,
-                        unfocusedBorderColor = GlassBorder,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
-                    )
+                    label = "Mode (cash/upi/bank)",
+                    placeholder = "Mode",
+                    modifier = Modifier.weight(1f)
                 )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Receiver / Vendor Name
-            OutlinedTextField(
-                value = receiver,
-                onValueChange = { receiver = it },
-                label = { Text("Paid To / Vendor / Worker Name") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = BrandPrimary,
-                    unfocusedBorderColor = GlassBorder,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary
+            // Receiver / Vendor Name and Payment Status
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FluidGlossTextField(
+                    value = receiver,
+                    onValueChange = { receiver = it },
+                    label = "Paid To / Vendor Name",
+                    placeholder = "Vendor",
+                    modifier = Modifier.weight(1.3f)
                 )
+
+                FluidGlossTextField(
+                    value = paymentStatus,
+                    onValueChange = { paymentStatus = it },
+                    label = "Status (paid/pending)",
+                    placeholder = "Status",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Notes / References
+            FluidGlossTextField(
+                value = notes,
+                onValueChange = { notes = it },
+                label = "Notes & Reference Details (Optional)",
+                placeholder = "Optional notes",
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = false,
+                minLines = 2,
+                maxLines = 4
             )
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Receipt Photo Attachment
-            Text("Receipt / Bill Attachment", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary)
+            Text("Receipt / Bill Attachment", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
             Spacer(modifier = Modifier.height(6.dp))
             Surface(
                 modifier = Modifier
@@ -218,7 +307,7 @@ fun ExpenseFormSheet(
                     .border(1.dp, GlassBorder, RoundedCornerShape(12.dp))
                     .clickable { photoLauncher.launch("image/*") }
                     .background(SlateSurfaceSubtle.copy(alpha = 0.5f))
-                    .padding(14.dp),
+                    .padding(12.dp),
                 color = Color.Transparent
             ) {
                 Row(
@@ -228,16 +317,18 @@ fun ExpenseFormSheet(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = if (selectedImageUri != null) Icons.Default.CheckCircle else Icons.Default.PhotoCamera,
+                            imageVector = if (selectedImageUri != null || expenseToEdit?.localReceiptUri != null) Icons.Default.CheckCircle else Icons.Default.PhotoCamera,
                             contentDescription = null,
-                            tint = if (selectedImageUri != null) EmeraldSuccess else BrandPrimary,
+                            tint = if (selectedImageUri != null || expenseToEdit?.localReceiptUri != null) EmeraldSuccess else BrandPrimary,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (selectedImageUri != null) "Receipt Photo Selected" else "Attach Bill / Receipt Photo",
+                            text = if (selectedImageUri != null) "New Receipt Photo Selected"
+                            else if (expenseToEdit?.localReceiptUri != null) "Receipt Attached on File"
+                            else "Attach Bill / Receipt Photo",
                             fontSize = 12.sp,
-                            color = if (selectedImageUri != null) EmeraldSuccess else TextPrimary
+                            color = if (selectedImageUri != null || expenseToEdit?.localReceiptUri != null) EmeraldSuccess else TextPrimary
                         )
                     }
 
@@ -254,23 +345,25 @@ fun ExpenseFormSheet(
                 Text(text = errorMessage!!, color = RoseDanger, fontSize = 12.sp)
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Submit Button
-            Button(
+            FluidGlossButton(
+                text = if (isEditing) "Update Expense" else "Record Expense",
                 onClick = {
                     val amount = amountText.toDoubleOrNull()
                     if (amount == null || amount <= 0.0) {
                         errorMessage = "Please enter a valid amount"
-                        return@Button
+                        return@FluidGlossButton
                     }
                     if (description.isBlank()) {
                         errorMessage = "Please provide an expense description"
-                        return@Button
+                        return@FluidGlossButton
                     }
 
                     onSubmit(
-                        initialProjectId,
+                        expenseToEdit?.id,
+                        selectedProjectId,
                         amount,
                         selectedCategory,
                         description,
@@ -282,18 +375,12 @@ fun ExpenseFormSheet(
                         selectedImageUri
                     )
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(Icons.Default.ReceiptLong, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Record Expense", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = {
+                    Icon(Icons.Default.ReceiptLong, contentDescription = null, modifier = Modifier.size(18.dp))
+                },
+                variant = FluidGlossButtonVariant.Primary
+            )
         }
     }
 }

@@ -25,10 +25,17 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import com.example.constructorapp.data.local.AppDatabase
 import com.example.constructorapp.data.local.entity.ClientMilestoneEntity
 import com.example.constructorapp.theme.*
 import com.example.constructorapp.ui.components.AmbientBlobBackground
+import com.example.constructorapp.ui.components.FluidGlossButton
+import com.example.constructorapp.ui.components.FluidGlossButtonSize
+import com.example.constructorapp.ui.components.FluidGlossButtonVariant
+import com.example.constructorapp.ui.components.FluidGlossDialog
+import com.example.constructorapp.ui.components.FluidGlossTextField
 import com.example.constructorapp.ui.components.GlassCard
 import com.example.constructorapp.ui.viewmodel.ClientMilestonesUiState
 import com.example.constructorapp.ui.viewmodel.ClientMilestonesViewModel
@@ -96,7 +103,7 @@ fun ClientMilestonesScreen(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = SlateSurface.copy(alpha = 0.85f),
+                        containerColor = Color.Transparent,
                         titleContentColor = TextPrimary
                     )
                 )
@@ -107,7 +114,7 @@ fun ClientMilestonesScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 90.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 // 3 KPI Cards Row
@@ -187,16 +194,15 @@ fun ClientMilestonesScreen(
                                 Spacer(modifier = Modifier.height(10.dp))
                                 Text("No milestones setup for this project", color = TextSecondary, fontSize = 14.sp)
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Button(
+                                FluidGlossButton(
+                                    text = "Initialize 6 Standard Construction Stages",
                                     onClick = {
                                         val projId = initialProjectId ?: "project-default"
                                         viewModel.initializeDefaultMilestones(projId, 4500000.0)
                                     },
-                                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Text("Initialize 6 Standard Construction Stages", fontWeight = FontWeight.Bold)
-                                }
+                                    variant = FluidGlossButtonVariant.Primary,
+                                    size = FluidGlossButtonSize.Medium
+                                )
                             }
                         }
                     }
@@ -350,17 +356,13 @@ fun ClientMilestoneCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (!isCollected) {
-                    Button(
+                    FluidGlossButton(
+                        text = "Record Collection",
                         onClick = onRecordPayment,
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                        modifier = Modifier.height(32.dp)
-                    ) {
-                        Icon(Icons.Default.CreditCard, contentDescription = null, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Record Collection", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
+                        variant = FluidGlossButtonVariant.Primary,
+                        size = FluidGlossButtonSize.Small,
+                        leadingIcon = { Icon(Icons.Default.CreditCard, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                    )
                 } else {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Check, contentDescription = null, tint = EmeraldSuccess, modifier = Modifier.size(16.dp))
@@ -385,85 +387,75 @@ fun RecordClientPaymentDialog(
     var paymentDate by remember { mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .clip(RoundedCornerShape(20.dp))
-                .border(1.dp, GlassBorder, RoundedCornerShape(20.dp)),
-            color = SlateSurface
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Text("Record Client Payment", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Stage: ${milestone.stageName} (Due: ${remainingBalance.toInrFull()})",
-                    fontSize = 12.sp,
-                    color = BrandPrimary
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-
-                OutlinedTextField(
-                    value = amountText,
-                    onValueChange = { amountText = it },
-                    label = { Text("Collected Amount (₹)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Text("Payment Mode", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary)
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf("bank_transfer" to "Bank", "cheque" to "Cheque", "upi" to "UPI", "cash" to "Cash").forEach { (m, label) ->
-                        FilterChip(
-                            selected = paymentMode == m,
-                            onClick = { paymentMode = m },
-                            label = { Text(label, fontSize = 10.sp) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                containerColor = SlateSurfaceSubtle,
-                                labelColor = TextSecondary,
-                                selectedContainerColor = BrandPrimary,
-                                selectedLabelColor = Color.White
-                            )
-                        )
+    FluidGlossDialog(
+        onDismissRequest = onDismiss,
+        title = "Record Client Payment",
+        subtitle = "Stage: ${milestone.stageName} (Due: ${remainingBalance.toInrFull()})",
+        icon = Icons.Default.Paid,
+        confirmButton = {
+            FluidGlossButton(
+                text = "Record Payment",
+                onClick = {
+                    val amt = amountText.toDoubleOrNull()
+                    if (amt == null || amt <= 0.0) {
+                        error = "Please enter a valid amount"
+                        return@FluidGlossButton
                     }
-                }
-                Spacer(modifier = Modifier.height(10.dp))
+                    onConfirm(amt, paymentMode, paymentDate)
+                },
+                variant = FluidGlossButtonVariant.Primary,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        dismissButton = {
+            FluidGlossButton(
+                text = "Cancel",
+                onClick = onDismiss,
+                variant = FluidGlossButtonVariant.Secondary,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    ) {
+        FluidGlossTextField(
+            value = amountText,
+            onValueChange = { amountText = it; error = null },
+            label = "Collected Amount (₹)",
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+        Spacer(modifier = Modifier.height(10.dp))
 
-                OutlinedTextField(
-                    value = paymentDate,
-                    onValueChange = { paymentDate = it },
-                    label = { Text("Payment Date") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+        Text("Payment Mode", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary)
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf("bank_transfer" to "Bank", "cheque" to "Cheque", "upi" to "UPI", "cash" to "Cash").forEach { (m, label) ->
+                FilterChip(
+                    selected = paymentMode == m,
+                    onClick = { paymentMode = m },
+                    label = { Text(label, fontSize = 10.sp) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = SlateSurfaceSubtle,
+                        labelColor = TextSecondary,
+                        selectedContainerColor = BrandPrimary,
+                        selectedLabelColor = Color.White
+                    )
                 )
-
-                if (error != null) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(error!!, color = RoseDanger, fontSize = 12.sp)
-                }
-
-                Spacer(modifier = Modifier.height(18.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss) { Text("Cancel", color = TextSecondary) }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            val amt = amountText.toDoubleOrNull()
-                            if (amt == null || amt <= 0.0) {
-                                error = "Please enter a valid amount"
-                                return@Button
-                            }
-                            onConfirm(amt, paymentMode, paymentDate)
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Record Payment", fontWeight = FontWeight.Bold)
-                    }
-                }
             }
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+
+        FluidGlossTextField(
+            value = paymentDate,
+            onValueChange = { paymentDate = it; error = null },
+            label = "Payment Date",
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        if (error != null) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(error!!, color = RoseDanger, fontSize = 12.sp)
         }
     }
 }

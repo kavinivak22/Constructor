@@ -1,5 +1,6 @@
 package com.example.constructorapp.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -25,6 +27,12 @@ import androidx.compose.ui.unit.sp
 import com.example.constructorapp.data.local.entity.ChatMessageEntity
 import com.example.constructorapp.data.remote.SupabaseClient
 import com.example.constructorapp.theme.*
+import com.example.constructorapp.ui.components.AmbientBlobBackground
+import com.example.constructorapp.ui.components.FluidGlossButton
+import com.example.constructorapp.ui.components.FluidGlossButtonVariant
+import com.example.constructorapp.ui.components.FluidGlossDropdownMenu
+import com.example.constructorapp.ui.components.FluidGlossDropdownMenuItem
+import com.example.constructorapp.ui.components.FluidGlossTextField
 import com.example.constructorapp.ui.components.GlassCard
 import com.example.constructorapp.ui.viewmodel.ProjectViewModel
 import kotlinx.coroutines.launch
@@ -87,186 +95,191 @@ fun TeamHubScreen(
 
     val currentProjectName = projects.find { it.id == selectedProjectId }?.name ?: "All Construction Sites"
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Team Communication Hub",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickable { projectDropdownExpanded = true }
-                        ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        AmbientBlobBackground()
+
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Column {
                             Text(
-                                text = currentProjectName,
-                                fontSize = 12.sp,
-                                color = BrandPrimary,
-                                fontWeight = FontWeight.SemiBold
+                                text = "Team Communication Hub",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
                             )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clickable { projectDropdownExpanded = true }
+                            ) {
+                                Text(
+                                    text = currentProjectName,
+                                    fontSize = 12.sp,
+                                    color = BrandPrimary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.ArrowDropDown,
+                                    contentDescription = "Change Project",
+                                    tint = BrandPrimary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
                             Icon(
-                                imageVector = Icons.Default.ArrowDropDown,
-                                contentDescription = "Change Project",
-                                tint = BrandPrimary,
-                                modifier = Modifier.size(16.dp)
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = BrandPrimary
                             )
                         }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = TextPrimary
-                        )
-                    }
-                },
-                actions = {
-                    DropdownMenu(
-                        expanded = projectDropdownExpanded,
-                        onDismissRequest = { projectDropdownExpanded = false }
-                    ) {
-                        projects.forEach { proj ->
-                            DropdownMenuItem(
-                                text = { Text(proj.name) },
-                                onClick = {
-                                    selectedProjectId = proj.id
-                                    projectDropdownExpanded = false
-                                }
-                            )
+                    },
+                    actions = {
+                        FluidGlossDropdownMenu(
+                            expanded = projectDropdownExpanded,
+                            onDismissRequest = { projectDropdownExpanded = false }
+                        ) {
+                            projects.forEach { proj ->
+                                FluidGlossDropdownMenuItem(
+                                    text = proj.name,
+                                    selected = proj.id == selectedProjectId,
+                                    onClick = {
+                                        selectedProjectId = proj.id
+                                        projectDropdownExpanded = false
+                                    }
+                                )
+                            }
                         }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = SlateSurface)
-            )
-        },
-        containerColor = SlateBackground,
-        modifier = modifier
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            // Project Status Badge Bar
-            Row(
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = TextPrimary
+                    )
+                )
+            },
+            containerColor = Color.Transparent,
+            modifier = modifier
+        ) { padding ->
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .background(SlateSurfaceSubtle)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .fillMaxSize()
+                    .padding(padding)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(EmeraldSuccess)
-                    )
-                    Text(
-                        text = "Site Active • 4 Engineers Online",
-                        fontSize = 11.sp,
-                        color = TextSecondary
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(BrandPrimary.copy(alpha = 0.15f))
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = "SITE CHANNEL",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = BrandPrimary
-                    )
-                }
-            }
-
-            // Message Stream
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(sampleMessages) { msg ->
-                    ChatBubble(msg)
-                }
-            }
-
-            // Message Input Bar
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = SlateSurface,
-                border = androidx.compose.foundation.BorderStroke(1.dp, SlateBorder)
-            ) {
+                // Project Status Badge Bar
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp),
+                        .background(Color(0xB8FFFFFF))
+                        .border(1.dp, GlassBorder)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    OutlinedTextField(
-                        value = messageInput,
-                        onValueChange = { messageInput = it },
-                        placeholder = { Text("Message team at $currentProjectName...", fontSize = 13.sp, color = TextSecondary) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(24.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = BrandPrimary,
-                            unfocusedBorderColor = SlateBorder,
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary
-                        ),
-                        singleLine = true
-                    )
-
-                    IconButton(
-                        onClick = {
-                            if (messageInput.isNotBlank()) {
-                                val timeNow = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
-                                sampleMessages.add(
-                                    ChatMessageEntity(
-                                        projectId = selectedProjectId,
-                                        userId = "user_current",
-                                        userName = "You",
-                                        message = messageInput.trim(),
-                                        createdAt = timeNow,
-                                        isOutgoing = true
-                                    )
-                                )
-                                messageInput = ""
-                                coroutineScope.launch {
-                                    listState.animateScrollToItem(sampleMessages.size - 1)
-                                }
-                            }
-                        },
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(BrandPrimary)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Send",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(EmeraldSuccess)
                         )
+                        Text(
+                            text = "Site Active • 4 Engineers Online",
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(BrandPrimary.copy(alpha = 0.15f))
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "SITE CHANNEL",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BrandPrimary
+                        )
+                    }
+                }
+
+                // Message Stream
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(sampleMessages) { msg ->
+                        ChatBubble(msg)
+                    }
+                }
+
+                // Message Input Bar
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 80.dp),
+                    color = GlassSurface,
+                    border = BorderStroke(1.dp, GlassBorder)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FluidGlossTextField(
+                            value = messageInput,
+                            onValueChange = { messageInput = it },
+                            placeholder = "Message team at $currentProjectName...",
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(24.dp),
+                            singleLine = true
+                        )
+
+                        FluidGlossButton(
+                            onClick = {
+                                if (messageInput.isNotBlank()) {
+                                    val timeNow = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
+                                    sampleMessages.add(
+                                        ChatMessageEntity(
+                                            projectId = selectedProjectId,
+                                            userId = "user_current",
+                                            userName = "You",
+                                            message = messageInput.trim(),
+                                            createdAt = timeNow,
+                                            isOutgoing = true
+                                        )
+                                    )
+                                    messageInput = ""
+                                    coroutineScope.launch {
+                                        listState.animateScrollToItem(sampleMessages.size - 1)
+                                    }
+                                }
+                            },
+                            variant = FluidGlossButtonVariant.Primary,
+                            shape = CircleShape,
+                            contentPadding = PaddingValues(0.dp),
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "Send",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -302,16 +315,34 @@ fun ChatBubble(msg: ChatMessageEntity) {
                         bottomEnd = if (isOutgoing) 2.dp else 16.dp
                     )
                 )
-                .background(if (isOutgoing) BrandPrimary else SlateSurfaceSubtle)
-                .border(
-                    1.dp,
-                    if (isOutgoing) BrandPrimary.copy(alpha = 0.5f) else SlateBorder,
-                    RoundedCornerShape(
-                        topStart = 16.dp,
-                        topEnd = 16.dp,
-                        bottomStart = if (isOutgoing) 16.dp else 2.dp,
-                        bottomEnd = if (isOutgoing) 2.dp else 16.dp
-                    )
+                .then(
+                    if (isOutgoing) {
+                        Modifier
+                            .background(Brush.verticalGradient(listOf(Color(0xFFFFA043), BrandPrimary, BrandPrimaryDark)))
+                            .border(
+                                1.dp,
+                                Color(0x66FFFFFF),
+                                RoundedCornerShape(
+                                    topStart = 16.dp,
+                                    topEnd = 16.dp,
+                                    bottomStart = 16.dp,
+                                    bottomEnd = 2.dp
+                                )
+                            )
+                    } else {
+                        Modifier
+                            .background(Color(0xD9FFFFFF))
+                            .border(
+                                1.dp,
+                                GlassBorder,
+                                RoundedCornerShape(
+                                    topStart = 16.dp,
+                                    topEnd = 16.dp,
+                                    bottomStart = 2.dp,
+                                    bottomEnd = 16.dp
+                                )
+                            )
+                    }
                 )
                 .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {

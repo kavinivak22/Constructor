@@ -30,7 +30,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.AbsoluteRoundedCornerShape
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import com.example.constructorapp.navigation.Screen
+import com.example.constructorapp.ui.components.AppDrawerContent
+import kotlinx.coroutines.launch
 import com.example.constructorapp.theme.*
 import com.example.constructorapp.ui.components.AlertFlipper
 import com.example.constructorapp.ui.components.AmbientBlobBackground
@@ -38,6 +43,10 @@ import com.example.constructorapp.ui.components.FloatingBottomNav
 import com.example.constructorapp.ui.components.GlassCard
 import com.example.constructorapp.ui.components.sampleAlerts
 import com.example.constructorapp.ui.screens.*
+import com.example.constructorapp.data.SharedDataRepository
+import com.example.constructorapp.data.model.ProjectEntity
+import com.example.constructorapp.data.local.entity.WorklogWithDetails
+import com.example.constructorapp.util.toInrCompact
 
 @Composable
 fun App() {
@@ -45,7 +54,8 @@ fun App() {
         // Full navigation backstack supporting all 31 screens
         val navigationStack = remember { mutableStateListOf<Screen>(Screen.Dashboard) }
         val currentScreen = navigationStack.lastOrNull() ?: Screen.Dashboard
-        var isDrawerOpen by remember { mutableStateOf(false) }
+        val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+        val coroutineScope = rememberCoroutineScope()
 
         val navigateTo: (Screen) -> Unit = { screen ->
             navigationStack.add(screen)
@@ -65,19 +75,93 @@ fun App() {
             else -> -1
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(SlateBackground)
-        ) {
-            // Layer 1: Ambient Drifting Blobs Canvas Background
-            AmbientBlobBackground()
+        val currentDrawerRoute = when (currentScreen) {
+            is Screen.Dashboard -> "/"
+            is Screen.Projects -> "/projects"
+            is Screen.ProjectDetail, is Screen.ProjectMaterials, is Screen.ProjectPouch, is Screen.BuildingPlan -> "/projects"
+            is Screen.PurchaseOrders -> "/purchase-orders"
+            is Screen.Worklog -> "/worklog"
+            is Screen.WorkPrep -> "/work-prep"
+            is Screen.MaterialEstimation -> "/material-estimation"
+            is Screen.Inventory -> "/inventory"
+            is Screen.CompanyMaterials -> "/company-materials"
+            is Screen.MaterialReconciliation -> "/materials/reconciliation"
+            is Screen.Payday -> "/financials/payday"
+            is Screen.Contractors -> "/financials/contractors"
+            is Screen.Expenses -> "/expenses"
+            is Screen.ClientMilestones -> "/projects/milestones"
+            is Screen.TeamHub, is Screen.AddEditReminder -> "/team-hub"
+            is Screen.Notifications -> "/notifications"
+            is Screen.Profile -> "/profile"
+            else -> ""
+        }
 
-            // Layer 2: Complete Navigation Router (All 31 Screens Connected)
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+            ModalNavigationDrawer(
+                drawerState = drawerState,
+                gesturesEnabled = currentScreen !is Screen.Login,
+                drawerContent = {
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                        ModalDrawerSheet(
+                            drawerContainerColor = Color.Transparent,
+                            drawerContentColor = TextPrimary,
+                            drawerShape = AbsoluteRoundedCornerShape(topLeft = 24.dp, bottomLeft = 24.dp, topRight = 0.dp, bottomRight = 0.dp),
+                            modifier = Modifier.width(310.dp)
+                        ) {
+                            AppDrawerContent(
+                                userEmail = "engineer@constructor.app",
+                                userDisplayName = "Engineer",
+                                userRole = "admin",
+                                selectedRoute = currentDrawerRoute,
+                                onNavigateRoute = { route ->
+                                    coroutineScope.launch { drawerState.close() }
+                                    when (route) {
+                                        "/" -> { navigationStack.clear(); navigationStack.add(Screen.Dashboard) }
+                                        "/projects" -> { navigationStack.clear(); navigationStack.add(Screen.Projects) }
+                                        "/purchase-orders" -> { navigationStack.clear(); navigationStack.add(Screen.PurchaseOrders()) }
+                                        "/team-hub" -> { navigationStack.clear(); navigationStack.add(Screen.TeamHub()) }
+                                        "/notifications" -> navigateTo(Screen.Notifications)
+                                        "/profile" -> navigateTo(Screen.Profile)
+                                        "/worklog" -> navigateTo(Screen.Worklog())
+                                        "/work-prep" -> navigateTo(Screen.WorkPrep())
+                                        "/material-estimation" -> navigateTo(Screen.MaterialEstimation())
+                                        "/inventory" -> navigateTo(Screen.Inventory())
+                                        "/company-materials" -> navigateTo(Screen.CompanyMaterials)
+                                        "/financials/payday", "/payday" -> navigateTo(Screen.Payday())
+                                        "/financials/contractors", "/contractors" -> navigateTo(Screen.Contractors())
+                                        "/expenses" -> navigateTo(Screen.Expenses())
+                                        "/materials/reconciliation" -> navigateTo(Screen.MaterialReconciliation())
+                                        "/projects/milestones" -> navigateTo(Screen.ClientMilestones())
+                                        else -> {}
+                                    }
+                                },
+                                onCloseDrawer = {
+                                    coroutineScope.launch { drawerState.close() }
+                                },
+                                onLogout = {
+                                    coroutineScope.launch { drawerState.close() }
+                                    navigationStack.clear()
+                                    navigationStack.add(Screen.Login)
+                                }
+                            )
+                        }
+                    }
+                }
             ) {
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(SlateBackground)
+                    ) {
+                        // Layer 1: Ambient Drifting Blobs Canvas Background
+                        AmbientBlobBackground()
+
+                        // Layer 2: Complete Navigation Router (All 31 Screens Connected)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                        ) {
                 when (currentScreen) {
                     is Screen.Dashboard -> DashboardScreen(
                         onNavigateToProjects = { navigateTo(Screen.Projects) },
@@ -198,42 +282,22 @@ fun App() {
                         3 -> navigationStack.add(Screen.TeamHub())
                     }
                 },
-                onMoreClick = { isDrawerOpen = true },
+                onMoreClick = {
+                    coroutineScope.launch { drawerState.open() }
+                },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
             )
-
-            // More / Drawer Menu with all app destinations
-            if (isDrawerOpen) {
-                MoreMenuDialog(
-                    onDismiss = { isDrawerOpen = false },
-                    onSelect = { route ->
-                        isDrawerOpen = false
-                        when (route) {
-                            "Dashboard" -> { navigationStack.clear(); navigationStack.add(Screen.Dashboard) }
-                            "Projects" -> { navigationStack.clear(); navigationStack.add(Screen.Projects) }
-                            "Purchase Orders" -> navigateTo(Screen.PurchaseOrders())
-                            "Daily Worklogs" -> navigateTo(Screen.Worklog())
-                            "Tomorrow's Prep" -> navigateTo(Screen.WorkPrep())
-                            "Material Estimation" -> navigateTo(Screen.MaterialEstimation())
-                            "Inventory & Stock" -> navigateTo(Screen.Inventory())
-                            "Expenses Ledger" -> navigateTo(Screen.Expenses())
-                            "Weekly Payday" -> navigateTo(Screen.Payday())
-                            "Contractor Accounts" -> navigateTo(Screen.Contractors())
-                            "Team Hub & Reminders" -> navigateTo(Screen.TeamHub())
-                            "Notifications" -> navigateTo(Screen.Notifications)
-                            "Profile & Settings" -> navigateTo(Screen.Profile)
-                        }
-                    }
-                )
-            }
         }
     }
 }
+}
+}
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SCREEN 1: DASHBOARD
+// SCREEN 1: AUTHENTIC DASHBOARD
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun DashboardScreen(
@@ -242,9 +306,16 @@ private fun DashboardScreen(
     onNavigateToExpenses: () -> Unit,
     onNavigateToMaterials: () -> Unit,
     onNavigateToWorkPrep: () -> Unit,
-    onProjectClick: (SharedProject) -> Unit
+    onProjectClick: (ProjectEntity) -> Unit
 ) {
+    val projects by SharedDataRepository.projects.collectAsState()
+    val worklogs by SharedDataRepository.worklogs.collectAsState()
+    val tasks by SharedDataRepository.tasks.collectAsState()
     var alertsList by remember { mutableStateOf(sampleAlerts) }
+    var isCreateProjectOpen by remember { mutableStateOf(false) }
+    var isAddTaskOpen by remember { mutableStateOf(false) }
+    var newTaskTitle by remember { mutableStateOf("") }
+    var newTaskPriority by remember { mutableStateOf("Medium") }
 
     LazyColumn(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
@@ -273,7 +344,7 @@ private fun DashboardScreen(
         // 3. Tomorrow's Work Prep Highlight Banner (Opens authentic WorkPrepScreen)
         item {
             TomorrowPrepBanner(
-                scheduledTasksCount = 3,
+                scheduledTasksCount = tasks.count { it.status == "pending" },
                 dateLabel = "Tomorrow",
                 onPrepClick = onNavigateToWorkPrep
             )
@@ -288,31 +359,171 @@ private fun DashboardScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Active Projects",
-                    fontFamily = OutfitFontFamily,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-                Text(
-                    text = "View All",
-                    fontFamily = PlusJakartaSansFontFamily,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = BrandPrimary,
-                    modifier = Modifier.clickable { onNavigateToProjects() }
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Active Projects",
+                        fontFamily = OutfitFontFamily,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(BrandPrimary.copy(alpha = 0.1f))
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "${projects.size}",
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BrandPrimary
+                        )
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "+ New",
+                        fontFamily = PlusJakartaSansFontFamily,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = BrandPrimary,
+                        modifier = Modifier.clickable { isCreateProjectOpen = true }
+                    )
+                    Text(
+                        text = "View All",
+                        fontFamily = PlusJakartaSansFontFamily,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextSecondary,
+                        modifier = Modifier.clickable { onNavigateToProjects() }
+                    )
+                }
             }
         }
 
         // Projects List (Clicking opens ProjectDetailScreen)
-        items(sharedProjects) { project ->
+        items(projects) { project ->
             ProjectCard(
                 project = project,
                 onClick = { onProjectClick(project) }
             )
         }
+
+        // 5. Recent Site Activities / Daily Worklogs
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Recent Site Worklogs",
+                    fontFamily = OutfitFontFamily,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+                Text(
+                    text = "All Logs",
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = BrandPrimary,
+                    modifier = Modifier.clickable { onNavigateToWorklog() }
+                )
+            }
+        }
+
+        items(worklogs) { item ->
+            WorklogCard(
+                item = item,
+                onClick = { onNavigateToWorklog() }
+            )
+        }
+
+        // 6. Site Tasks Section with interactive checkmark
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Site Tasks",
+                    fontFamily = OutfitFontFamily,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+                Text(
+                    text = "+ Add Task",
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = BrandPrimary,
+                    modifier = Modifier.clickable { isAddTaskOpen = true }
+                )
+            }
+        }
+
+        items(tasks) { task ->
+            SiteTaskCard(
+                task = task,
+                onToggle = { SharedDataRepository.toggleTask(task.id) }
+            )
+        }
+    }
+
+    if (isCreateProjectOpen) {
+        CreateProjectDialog(
+            onDismiss = { isCreateProjectOpen = false },
+            onSubmit = { created ->
+                SharedDataRepository.addProject(created)
+                isCreateProjectOpen = false
+            }
+        )
+    }
+
+    if (isAddTaskOpen) {
+        AlertDialog(
+            onDismissRequest = { isAddTaskOpen = false },
+            title = { Text("Add Site Task", fontFamily = OutfitFontFamily, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = newTaskTitle,
+                        onValueChange = { newTaskTitle = it },
+                        label = { Text("Task description") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newTaskTitle.isNotBlank()) {
+                            SharedDataRepository.addTask(newTaskTitle, newTaskPriority)
+                            newTaskTitle = ""
+                            isAddTaskOpen = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
+                ) {
+                    Text("Add Task")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { isAddTaskOpen = false }) {
+                    Text("Cancel", color = TextSecondary)
+                }
+            }
+        )
     }
 }
 
@@ -491,21 +702,23 @@ fun TomorrowPrepBanner(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SCREEN 2: PROJECTS CATALOG
+// SCREEN 2: AUTHENTIC PROJECTS CATALOG
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun ProjectsScreen(
-    onProjectClick: (SharedProject) -> Unit
+    onProjectClick: (ProjectEntity) -> Unit
 ) {
+    val projects by SharedDataRepository.projects.collectAsState()
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var selectedStatus by rememberSaveable { mutableStateOf("All") }
-    val statusOptions = listOf("All", "Active", "Completed", "On-Hold")
+    var isCreateProjectOpen by remember { mutableStateOf(false) }
+    val statusOptions = listOf("All", "In Progress", "Completed", "On-Hold")
 
-    val filtered = remember(searchQuery, selectedStatus) {
-        sharedProjects.filter { p ->
-            val matchQ = searchQuery.isBlank() || p.name.contains(searchQuery, ignoreCase = true) || p.location.contains(searchQuery, ignoreCase = true)
+    val filtered = remember(projects, searchQuery, selectedStatus) {
+        projects.filter { p ->
+            val matchQ = searchQuery.isBlank() || p.name.contains(searchQuery, ignoreCase = true) || (p.location?.contains(searchQuery, ignoreCase = true) == true)
             val matchS = when (selectedStatus) {
-                "Active" -> p.status.equals("In Progress", ignoreCase = true) || p.status.equals("Active Foundation", ignoreCase = true)
+                "In Progress" -> p.status.equals("In Progress", ignoreCase = true) || p.status.equals("Active", ignoreCase = true)
                 "Completed" -> p.status.equals("Completed", ignoreCase = true)
                 "On-Hold" -> p.status.equals("On-Hold", ignoreCase = true)
                 else -> true
@@ -532,6 +745,21 @@ private fun ProjectsScreen(
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
                 )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(BrandPrimary)
+                        .clickable { isCreateProjectOpen = true }
+                        .padding(horizontal = 14.dp, vertical = 7.dp)
+                ) {
+                    Text(
+                        text = "+ New Project",
+                        fontFamily = PlusJakartaSansFontFamily,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SurfaceWhite
+                    )
+                }
             }
         }
 
@@ -603,15 +831,36 @@ private fun ProjectsScreen(
             )
         }
     }
+
+    if (isCreateProjectOpen) {
+        CreateProjectDialog(
+            onDismiss = { isCreateProjectOpen = false },
+            onSubmit = { created ->
+                SharedDataRepository.addProject(created)
+                isCreateProjectOpen = false
+            }
+        )
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SCREEN 3: PURCHASE ORDERS
+// SCREEN 3: AUTHENTIC PURCHASE ORDERS
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun PurchaseOrdersScreen(
     onBackClick: () -> Unit
 ) {
+    val purchaseOrders by SharedDataRepository.purchaseOrders.collectAsState()
+    val projects by SharedDataRepository.projects.collectAsState()
+    var selectedStatus by rememberSaveable { mutableStateOf("All") }
+    var isCreatePoOpen by remember { mutableStateOf(false) }
+    val statusOptions = listOf("All", "Approved", "Delivered", "Pending")
+
+    val filtered = remember(purchaseOrders, selectedStatus) {
+        if (selectedStatus == "All") purchaseOrders
+        else purchaseOrders.filter { it.status.equals(selectedStatus, ignoreCase = true) }
+    }
+
     LazyColumn(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -623,113 +872,326 @@ private fun PurchaseOrdersScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Purchase Orders",
-                    fontFamily = OutfitFontFamily,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
+                Column {
+                    Text(
+                        text = "Purchase Orders",
+                        fontFamily = OutfitFontFamily,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Material Procurement & Delivery Tracking",
+                        fontFamily = PlusJakartaSansFontFamily,
+                        fontSize = 11.5.sp,
+                        color = TextSecondary
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(BrandPrimary)
+                        .clickable { isCreatePoOpen = true }
+                        .padding(horizontal = 14.dp, vertical = 7.dp)
+                ) {
+                    Text(
+                        text = "+ Create PO",
+                        fontFamily = PlusJakartaSansFontFamily,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SurfaceWhite
+                    )
+                }
             }
         }
 
-        items(sharedMaterials) { item ->
+        // Status Filter Chips
+        item {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(statusOptions) { status ->
+                    val isSel = selectedStatus == status
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(if (isSel) BrandPrimary else SurfaceWhite)
+                            .border(1.dp, if (isSel) BrandPrimary else SlateBorder, RoundedCornerShape(20.dp))
+                            .clickable { selectedStatus = status }
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = status,
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 12.sp,
+                            fontWeight = if (isSel) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSel) SurfaceWhite else TextSecondary
+                        )
+                    }
+                }
+            }
+        }
+
+        items(filtered) { po ->
             Card(
                 colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
                 shape = RoundedCornerShape(14.dp),
                 border = BorderStroke(1.dp, SlateBorder),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(item.name, fontFamily = OutfitFontFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                        Text("Unit: ${item.unit} • ₹${item.unitCost}", fontFamily = PlusJakartaSansFontFamily, fontSize = 11.sp, color = TextSecondary)
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = po.id ?: "PO",
+                            fontFamily = OutfitFontFamily,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BrandPrimary
+                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (po.status == "Delivered") EmeraldSuccessContainer else SkyInfoContainer)
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = po.status,
+                                fontFamily = PlusJakartaSansFontFamily,
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (po.status == "Delivered") EmeraldSuccess else SkyInfo
+                            )
+                        }
                     }
 
-                    Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = po.supplierName,
+                        fontFamily = PlusJakartaSansFontFamily,
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+
+                    po.specialInstructions?.let {
                         Text(
-                            "${item.stock} ${item.unit}",
+                            text = it,
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 11.5.sp,
+                            color = TextSecondary
+                        )
+                    }
+
+                    HorizontalDivider(color = SlateDivider)
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Delivery: ${po.deliveryDate ?: "Pending"}",
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 11.5.sp,
+                            color = TextSecondary
+                        )
+                        Text(
+                            text = "₹${po.totalAmount.toInrCompact()}",
                             fontFamily = PlusJakartaSansFontFamily,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (item.stock < item.minStock) AmberWarning else EmeraldSuccess
-                        )
-                        Text(
-                            if (item.stock < item.minStock) "⚠️ Low Stock" else "In Stock",
-                            fontFamily = PlusJakartaSansFontFamily,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (item.stock < item.minStock) AmberWarning else EmeraldSuccess
+                            color = BrandPrimary
                         )
                     }
                 }
             }
         }
     }
+
+    if (isCreatePoOpen) {
+        CreatePurchaseOrderDialog(
+            projects = projects,
+            onDismiss = { isCreatePoOpen = false },
+            onSubmit = { created ->
+                SharedDataRepository.addPurchaseOrder(created)
+                isCreatePoOpen = false
+            }
+        )
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SCREEN 4: REMINDERS & TEAM HUB
+// SCREEN 4: AUTHENTIC TEAM HUB & SITE REMINDERS
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun RemindersScreen(
     onBackClick: () -> Unit,
     onAddReminderClick: () -> Unit
 ) {
-    LazyColumn(
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-        modifier = Modifier.fillMaxSize()
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) } // 0 = Team Hub, 1 = Personal Pouch Reminders
+    val chatMessages by SharedDataRepository.chatMessages.collectAsState()
+    var messageText by remember { mutableStateOf("") }
+    val tasks by SharedDataRepository.tasks.collectAsState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Reminders & Sync",
-                    fontFamily = OutfitFontFamily,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Team Hub & Site Pouch",
+                fontFamily = OutfitFontFamily,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary
+            )
+            if (selectedTab == 1) {
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
                         .background(BrandPrimaryContainer)
                         .clickable { onAddReminderClick() }
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                        .padding(horizontal = 12.dp, vertical = 7.dp)
                 ) {
                     Text("+ Add Reminder", fontFamily = PlusJakartaSansFontFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = BrandPrimary)
                 }
             }
         }
 
-        items(sharedWorklogs) { log ->
-            Card(
-                colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, SlateBorder),
-                modifier = Modifier.fillMaxWidth()
+        // Tab Selector (Team Hub vs Personal Reminders)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFFE2E8F0))
+                .padding(3.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (selectedTab == 0) SurfaceWhite else Color.Transparent)
+                    .clickable { selectedTab = 0 }
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(log.title, fontFamily = OutfitFontFamily, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                        Text(log.date, fontFamily = PlusJakartaSansFontFamily, fontSize = 11.sp, color = TextSecondary)
+                Text(
+                    text = "💬 Site Team Chat",
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 12.sp,
+                    fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Medium,
+                    color = if (selectedTab == 0) BrandPrimary else TextSecondary
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (selectedTab == 1) SurfaceWhite else Color.Transparent)
+                    .clickable { selectedTab = 1 }
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "📝 Personal Reminders",
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 12.sp,
+                    fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Medium,
+                    color = if (selectedTab == 1) BrandPrimary else TextSecondary
+                )
+            }
+        }
+
+        if (selectedTab == 0) {
+            // Live Site Chat Thread
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(chatMessages) { msg ->
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = if (msg.isSelf) Alignment.End else Alignment.Start
+                    ) {
+                        Text(
+                            text = "${msg.sender} • ${msg.time}",
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 10.5.sp,
+                            color = TextSecondary,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(if (msg.isSelf) BrandPrimary else SurfaceWhite)
+                                .border(1.dp, if (msg.isSelf) BrandPrimary else SlateBorder, RoundedCornerShape(14.dp))
+                                .padding(horizontal = 14.dp, vertical = 10.dp)
+                        ) {
+                            Text(
+                                text = msg.message,
+                                fontFamily = PlusJakartaSansFontFamily,
+                                fontSize = 13.sp,
+                                color = if (msg.isSelf) SurfaceWhite else TextPrimary
+                            )
+                        }
                     }
-                    Text(log.project, fontFamily = PlusJakartaSansFontFamily, fontSize = 12.sp, color = BrandPrimary, fontWeight = FontWeight.SemiBold)
-                    Text(log.notes, fontFamily = PlusJakartaSansFontFamily, fontSize = 12.5.sp, color = TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    HorizontalDivider(color = SlateDivider)
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text("👷 ${log.laborCount} Workers", fontFamily = PlusJakartaSansFontFamily, fontSize = 11.sp, color = TextSecondary)
-                        Text("🧱 ${log.materialsCount} Materials", fontFamily = PlusJakartaSansFontFamily, fontSize = 11.sp, color = TextSecondary)
-                        Text("📸 ${log.photosCount} Photos", fontFamily = PlusJakartaSansFontFamily, fontSize = 11.sp, color = EmeraldSuccess, fontWeight = FontWeight.SemiBold)
+                }
+            }
+
+            // Input Bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(SurfaceWhite)
+                    .border(1.dp, SlateBorder, RoundedCornerShape(14.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                BasicTextField(
+                    value = messageText,
+                    onValueChange = { messageText = it },
+                    modifier = Modifier.weight(1f),
+                    textStyle = TextStyle(fontFamily = PlusJakartaSansFontFamily, fontSize = 13.sp, color = TextPrimary),
+                    decorationBox = { inner ->
+                        if (messageText.isEmpty()) {
+                            Text("Post update to LVA 24A team...", fontFamily = PlusJakartaSansFontFamily, fontSize = 13.sp, color = TextSecondary)
+                        }
+                        inner()
                     }
+                )
+                IconButton(
+                    onClick = {
+                        if (messageText.isNotBlank()) {
+                            SharedDataRepository.sendChatMessage(messageText)
+                            messageText = ""
+                        }
+                    },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(Icons.Filled.Send, contentDescription = "Send", tint = BrandPrimary, modifier = Modifier.size(18.dp))
+                }
+            }
+        } else {
+            // Personal Reminders
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(tasks) { task ->
+                    SiteTaskCard(
+                        task = task,
+                        onToggle = { SharedDataRepository.toggleTask(task.id) }
+                    )
                 }
             }
         }
@@ -737,62 +1199,11 @@ private fun RemindersScreen(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MORE DRAWER / MENU DIALOG
-// ─────────────────────────────────────────────────────────────────────────────
-@Composable
-private fun MoreMenuDialog(onDismiss: () -> Unit, onSelect: (String) -> Unit) {
-    val menuItems = listOf(
-        "Dashboard",
-        "Projects",
-        "Purchase Orders",
-        "Daily Worklogs",
-        "Tomorrow's Prep",
-        "Material Estimation",
-        "Inventory & Stock",
-        "Expenses Ledger",
-        "Weekly Payday",
-        "Contractor Accounts",
-        "Team Hub & Reminders",
-        "Notifications",
-        "Profile & Settings"
-    )
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Menu Navigation", fontFamily = OutfitFontFamily, fontWeight = FontWeight.Bold) },
-        text = {
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                items(menuItems) { name ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { onSelect(name) }
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(name, fontFamily = PlusJakartaSansFontFamily, fontSize = 14.sp, color = TextPrimary)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close", fontFamily = PlusJakartaSansFontFamily, color = BrandPrimary)
-            }
-        }
-    )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// REUSABLE COMPONENTS
+// AUTHENTIC REUSABLE COMPONENTS
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun ProjectCard(
-    project: SharedProject,
+    project: ProjectEntity,
     onClick: () -> Unit = {}
 ) {
     Card(
@@ -815,7 +1226,7 @@ private fun ProjectCard(
                 Text(
                     text = project.name,
                     fontFamily = OutfitFontFamily,
-                    fontSize = 15.sp,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
                 )
@@ -835,10 +1246,19 @@ private fun ProjectCard(
                 }
             }
 
+            project.description?.let {
+                Text(
+                    text = it,
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 12.sp,
+                    color = TextSecondary
+                )
+            }
+
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = RoseDanger, modifier = Modifier.size(13.dp))
                 Text(
-                    text = project.location,
+                    text = project.location ?: "Site Location",
                     fontFamily = PlusJakartaSansFontFamily,
                     fontSize = 11.5.sp,
                     color = TextSecondary
@@ -851,10 +1271,10 @@ private fun ProjectCard(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text("Progress", fontFamily = PlusJakartaSansFontFamily, fontSize = 11.sp, color = TextSecondary)
-                    Text("${(project.progress * 100).toInt()}%", fontFamily = PlusJakartaSansFontFamily, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Text("${project.progress}%", fontFamily = PlusJakartaSansFontFamily, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                 }
                 LinearProgressIndicator(
-                    progress = { project.progress },
+                    progress = { project.progress / 100f },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(6.dp)
@@ -868,34 +1288,110 @@ private fun ProjectCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Budget: ₹${project.budget}", fontFamily = PlusJakartaSansFontFamily, fontSize = 11.5.sp, color = TextSecondary)
-                Text("Spent: ₹${project.spent}", fontFamily = PlusJakartaSansFontFamily, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = BrandPrimary)
+                Text("Budget: ₹${project.budget.toInrCompact()}", fontFamily = PlusJakartaSansFontFamily, fontSize = 11.5.sp, color = TextSecondary)
+                Text("Spent: ₹${project.spent.toInrCompact()}", fontFamily = PlusJakartaSansFontFamily, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = BrandPrimary)
             }
         }
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DATA MODELS & SAMPLE DATA
-// ─────────────────────────────────────────────────────────────────────────────
-data class SharedProject(val id: String, val name: String, val location: String, val status: String, val progress: Float, val budget: String, val spent: String)
-data class SharedWorklog(val title: String, val project: String, val notes: String, val date: String, val laborCount: Int, val materialsCount: Int, val photosCount: Int)
-data class SharedMaterial(val name: String, val unit: String, val stock: Int, val minStock: Int, val unitCost: Int)
+@Composable
+private fun WorklogCard(
+    item: WorklogWithDetails,
+    onClick: () -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, SlateBorder),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(item.worklog.title, fontFamily = OutfitFontFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                Text(item.worklog.date, fontFamily = PlusJakartaSansFontFamily, fontSize = 11.sp, color = TextSecondary)
+            }
+            Text("LVA 24A • ${item.worklog.createdBy}", fontFamily = PlusJakartaSansFontFamily, fontSize = 11.5.sp, color = BrandPrimary, fontWeight = FontWeight.SemiBold)
+            HorizontalDivider(color = SlateDivider)
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                val totalWorkers = item.laborEntries.flatMap { it.workerCounts }.sumOf { it.count }
+                Text("👷 $totalWorkers Workers", fontFamily = PlusJakartaSansFontFamily, fontSize = 11.sp, color = TextSecondary)
+                Text("🧱 ${item.materials.size} Materials", fontFamily = PlusJakartaSansFontFamily, fontSize = 11.sp, color = TextSecondary)
+                Text("✅ Verified", fontFamily = PlusJakartaSansFontFamily, fontSize = 11.sp, color = EmeraldSuccess, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
 
-val sharedProjects = listOf(
-    SharedProject("proj-1", "Greenfield Villa Project", "Thillai Nagar, Trichy", "In Progress", 0.65f, "45,00,000", "28,50,000"),
-    SharedProject("proj-2", "Royal Residency Commercial", "Kallukuzhi, Trichy", "Active Foundation", 0.35f, "85,00,000", "32,10,000"),
-    SharedProject("proj-3", "Modern Living Duplex", "Karur Bypass, Trichy", "Finishing", 0.85f, "32,00,000", "29,40,000")
-)
-
-val sharedWorklogs = listOf(
-    SharedWorklog("First Floor Slab Casting", "Greenfield Villa Project", "M20 grade concrete poured for roof slab with 12 masons and helpers.", "Today, 4:30 PM", 12, 4, 3),
-    SharedWorklog("Brickwork & Plastering Phase 2", "Royal Residency Commercial", "Completed outer wall perimeter bricklaying with cement mortar 1:5 ratio.", "Yesterday", 8, 2, 2)
-)
-
-val sharedMaterials = listOf(
-    SharedMaterial("OPC 53 Grade Cement", "Bags", 140, 50, 395),
-    SharedMaterial("River Sand (Fine)", "CFT", 450, 100, 75),
-    SharedMaterial("TMT Steel 16mm (Fe 550D)", "Kg", 850, 200, 68),
-    SharedMaterial("Coarse Aggregate (20mm)", "CFT", 35, 80, 52)
-)
+@Composable
+private fun SiteTaskCard(
+    task: SharedDataRepository.SiteTaskItem,
+    onToggle: () -> Unit
+) {
+    val isDone = task.status == "completed"
+    Card(
+        colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, SlateBorder),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onToggle() }
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(
+                imageVector = if (isDone) Icons.Filled.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
+                contentDescription = null,
+                tint = if (isDone) EmeraldSuccess else TextSecondary,
+                modifier = Modifier.size(20.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = task.title,
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = if (isDone) TextSecondary else TextPrimary,
+                    textDecoration = if (isDone) androidx.compose.ui.text.style.TextDecoration.LineThrough else null
+                )
+                task.dueDate?.let {
+                    Text(
+                        text = "Due: $it",
+                        fontFamily = PlusJakartaSansFontFamily,
+                        fontSize = 10.5.sp,
+                        color = TextSecondary
+                    )
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        when (task.priority) {
+                            "High" -> RoseDangerContainer
+                            "Medium" -> AmberWarningContainer
+                            else -> SlateBorder
+                        }
+                    )
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = task.priority,
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = when (task.priority) {
+                        "High" -> RoseDanger
+                        "Medium" -> AmberWarning
+                        else -> TextSecondary
+                    }
+                )
+            }
+        }
+    }
+}

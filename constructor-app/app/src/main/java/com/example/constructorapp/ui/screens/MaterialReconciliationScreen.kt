@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -21,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -31,6 +33,10 @@ import com.example.constructorapp.data.local.AppDatabase
 import com.example.constructorapp.data.local.entity.MaterialTakeoffReconciliationEntity
 import com.example.constructorapp.theme.*
 import com.example.constructorapp.ui.components.AmbientBlobBackground
+import com.example.constructorapp.ui.components.FluidGlossButton
+import com.example.constructorapp.ui.components.FluidGlossButtonVariant
+import com.example.constructorapp.ui.components.FluidGlossDialog
+import com.example.constructorapp.ui.components.FluidGlossTextField
 import com.example.constructorapp.ui.components.GlassCard
 import com.example.constructorapp.ui.viewmodel.MaterialsUiState
 import com.example.constructorapp.ui.viewmodel.MaterialsViewModel
@@ -89,7 +95,7 @@ fun MaterialReconciliationScreen(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = SlateSurface.copy(alpha = 0.85f),
+                        containerColor = Color.Transparent,
                         titleContentColor = TextPrimary
                     )
                 )
@@ -100,7 +106,7 @@ fun MaterialReconciliationScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 90.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 // 4 KPI Summary Cards Grid
@@ -186,12 +192,15 @@ fun MaterialReconciliationScreen(
                                 Spacer(modifier = Modifier.height(10.dp))
                                 Text("No material reconciliation items", color = TextSecondary, fontSize = 14.sp)
                                 Spacer(modifier = Modifier.height(8.dp))
-                                OutlinedButton(
+                                FluidGlossButton(
                                     onClick = { viewModel.setAddDriftDialogOpen(true) },
+                                    variant = FluidGlossButtonVariant.Outlined,
                                     shape = RoundedCornerShape(12.dp),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorder)
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Add, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(16.dp))
+                                    }
                                 ) {
-                                    Text("+ Track First Material", color = BrandPrimary, fontSize = 12.sp)
+                                    Text("Track First Material", color = BrandPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                                 }
                             }
                         }
@@ -409,123 +418,125 @@ fun AddMaterialDriftDialog(
     var notes by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .clip(RoundedCornerShape(20.dp))
-                .border(1.dp, GlassBorder, RoundedCornerShape(20.dp)),
-            color = SlateSurface
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(20.dp)
-                    .verticalScroll(rememberScrollState())
-            ) {
-                Text("Add Material Reconciliation Track", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                Spacer(modifier = Modifier.height(12.dp))
+    FluidGlossDialog(
+        onDismissRequest = onDismiss,
+        title = "Add Material Reconciliation Track",
+        subtitle = "Track variance between committed budget and actual site deliveries",
+        icon = Icons.Default.SwapHoriz,
+        iconTint = BrandPrimary,
+        confirmButton = {
+            FluidGlossButton(
+                onClick = {
+                    val cQty = cQtyText.toDoubleOrNull()
+                    val cRate = cRateText.toDoubleOrNull()
+                    val aQty = aQtyText.toDoubleOrNull()
+                    val aRate = aRateText.toDoubleOrNull()
 
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Material Name") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = nameTa,
-                    onValueChange = { nameTa = it },
-                    label = { Text("Tamil Name (Optional)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = unit,
-                    onValueChange = { unit = it },
-                    label = { Text("Unit of Measure (bag, kg, ton, nos)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Text("Budgeted Estimate", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SkyInfo)
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = cQtyText,
-                        onValueChange = { cQtyText = it },
-                        label = { Text("Committed Qty") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    OutlinedTextField(
-                        value = cRateText,
-                        onValueChange = { cRateText = it },
-                        label = { Text("Committed Rate (₹)") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Text("Actual Purchased / Delivered", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AmberWarning)
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = aQtyText,
-                        onValueChange = { aQtyText = it },
-                        label = { Text("Actual Qty") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    OutlinedTextField(
-                        value = aRateText,
-                        onValueChange = { aRateText = it },
-                        label = { Text("Actual Rate (₹)") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                }
-
-                if (error != null) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(error!!, color = RoseDanger, fontSize = 12.sp)
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss) { Text("Cancel", color = TextSecondary) }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            val cQty = cQtyText.toDoubleOrNull()
-                            val cRate = cRateText.toDoubleOrNull()
-                            val aQty = aQtyText.toDoubleOrNull()
-                            val aRate = aRateText.toDoubleOrNull()
-
-                            if (name.isBlank()) {
-                                error = "Please enter material name"
-                                return@Button
-                            }
-                            if (cQty == null || cRate == null || aQty == null || aRate == null) {
-                                error = "Please enter valid quantities and rates"
-                                return@Button
-                            }
-
-                            onConfirm(name, nameTa.takeIf { it.isNotBlank() }, unit, cQty, cRate, aQty, aRate, notes.takeIf { it.isNotBlank() })
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Save Track", fontWeight = FontWeight.Bold)
+                    if (name.isBlank()) {
+                        error = "Please enter material name"
+                        return@FluidGlossButton
                     }
-                }
+                    if (cQty == null || cRate == null || aQty == null || aRate == null) {
+                        error = "Please enter valid quantities and rates"
+                        return@FluidGlossButton
+                    }
+
+                    onConfirm(name, nameTa.takeIf { it.isNotBlank() }, unit, cQty, cRate, aQty, aRate, notes.takeIf { it.isNotBlank() })
+                },
+                variant = FluidGlossButtonVariant.Primary
+            ) {
+                Text("Save Track", fontWeight = FontWeight.Bold)
             }
+        },
+        dismissButton = {
+            FluidGlossButton(
+                onClick = onDismiss,
+                variant = FluidGlossButtonVariant.Secondary
+            ) {
+                Text("Cancel")
+            }
+        }
+    ) {
+        FluidGlossTextField(
+            value = name,
+            onValueChange = { name = it; error = null },
+            label = "Material Name",
+            placeholder = "e.g. 53 Grade OPC Cement",
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        FluidGlossTextField(
+            value = nameTa,
+            onValueChange = { nameTa = it },
+            label = "Tamil Name (Optional)",
+            placeholder = "e.g. சிமெண்ட்",
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        FluidGlossTextField(
+            value = unit,
+            onValueChange = { unit = it },
+            label = "Unit of Measure (bag, kg, ton, nos)",
+            placeholder = "bag",
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text("Budgeted Estimate", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SkyInfo)
+        Spacer(modifier = Modifier.height(6.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FluidGlossTextField(
+                value = cQtyText,
+                onValueChange = { cQtyText = it; error = null },
+                label = "Committed Qty",
+                placeholder = "0",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+            FluidGlossTextField(
+                value = cRateText,
+                onValueChange = { cRateText = it; error = null },
+                label = "Committed Rate (₹)",
+                placeholder = "0.00",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text("Actual Purchased / Delivered", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AmberWarning)
+        Spacer(modifier = Modifier.height(6.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FluidGlossTextField(
+                value = aQtyText,
+                onValueChange = { aQtyText = it; error = null },
+                label = "Actual Qty",
+                placeholder = "0",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+            FluidGlossTextField(
+                value = aRateText,
+                onValueChange = { aRateText = it; error = null },
+                label = "Actual Rate (₹)",
+                placeholder = "0.00",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        if (error != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(error!!, color = RoseDanger, fontSize = 12.sp)
         }
     }
 }

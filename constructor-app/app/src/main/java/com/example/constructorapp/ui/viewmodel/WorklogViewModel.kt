@@ -233,6 +233,28 @@ class WorklogViewModel(
         }
     }
 
+    fun createContractor(
+        name: String,
+        category: String?,
+        contactPerson: String?,
+        phone: String,
+        onSuccess: (ContractorDto) -> Unit
+    ) {
+        viewModelScope.launch {
+            val res = projectRepository.createContractor(name, category, contactPerson, phone)
+            val contractor = res.getOrNull() ?: ContractorDto(
+                id = java.util.UUID.randomUUID().toString(),
+                name = name,
+                phone = phone,
+                trade = category
+            )
+            if (_contractors.value.none { it.id == contractor.id || it.name.equals(contractor.name, ignoreCase = true) }) {
+                _contractors.value = _contractors.value + contractor
+            }
+            onSuccess(contractor)
+        }
+    }
+
     fun loadProjectMaterials(projectId: String) {
         if (projectId.isBlank() || projectId == "all") return
         viewModelScope.launch {

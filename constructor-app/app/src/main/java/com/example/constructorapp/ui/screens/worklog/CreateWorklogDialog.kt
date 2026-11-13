@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -43,7 +44,10 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.example.constructorapp.data.model.worklog.*
 import com.example.constructorapp.theme.*
+import com.example.constructorapp.ui.components.FluidGlossButton
+import com.example.constructorapp.ui.components.FluidGlossButtonVariant
 import com.example.constructorapp.ui.components.MixRatioHelperWidget
+import com.example.constructorapp.ui.screens.AddContractorDialog
 import com.example.constructorapp.ui.viewmodel.WorklogUiState
 import com.example.constructorapp.ui.viewmodel.WorklogViewModel
 import java.io.File
@@ -77,19 +81,37 @@ fun CreateWorklogDialog(
             modifier = Modifier
                 .fillMaxWidth(0.96f)
                 .fillMaxHeight(0.92f)
-                .clip(RoundedCornerShape(24.dp))
-                .border(1.dp, Color(0x66FFFFFF), RoundedCornerShape(24.dp))
-                .shadow(elevation = 16.dp, shape = RoundedCornerShape(24.dp)),
-            color = Color.White
+                .clip(RoundedCornerShape(26.dp))
+                .border(1.dp, GlassBorderElevated, RoundedCornerShape(26.dp))
+                .shadow(elevation = 16.dp, shape = RoundedCornerShape(26.dp)),
+            color = GlassCardSurfaceElevated
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-
-                // ─── Header: Clean Webapp DialogHeader ─────────────────────────────
-                Row(
+            Box(modifier = Modifier.fillMaxSize()) {
+                // Top Specular Reflection Highlight Line
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFFF8FAFC))
-                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                        .height(1.5.dp)
+                        .align(Alignment.TopCenter)
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    Color.Transparent,
+                                    Color(0xB3FFFFFF),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+
+                Column(modifier = Modifier.fillMaxSize()) {
+
+                    // ─── Header: Clean Webapp DialogHeader ─────────────────────────────
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xD9FFFFFF))
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -278,108 +300,90 @@ fun CreateWorklogDialog(
 
                         // Left Action: Cancel or Back
                         if (currentTab == WorklogCreationTab.DETAILS) {
-                            OutlinedButton(
+                            FluidGlossButton(
+                                text = "Cancel",
                                 onClick = onDismiss,
+                                variant = FluidGlossButtonVariant.Secondary,
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(42.dp),
-                                shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
-                                contentPadding = PaddingValues(0.dp)
-                            ) {
-                                Text("Cancel", fontSize = 13.sp, color = TextSecondary, fontWeight = FontWeight.SemiBold)
-                            }
+                                    .height(42.dp)
+                            )
                         } else {
-                            OutlinedButton(
+                            FluidGlossButton(
+                                text = "Back",
                                 onClick = {
                                     val prevIndex = (currentTab.ordinal - 1).coerceAtLeast(0)
                                     viewModel.setCreationTab(WorklogCreationTab.entries[prevIndex])
                                 },
+                                leadingIcon = {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(15.dp))
+                                },
+                                variant = FluidGlossButtonVariant.Secondary,
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(42.dp),
-                                shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
-                                contentPadding = PaddingValues(0.dp)
-                            ) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(15.dp), tint = TextSecondary)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Back", fontSize = 13.sp, color = TextSecondary, fontWeight = FontWeight.SemiBold)
-                            }
+                                    .height(42.dp)
+                            )
                         }
 
                         // Right Action: Continue / Submit
                         when (currentTab) {
                             WorklogCreationTab.DETAILS -> {
-                                Button(
+                                FluidGlossButton(
+                                    text = "Continue to Labor",
                                     onClick = { viewModel.setCreationTab(WorklogCreationTab.LABOR) },
+                                    trailingIcon = {
+                                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(15.dp))
+                                    },
+                                    variant = FluidGlossButtonVariant.Primary,
                                     modifier = Modifier
                                         .weight(1.5f)
-                                        .height(42.dp),
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                                    contentPadding = PaddingValues(0.dp)
-                                ) {
-                                    Text("Continue to Labor", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(15.dp), tint = Color.White)
-                                }
+                                        .height(42.dp)
+                                )
                             }
                             WorklogCreationTab.LABOR -> {
-                                Button(
+                                FluidGlossButton(
+                                    text = "Continue to Materials",
                                     onClick = { viewModel.setCreationTab(WorklogCreationTab.MATERIALS) },
+                                    trailingIcon = {
+                                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(15.dp))
+                                    },
+                                    variant = FluidGlossButtonVariant.Primary,
                                     modifier = Modifier
                                         .weight(1.5f)
-                                        .height(42.dp),
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                                    contentPadding = PaddingValues(0.dp)
-                                ) {
-                                    Text("Continue to Materials", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(15.dp), tint = Color.White)
-                                }
+                                        .height(42.dp)
+                                )
                             }
                             WorklogCreationTab.MATERIALS -> {
-                                Button(
+                                FluidGlossButton(
+                                    text = "Continue to Photos",
                                     onClick = { viewModel.setCreationTab(WorklogCreationTab.PHOTOS) },
+                                    trailingIcon = {
+                                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(15.dp))
+                                    },
+                                    variant = FluidGlossButtonVariant.Primary,
                                     modifier = Modifier
                                         .weight(1.5f)
-                                        .height(42.dp),
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                                    contentPadding = PaddingValues(0.dp)
-                                ) {
-                                    Text("Continue to Photos", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(15.dp), tint = Color.White)
-                                }
+                                        .height(42.dp)
+                                )
                             }
                             WorklogCreationTab.PHOTOS -> {
-                                Button(
+                                FluidGlossButton(
+                                    text = if (isEditing) "Update Worklog" else "Save Worklog",
                                     onClick = {
                                         viewModel.submitWorklog(context) {
                                             onDismiss()
                                         }
                                     },
+                                    leadingIcon = {
+                                        Icon(Icons.Outlined.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    },
+                                    variant = FluidGlossButtonVariant.Success,
+                                    loading = state.isSubmitting,
+                                    enabled = !state.isSubmitting && state.draftTitle.isNotBlank(),
                                     modifier = Modifier
                                         .weight(1.5f)
-                                        .height(42.dp),
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldSuccess),
-                                    enabled = !state.isSubmitting && state.draftTitle.isNotBlank(),
-                                    contentPadding = PaddingValues(0.dp)
-                                ) {
-                                    if (state.isSubmitting) {
-                                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Saving...", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                    } else {
-                                        Icon(Icons.Outlined.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(if (isEditing) "Update Worklog" else "Save Worklog", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                    }
-                                }
+                                        .height(42.dp)
+                                )
                             }
                         }
                     }
@@ -404,6 +408,7 @@ fun CreateWorklogDialog(
             }
         }
     }
+}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -610,47 +615,6 @@ private fun TabDetailsWeb(
                 }
             }
         }
-
-        // Summary Card of Current Draft
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
-                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = "Worklog Setup Summary",
-                        fontFamily = OutfitFontFamily,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = BrandPrimary
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Contractor Labor Teams:", fontSize = 12.sp, color = TextSecondary)
-                        Text("${state.draftLabor.size}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Materials Logged:", fontSize = 12.sp, color = TextSecondary)
-                        Text("${state.draftMaterials.size}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Site Photos Attached:", fontSize = 12.sp, color = TextSecondary)
-                        Text("${state.draftPhotos.size}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -791,7 +755,10 @@ private fun TabLaborWeb(
                     team = team,
                     contractors = state.contractors,
                     onUpdate = { updated -> viewModel.updateLaborTeam(index, updated) },
-                    onRemove = { viewModel.removeLaborTeam(index) }
+                    onRemove = { viewModel.removeLaborTeam(index) },
+                    onCreateContractor = { name, category, contact, phone, onDone ->
+                        viewModel.createContractor(name, category, contact, phone, onDone)
+                    }
                 )
             }
         }
@@ -805,11 +772,31 @@ private fun LaborTeamCardWeb(
     team: WorklogLaborInput,
     contractors: List<com.example.constructorapp.data.remote.ContractorDto>,
     onUpdate: (WorklogLaborInput) -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    onCreateContractor: (name: String, category: String?, contact: String?, phone: String, onDone: (com.example.constructorapp.data.remote.ContractorDto) -> Unit) -> Unit = { _, _, _, _, _ -> }
 ) {
     val isRate = team.payoutClass.equals("Rate", ignoreCase = true)
     var contractorDropdownOpen by remember { mutableStateOf(false) }
     var paymentDropdownOpen by remember { mutableStateOf(false) }
+    var showAddContractorDialog by remember { mutableStateOf(false) }
+
+    if (showAddContractorDialog) {
+        AddContractorDialog(
+            onDismiss = { showAddContractorDialog = false },
+            onConfirm = { name, category, contactPerson, phone, email, accountDetails, gst ->
+                showAddContractorDialog = false
+                onCreateContractor(name, category, contactPerson, phone) { newContractor ->
+                    onUpdate(
+                        team.copy(
+                            contractorId = newContractor.id,
+                            contractorName = newContractor.name,
+                            category = newContractor.trade ?: category ?: team.category
+                        )
+                    )
+                }
+            }
+        )
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -902,11 +889,12 @@ private fun LaborTeamCardWeb(
                 ) {
                     OutlinedTextField(
                         value = team.contractorName,
-                        onValueChange = { onUpdate(team.copy(contractorName = it)) },
-                        placeholder = { Text("Select or type contractor name", fontSize = 12.sp, color = TextSecondary) },
+                        onValueChange = {},
+                        readOnly = true,
+                        placeholder = { Text("Choose contractor", fontSize = 12.sp, color = TextSecondary) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = contractorDropdownOpen) },
                         modifier = Modifier
-                            .menuAnchor(MenuAnchorType.PrimaryEditable)
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                             .fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -916,22 +904,61 @@ private fun LaborTeamCardWeb(
                             unfocusedContainerColor = Color(0xFFF8FAFC)
                         )
                     )
-                    if (contractors.isNotEmpty()) {
-                        ExposedDropdownMenu(
-                            expanded = contractorDropdownOpen,
-                            onDismissRequest = { contractorDropdownOpen = false },
-                            modifier = Modifier.background(Color.White)
-                        ) {
+                    ExposedDropdownMenu(
+                        expanded = contractorDropdownOpen,
+                        onDismissRequest = { contractorDropdownOpen = false },
+                        modifier = Modifier.background(Color.White)
+                    ) {
+                        if (contractors.isEmpty()) {
+                            DropdownMenuItem(
+                                text = { Text("No contractors found", color = TextSecondary, fontSize = 12.sp) },
+                                onClick = {},
+                                enabled = false
+                            )
+                        } else {
                             contractors.forEach { c ->
                                 DropdownMenuItem(
-                                    text = { Text(c.name, color = TextPrimary, fontSize = 13.sp) },
+                                    text = {
+                                        Column {
+                                            Text(c.name, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                            if (!c.trade.isNullOrBlank()) {
+                                                Text(c.trade, color = TextSecondary, fontSize = 11.sp)
+                                            }
+                                        }
+                                    },
                                     onClick = {
-                                        onUpdate(team.copy(contractorName = c.name, category = c.trade ?: team.category))
+                                        onUpdate(team.copy(contractorId = c.id, contractorName = c.name, category = c.trade ?: team.category))
                                         contractorDropdownOpen = false
                                     }
                                 )
                             }
                         }
+
+                        HorizontalDivider(color = Color(0xFFE2E8F0), modifier = Modifier.padding(vertical = 4.dp))
+
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = null,
+                                        tint = BrandPrimary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "+ Add New Contractor",
+                                        color = BrandPrimary,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
+                                    )
+                                }
+                            },
+                            onClick = {
+                                contractorDropdownOpen = false
+                                showAddContractorDialog = true
+                            }
+                        )
                     }
                 }
             }
@@ -1204,7 +1231,8 @@ private fun LaborTeamCardWeb(
 
                     TextButton(
                         onClick = {
-                            val nextRole = if (team.workers.any { it.workerType == "Mason" }) "Helper" else "Mason"
+                            val available = standardWorkerRoles.filter { it != "Other" && team.workers.none { w -> w.workerType == it } }
+                            val nextRole = available.firstOrNull() ?: "Mason"
                             val updated = team.workers + WorkerCountInput(workerType = nextRole, count = 1)
                             onUpdate(team.copy(workers = updated))
                         },
@@ -1216,90 +1244,27 @@ private fun LaborTeamCardWeb(
                     }
                 }
 
-                // List of Worker Roles
+                // List of Worker Roles with Dropdown Selection
                 team.workers.forEachIndexed { wIdx, worker ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Color(0xFFF8FAFC))
-                            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(10.dp))
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedTextField(
-                            value = worker.workerType,
-                            onValueChange = { newType ->
-                                val updated = team.workers.mapIndexed { idx, w ->
-                                    if (idx == wIdx) w.copy(workerType = newType) else w
-                                }
-                                onUpdate(team.copy(workers = updated))
-                            },
-                            placeholder = { Text("Role e.g. Mason", fontSize = 11.sp) },
-                            modifier = Modifier.weight(1.5f),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = Color.White,
-                                unfocusedContainerColor = Color.White
-                            )
-                        )
-
-                        Spacer(modifier = Modifier.width(10.dp))
-
-                        // Stepper for Count
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedButton(
-                                onClick = {
-                                    if (worker.count > 0) {
-                                        val updated = team.workers.mapIndexed { idx, w ->
-                                            if (idx == wIdx) w.copy(count = w.count - 1) else w
-                                        }
-                                        onUpdate(team.copy(workers = updated))
-                                    }
-                                },
-                                modifier = Modifier.size(28.dp),
-                                contentPadding = PaddingValues(0.dp),
-                                shape = CircleShape,
-                                border = BorderStroke(1.dp, Color(0xFFCBD5E1))
-                            ) {
-                                Text("-", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                    WorkerRoleAttendanceRow(
+                        worker = worker,
+                        onRoleChange = { newType ->
+                            val updated = team.workers.mapIndexed { idx, w ->
+                                if (idx == wIdx) w.copy(workerType = newType) else w
                             }
-
-                            Text(
-                                text = "${worker.count}",
-                                modifier = Modifier.padding(horizontal = 10.dp),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                color = TextPrimary
-                            )
-
-                            OutlinedButton(
-                                onClick = {
-                                    val updated = team.workers.mapIndexed { idx, w ->
-                                        if (idx == wIdx) w.copy(count = w.count + 1) else w
-                                    }
-                                    onUpdate(team.copy(workers = updated))
-                                },
-                                modifier = Modifier.size(28.dp),
-                                contentPadding = PaddingValues(0.dp),
-                                shape = CircleShape,
-                                border = BorderStroke(1.dp, Color(0xFFCBD5E1))
-                            ) {
-                                Text("+", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                            onUpdate(team.copy(workers = updated))
+                        },
+                        onCountChange = { newCount ->
+                            val updated = team.workers.mapIndexed { idx, w ->
+                                if (idx == wIdx) w.copy(count = newCount) else w
                             }
+                            onUpdate(team.copy(workers = updated))
+                        },
+                        onDelete = {
+                            val updated = team.workers.filterIndexed { idx, _ -> idx != wIdx }
+                            onUpdate(team.copy(workers = updated))
                         }
-
-                        IconButton(
-                            onClick = {
-                                val updated = team.workers.filterIndexed { idx, _ -> idx != wIdx }
-                                onUpdate(team.copy(workers = updated))
-                            },
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete Role", tint = RoseDanger, modifier = Modifier.size(16.dp))
-                        }
-                    }
+                    )
                 }
             }
 
@@ -1329,6 +1294,174 @@ private fun LaborTeamCardWeb(
                     Text("Remove Team", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
+        }
+    }
+}
+
+val standardWorkerRoles = listOf(
+    "Mason",
+    "Male Coolie (MC)",
+    "Female Coolie (FC)",
+    "Helper",
+    "Carpenter",
+    "Bar Bender",
+    "Plumber",
+    "Electrician",
+    "Painter",
+    "Tile Layer",
+    "Welder",
+    "Site Supervisor",
+    "Driver / Operator",
+    "Other"
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WorkerRoleAttendanceRow(
+    worker: WorkerCountInput,
+    onRoleChange: (String) -> Unit,
+    onCountChange: (Int) -> Unit,
+    onDelete: () -> Unit
+) {
+    var roleDropdownOpen by remember { mutableStateOf(false) }
+    val isCustomRole = worker.workerType.isNotBlank() && worker.workerType !in standardWorkerRoles
+    var showCustomInput by remember(isCustomRole) { mutableStateOf(isCustomRole) }
+    var customText by remember(worker.workerType) { mutableStateOf(if (isCustomRole) worker.workerType else "") }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color(0xFFF8FAFC))
+            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(10.dp))
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Role Dropdown Column
+        Box(modifier = Modifier.weight(1.5f)) {
+            if (showCustomInput) {
+                OutlinedTextField(
+                    value = customText,
+                    onValueChange = {
+                        customText = it
+                        onRoleChange(it)
+                    },
+                    placeholder = { Text("Enter role name", fontSize = 11.sp) },
+                    trailingIcon = {
+                        IconButton(
+                            onClick = {
+                                showCustomInput = false
+                                onRoleChange("Mason")
+                            },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(Icons.Default.Close, contentDescription = "Back to list", modifier = Modifier.size(14.dp), tint = TextSecondary)
+                        }
+                    },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        focusedBorderColor = BrandPrimary,
+                        unfocusedBorderColor = Color(0xFFCBD5E1)
+                    )
+                )
+            } else {
+                ExposedDropdownMenuBox(
+                    expanded = roleDropdownOpen,
+                    onExpandedChange = { roleDropdownOpen = !roleDropdownOpen }
+                ) {
+                    OutlinedTextField(
+                        value = worker.workerType.ifBlank { "Select Role" },
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = roleDropdownOpen) },
+                        modifier = Modifier
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            .fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedBorderColor = BrandPrimary,
+                            unfocusedBorderColor = Color(0xFFCBD5E1)
+                        )
+                    )
+                    ExposedDropdownMenu(
+                        expanded = roleDropdownOpen,
+                        onDismissRequest = { roleDropdownOpen = false },
+                        modifier = Modifier.background(Color.White)
+                    ) {
+                        standardWorkerRoles.forEach { role ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = role,
+                                        fontSize = 12.5.sp,
+                                        fontWeight = if (worker.workerType == role) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (worker.workerType == role) BrandPrimary else TextPrimary
+                                    )
+                                },
+                                onClick = {
+                                    roleDropdownOpen = false
+                                    if (role == "Other") {
+                                        showCustomInput = true
+                                        onRoleChange("")
+                                    } else {
+                                        showCustomInput = false
+                                        onRoleChange(role)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        // Stepper for Count
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedButton(
+                onClick = {
+                    if (worker.count > 0) onCountChange(worker.count - 1)
+                },
+                modifier = Modifier.size(28.dp),
+                contentPadding = PaddingValues(0.dp),
+                shape = CircleShape,
+                border = BorderStroke(1.dp, Color(0xFFCBD5E1))
+            ) {
+                Text("-", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+            }
+
+            Text(
+                text = "${worker.count}",
+                modifier = Modifier.padding(horizontal = 10.dp),
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                color = TextPrimary
+            )
+
+            OutlinedButton(
+                onClick = { onCountChange(worker.count + 1) },
+                modifier = Modifier.size(28.dp),
+                contentPadding = PaddingValues(0.dp),
+                shape = CircleShape,
+                border = BorderStroke(1.dp, Color(0xFFCBD5E1))
+            ) {
+                Text("+", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+            }
+        }
+
+        IconButton(
+            onClick = onDelete,
+            modifier = Modifier.size(28.dp)
+        ) {
+            Icon(Icons.Default.Delete, contentDescription = "Delete Role", tint = RoseDanger, modifier = Modifier.size(16.dp))
         }
     }
 }

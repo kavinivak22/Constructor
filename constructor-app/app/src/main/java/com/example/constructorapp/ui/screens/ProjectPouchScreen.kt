@@ -1,11 +1,14 @@
 package com.example.constructorapp.ui.screens
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,28 +20,127 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.InsertDriveFile
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.automirrored.outlined.StickyNote2
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.constructorapp.data.remote.DocumentDto
-import com.example.constructorapp.data.remote.SupabaseClient
 import com.example.constructorapp.theme.*
+import com.example.constructorapp.ui.components.*
 import com.example.constructorapp.ui.viewmodel.ProjectViewModel
+import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.*
+
+// ─── Data & Helpers matching Webapp ─────────────────────────────────────────
+
+val NOTE_CATEGORIES = listOf(
+    "General",
+    "Site Utilities",
+    "Engineering Specs",
+    "Access & Codes",
+    "Client Memos",
+    "Site Measurements",
+    "Other"
+)
+
+val DOCUMENT_CATEGORIES = listOf(
+    "General",
+    "Contracts",
+    "Blueprints",
+    "Invoices",
+    "Reports"
+)
+
+data class ParsedNote(
+    val id: String,
+    val title: String,
+    val content: String,
+    val category: String,
+    val pinned: Boolean,
+    val createdAt: String?,
+    val rawDoc: DocumentDto
+)
+
+fun parseNoteData(doc: DocumentDto): ParsedNote {
+    var content = doc.url
+    var pinned = false
+    try {
+        val trimmed = doc.url.trim()
+        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+            val json = JSONObject(trimmed)
+            content = json.optString("content", doc.url)
+            pinned = json.optBoolean("pinned", false)
+        }
+    } catch (_: Exception) {
+        content = doc.url
+    }
+    return ParsedNote(
+        id = doc.id ?: "",
+        title = doc.name,
+        content = content,
+        category = doc.category.ifBlank { "General" },
+        pinned = pinned,
+        createdAt = doc.createdAt,
+        rawDoc = doc
+    )
+}
+
+fun serializeNotePayload(content: String, pinned: Boolean): String {
+    val obj = JSONObject()
+    obj.put("content", content.trim())
+    obj.put("pinned", pinned)
+    return obj.toString()
+}
+
+fun formatFileSize(bytes: Long): String {
+    if (bytes <= 0) return "0 B"
+    val k = 1024.0
+    val sizes = listOf("B", "KB", "MB", "GB")
+    val i = (Math.log(bytes.toDouble()) / Math.log(k)).toInt().coerceIn(0, sizes.size - 1)
+    val value = bytes / Math.pow(k, i.toDouble())
+    return "%.1f %s".format(Locale.US, value, sizes[i])
+}
+
+fun formatPouchDate(dateStr: String?): String {
+    if (dateStr.isNullOrBlank()) return "Recent"
+    return try {
+        val parsed = if (dateStr.contains("T")) {
+            val clean = dateStr.substringBefore("Z").substringBefore("+")
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).parse(clean)
+        } else {
+            SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(dateStr)
+        }
+        if (parsed != null) {
+            SimpleDateFormat("MMM d, yyyy", Locale.US).format(parsed)
+        } else {
+            dateStr.take(10)
+        }
+    } catch (_: Exception) {
+        dateStr.take(10)
+    }
+}
+
+// ─── Main Screen Composable ─────────────────────────────────────────────────
 
 @Composable
 fun ProjectPouchScreen(
@@ -49,104 +151,130 @@ fun ProjectPouchScreen(
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
+
     val rawDocuments by viewModel.documents.collectAsState()
     val isDocumentsLoading by viewModel.isDocumentsLoading.collectAsState()
     val allProjects by viewModel.projects.collectAsState()
 
-    var activeProjectId by remember(projectId, allProjects) {
-        mutableStateOf(
-            if (projectId.isNotBlank()) projectId
-            else allProjects.firstOrNull()?.id ?: ""
-        )
+    var activeProjectId by remember(projectId) {
+        mutableStateOf(projectId)
     }
 
-    val currentProjectName = remember(activeProjectId, allProjects) {
-        allProjects.find { it.id == activeProjectId }?.name ?: projectName.ifBlank { "Project Pouch" }
+    // Ensure projects and documents are fetched for real
+    LaunchedEffect(Unit) {
+        if (allProjects.isEmpty()) {
+            viewModel.loadProjects()
+        }
     }
 
-    var selectedCategoryFilter by remember { mutableStateOf("All") }
-    var isAddItemOpen by remember { mutableStateOf(false) }
-    var viewingDocument by remember { mutableStateOf<DocumentDto?>(null) }
+    LaunchedEffect(allProjects, activeProjectId) {
+        if (activeProjectId.isBlank() && allProjects.isNotEmpty()) {
+            activeProjectId = allProjects.first().id
+        }
+    }
 
     LaunchedEffect(activeProjectId) {
         if (activeProjectId.isNotBlank()) {
             viewModel.loadDocuments(activeProjectId)
+        } else {
+            viewModel.loadDocuments(null)
         }
     }
 
-    // Default starter vault items for initial project setup
-    val starterTemplates = remember(activeProjectId) {
-        listOf(
-            DocumentDto(
-                id = "demo-bp-1",
-                projectId = activeProjectId,
-                name = "Architectural Floor Plan Rev 3",
-                url = "https://drive.google.com/open?id=architectural-blueprint-final",
-                size = 3450000L,
-                type = "pdf",
-                category = "Blueprints",
-                createdAt = "2026-10-25T10:00:00Z"
-            ),
-            DocumentDto(
-                id = "demo-des-1",
-                projectId = activeProjectId,
-                name = "3D Exterior Elevation & Facade Render",
-                url = "https://drive.google.com/open?id=exterior-elevation-render",
-                size = 8200000L,
-                type = "image",
-                category = "Designs",
-                createdAt = "2026-10-22T14:30:00Z"
-            ),
-            DocumentDto(
-                id = "demo-note-1",
-                projectId = activeProjectId,
-                name = "Site Benchmark Dimensions & Foundation Depth",
-                url = "Foundation footings depth: 5ft 6in below natural ground. Column center spacing: 12ft 4in C/C. Bearing capacity verified at 180 kN/sq.m.",
-                size = 1200L,
-                type = "note",
-                category = "Notes",
-                createdAt = "2026-10-20T08:15:00Z"
-            ),
-            DocumentDto(
-                id = "demo-spec-1",
-                projectId = activeProjectId,
-                name = "Steel Rebar & Concrete Mix Grade Specifications",
-                url = "Slab: M25 (1:1:2). Columns & Beams: M25 with Fe550D TMT bars. Min lap length: 48d. 28-day target cube strength: 31.6 N/mm².",
-                size = 2400L,
-                type = "note",
-                category = "Specifications",
-                createdAt = "2026-10-18T16:00:00Z"
+    val currentProject = remember(activeProjectId, allProjects) {
+        allProjects.find { it.id == activeProjectId }
+    }
+    val currentProjectName = currentProject?.name ?: projectName.ifBlank { "All Projects" }
+
+    // Tab State: 'documents' vs 'notes' matching webapp exactly
+    var activeTab by remember { mutableStateOf<String>("documents") }
+
+    // Search and filter state
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedDocCategory by remember { mutableStateOf("All") }
+    var selectedNoteCategory by remember { mutableStateOf("All") }
+
+    // Action menus and dialog state
+    var isUniversalActionOpen by remember { mutableStateOf(false) }
+    var isProjectPickerOpen by remember { mutableStateOf(false) }
+    var isCreateNoteOpen by remember { mutableStateOf(false) }
+    var isAddDocOpen by remember { mutableStateOf(false) }
+    var editingDoc by remember { mutableStateOf<DocumentDto?>(null) }
+    var editingNote by remember { mutableStateOf<ParsedNote?>(null) }
+    var viewingNote by remember { mutableStateOf<ParsedNote?>(null) }
+    var viewingPdfDoc by remember { mutableStateOf<DocumentDto?>(null) }
+
+    // Pure real data: NO sample or demo fallback
+    val fileDocuments = remember(rawDocuments) {
+        rawDocuments.filter { it.type != "note" }
+    }
+
+    val noteDocuments = remember(rawDocuments) {
+        rawDocuments.filter { it.type == "note" }
+    }
+
+    val filteredFileDocs = remember(fileDocuments, selectedDocCategory, searchQuery) {
+        fileDocuments.filter { doc ->
+            val matchCategory = selectedDocCategory == "All" || doc.category.equals(selectedDocCategory, ignoreCase = true)
+            val matchSearch = searchQuery.isBlank() ||
+                    doc.name.contains(searchQuery, ignoreCase = true) ||
+                    doc.category.contains(searchQuery, ignoreCase = true)
+            matchCategory && matchSearch
+        }
+    }
+
+    val filteredNoteDocs = remember(noteDocuments, selectedNoteCategory, searchQuery) {
+        noteDocuments
+            .map { parseNoteData(it) }
+            .filter { note ->
+                val matchCategory = selectedNoteCategory == "All" || note.category.equals(selectedNoteCategory, ignoreCase = true)
+                val matchSearch = searchQuery.isBlank() ||
+                        note.title.contains(searchQuery, ignoreCase = true) ||
+                        note.content.contains(searchQuery, ignoreCase = true) ||
+                        note.category.contains(searchQuery, ignoreCase = true)
+                matchCategory && matchSearch
+            }
+            .sortedWith(
+                compareByDescending<ParsedNote> { it.pinned }
+                    .thenByDescending { it.createdAt ?: "" }
             )
-        )
     }
 
-    val displayDocuments = remember(rawDocuments, starterTemplates) {
-        if (rawDocuments.isNotEmpty()) rawDocuments else starterTemplates
+    fun handlePinToggle(note: ParsedNote) {
+        val newPinned = !note.pinned
+        val updatedPayload = serializeNotePayload(note.content, newPinned)
+        viewModel.updateDocument(
+            docId = note.id,
+            projectId = activeProjectId.ifBlank { note.rawDoc.projectId ?: "" },
+            updates = mapOf("url" to updatedPayload)
+        ) { success ->
+            if (success) {
+                Toast.makeText(context, if (newPinned) "Note pinned to top" else "Note unpinned", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
-    val categories = listOf("All", "Blueprints", "Designs", "Notes", "Specifications", "Important Details")
-
-    val filteredList = remember(displayDocuments, selectedCategoryFilter) {
-        if (selectedCategoryFilter == "All") displayDocuments
-        else displayDocuments.filter { it.category.equals(selectedCategoryFilter, ignoreCase = true) }
+    fun handleDelete(docId: String, isNote: Boolean) {
+        viewModel.deleteDocument(docId, activeProjectId) {
+            Toast.makeText(context, if (isNote) "Note removed" else "Document deleted", Toast.LENGTH_SHORT).show()
+        }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(SlateBackground)
-    ) {
+    Box(modifier = Modifier.fillMaxSize().background(SlateBackground)) {
+        // Living Ambient Drifting Blobs
+        AmbientBlobBackground(modifier = Modifier.fillMaxSize())
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
         ) {
-            // Top Bar
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = Color.White.copy(alpha = 0.90f),
-                border = BorderStroke(1.dp, Color(0x150F172A)),
-                shadowElevation = 1.dp
+            // ─── 1. FluidGloss Top Header Bar ──────────────────────────────────
+            GlassCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                shape = RoundedCornerShape(20.dp)
             ) {
                 Column(
                     modifier = Modifier
@@ -168,18 +296,81 @@ fun ProjectPouchScreen(
                             )
                         }
 
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
 
                         Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "Project Pouch",
+                                    fontFamily = OutfitFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 19.sp,
+                                    color = TextPrimary
+                                )
+
+                                // Clickable Project Badge to Switch Projects
+                                Box {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = BrandPrimary.copy(alpha = 0.12f),
+                                        border = BorderStroke(1.dp, BrandPrimary.copy(alpha = 0.30f)),
+                                        modifier = Modifier.clickable { isProjectPickerOpen = true }
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                                        ) {
+                                            Text(
+                                                text = currentProjectName,
+                                                fontFamily = PlusJakartaSansFontFamily,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = BrandPrimary,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Spacer(modifier = Modifier.width(3.dp))
+                                            Icon(
+                                                imageVector = Icons.Outlined.ArrowDropDown,
+                                                contentDescription = null,
+                                                tint = BrandPrimary,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
+                                    }
+
+                                    FluidGlossDropdownMenu(
+                                        expanded = isProjectPickerOpen,
+                                        onDismissRequest = { isProjectPickerOpen = false },
+                                        modifier = Modifier.width(220.dp)
+                                    ) {
+                                        FluidGlossDropdownMenuItem(
+                                            text = "All Projects Vault",
+                                            selected = activeProjectId.isBlank(),
+                                            onClick = {
+                                                activeProjectId = ""
+                                                isProjectPickerOpen = false
+                                            }
+                                        )
+                                        allProjects.forEach { p ->
+                                            FluidGlossDropdownMenuItem(
+                                                text = p.name,
+                                                selected = activeProjectId == p.id,
+                                                onClick = {
+                                                    activeProjectId = p.id
+                                                    isProjectPickerOpen = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
                             Text(
-                                text = "Project Pouch",
-                                fontFamily = OutfitFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp,
-                                color = TextPrimary
-                            )
-                            Text(
-                                text = "$currentProjectName • Storage & Blueprints",
+                                text = "Vault for Blueprints, Site Specs & Field Memos",
                                 fontFamily = PlusJakartaSansFontFamily,
                                 fontSize = 11.sp,
                                 color = TextSecondary,
@@ -188,57 +379,104 @@ fun ProjectPouchScreen(
                             )
                         }
 
-                        Button(
-                            onClick = { isAddItemOpen = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Add,
-                                contentDescription = "Add",
-                                tint = Color.White,
-                                modifier = Modifier.size(16.dp)
+                        // Universal Add / Upload FluidGloss Dropdown Menu Button
+                        Box {
+                            FluidGlossButton(
+                                text = "Add",
+                                onClick = { isUniversalActionOpen = true },
+                                variant = FluidGlossButtonVariant.Primary,
+                                size = FluidGlossButtonSize.Small,
+                                modifier = Modifier.height(36.dp)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Store Item",
-                                fontFamily = PlusJakartaSansFontFamily,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color.White
-                            )
+
+                            FluidGlossDropdownMenu(
+                                expanded = isUniversalActionOpen,
+                                onDismissRequest = { isUniversalActionOpen = false },
+                                modifier = Modifier.width(230.dp)
+                            ) {
+                                FluidGlossDropdownMenuItem(
+                                    text = "Upload Document",
+                                    subtitle = "PDF, Blueprint, Images",
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Outlined.UploadFile,
+                                            contentDescription = null,
+                                            tint = BrandPrimary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    },
+                                    onClick = {
+                                        isUniversalActionOpen = false
+                                        isAddDocOpen = true
+                                    }
+                                )
+
+                                FluidGlossDropdownMenuItem(
+                                    text = "Create New Note",
+                                    subtitle = "Specs, passcodes, memos",
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Outlined.StickyNote2,
+                                            contentDescription = null,
+                                            tint = Color(0xFFD97706),
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    },
+                                    onClick = {
+                                        isUniversalActionOpen = false
+                                        isCreateNoteOpen = true
+                                    }
+                                )
+                            }
                         }
                     }
 
-                    // Project Switcher if multiple projects exist
+                    // Quick Project Switcher Carousel
                     if (allProjects.size > 1) {
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            items(allProjects) { p ->
-                                val isSelected = p.id == activeProjectId
+                            item {
                                 FilterChip(
-                                    selected = isSelected,
-                                    onClick = { activeProjectId = p.id },
-                                    label = {
-                                        Text(
-                                            text = p.name,
-                                            fontFamily = PlusJakartaSansFontFamily,
-                                            fontSize = 11.sp,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                        )
-                                    },
+                                    selected = activeProjectId.isBlank(),
+                                    onClick = { activeProjectId = "" },
+                                    label = { Text("All", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
+                                    shape = RoundedCornerShape(10.dp),
                                     colors = FilterChipDefaults.filterChipColors(
                                         selectedContainerColor = BrandPrimary.copy(alpha = 0.15f),
                                         selectedLabelColor = BrandPrimary,
                                         containerColor = Color.White.copy(alpha = 0.8f),
                                         labelColor = TextSecondary
                                     ),
-                                    shape = RoundedCornerShape(20.dp),
-                                    border = BorderStroke(1.dp, if (isSelected) BrandPrimary.copy(alpha = 0.5f) else Color(0x150F172A))
+                                    border = FilterChipDefaults.filterChipBorder(
+                                        enabled = true,
+                                        selected = activeProjectId.isBlank(),
+                                        borderColor = SlateBorder,
+                                        selectedBorderColor = BrandPrimary
+                                    )
+                                )
+                            }
+                            items(allProjects) { p ->
+                                val isSelected = activeProjectId == p.id
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = { activeProjectId = p.id },
+                                    label = { Text(p.name, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1) },
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = BrandPrimary.copy(alpha = 0.15f),
+                                        selectedLabelColor = BrandPrimary,
+                                        containerColor = Color.White.copy(alpha = 0.8f),
+                                        labelColor = TextSecondary
+                                    ),
+                                    border = FilterChipDefaults.filterChipBorder(
+                                        enabled = true,
+                                        selected = isSelected,
+                                        borderColor = SlateBorder,
+                                        selectedBorderColor = BrandPrimary
+                                    )
                                 )
                             }
                         }
@@ -246,628 +484,1317 @@ fun ProjectPouchScreen(
                 }
             }
 
-            // Category Filter Row
-            LazyRow(
+            // ─── 2. Segmented Control Tabs (Documents vs Notes) ────────────────
+            GlassCard(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 14.dp, vertical = 4.dp),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                items(categories) { cat ->
-                    val isSelected = selectedCategoryFilter == cat
-                    val count = if (cat == "All") displayDocuments.size else displayDocuments.count { it.category.equals(cat, ignoreCase = true) }
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { selectedCategoryFilter = cat },
-                        label = {
-                            Text(
-                                text = "$cat ($count)",
-                                fontFamily = PlusJakartaSansFontFamily,
-                                fontSize = 11.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    // Documents Tab Trigger
+                    val isDocActive = activeTab == "documents"
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isDocActive) Color.White else Color.Transparent)
+                            .clickable { activeTab = "documents" },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.FolderShared,
+                                contentDescription = null,
+                                tint = if (isDocActive) BrandPrimary else TextSecondary,
+                                modifier = Modifier.size(17.dp)
                             )
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = BrandPrimary,
-                            selectedLabelColor = Color.White,
-                            containerColor = Color.White,
-                            labelColor = TextPrimary
-                        ),
-                        shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, if (isSelected) BrandPrimary else Color(0x200F172A))
-                    )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Documents",
+                                fontFamily = PlusJakartaSansFontFamily,
+                                fontWeight = if (isDocActive) FontWeight.Bold else FontWeight.Medium,
+                                fontSize = 13.sp,
+                                color = if (isDocActive) TextPrimary else TextSecondary
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                shape = CircleShape,
+                                color = if (isDocActive) BrandPrimary.copy(alpha = 0.15f) else Color(0x180F172A)
+                            ) {
+                                Text(
+                                    text = "${fileDocuments.size}",
+                                    fontFamily = PlusJakartaSansFontFamily,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isDocActive) BrandPrimary else TextSecondary,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // Notes Tab Trigger
+                    val isNoteActive = activeTab == "notes"
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isNoteActive) Color.White else Color.Transparent)
+                            .clickable { activeTab = "notes" },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.StickyNote2,
+                                contentDescription = null,
+                                tint = if (isNoteActive) Color(0xFFD97706) else TextSecondary,
+                                modifier = Modifier.size(17.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Notes & Specs",
+                                fontFamily = PlusJakartaSansFontFamily,
+                                fontWeight = if (isNoteActive) FontWeight.Bold else FontWeight.Medium,
+                                fontSize = 13.sp,
+                                color = if (isNoteActive) TextPrimary else TextSecondary
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                shape = CircleShape,
+                                color = if (isNoteActive) Color(0x33F59E0B) else Color(0x180F172A)
+                            ) {
+                                Text(
+                                    text = "${noteDocuments.size}",
+                                    fontFamily = PlusJakartaSansFontFamily,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isNoteActive) Color(0xFFD97706) else TextSecondary,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
-            // Storage Overview Card
-            Row(
+            // ─── 3. Search Bar & Contextual Category Filters ───────────────────
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(horizontal = 14.dp, vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                StorageStatPill(
-                    title = "Blueprints",
-                    count = displayDocuments.count { it.category.equals("Blueprints", ignoreCase = true) },
-                    icon = Icons.Outlined.Architecture,
-                    color = Color(0xFF2563EB),
-                    modifier = Modifier.weight(1f)
+                // FluidGloss Search Bar
+                FluidGlossTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = if (activeTab == "documents") "Search blueprints, drawings, contracts..." else "Search site notes & specs...",
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Outlined.Search,
+                            contentDescription = null,
+                            tint = TextSecondary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    trailingIcon = if (searchQuery.isNotEmpty()) {
+                        {
+                            IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(24.dp)) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Close,
+                                    contentDescription = "Clear",
+                                    tint = TextSecondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    } else null,
+                    modifier = Modifier.fillMaxWidth()
                 )
-                StorageStatPill(
-                    title = "Designs & 3D",
-                    count = displayDocuments.count { it.category.equals("Designs", ignoreCase = true) },
-                    icon = Icons.Outlined.DesignServices,
-                    color = Color(0xFF7C3AED),
-                    modifier = Modifier.weight(1f)
+
+                // Category Filter Pills
+                val currentCategoryLabel = if (activeTab == "documents") selectedDocCategory else selectedNoteCategory
+                val currentCategoryList = if (activeTab == "documents") listOf("All") + DOCUMENT_CATEGORIES else listOf("All") + NOTE_CATEGORIES
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    items(currentCategoryList) { cat ->
+                        val isSelected = cat == currentCategoryLabel
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = {
+                                if (activeTab == "documents") selectedDocCategory = cat
+                                else selectedNoteCategory = cat
+                            },
+                            label = { Text(cat, fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = if (activeTab == "documents") BrandPrimary.copy(alpha = 0.15f) else Color(0xFFF59E0B).copy(alpha = 0.15f),
+                                selectedLabelColor = if (activeTab == "documents") BrandPrimary else Color(0xFFD97706),
+                                containerColor = Color.White.copy(alpha = 0.8f),
+                                labelColor = TextSecondary
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = isSelected,
+                                borderColor = SlateBorder,
+                                selectedBorderColor = if (activeTab == "documents") BrandPrimary else Color(0xFFD97706)
+                            )
+                        )
+                    }
+                }
+            }
+
+            // ─── 4. Content Body (Documents vs Notes) ───────────────────────────
+            if (isDocumentsLoading) {
+                Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        CircularProgressIndicator(color = BrandPrimary, strokeWidth = 3.dp, modifier = Modifier.size(36.dp))
+                        Text(
+                            text = "Loading Vault...",
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 13.sp,
+                            color = TextSecondary
+                        )
+                    }
+                }
+            } else if (activeTab == "documents") {
+                if (filteredFileDocs.isEmpty()) {
+                    FluidGlossEmptyState(
+                        icon = Icons.Outlined.FolderOpen,
+                        title = if (fileDocuments.isEmpty()) "No Documents Uploaded" else "No Matching Documents",
+                        description = if (fileDocuments.isEmpty())
+                            "Upload architectural blueprints, structural drawings, contract PDFs, or site photos to store them securely."
+                        else "Try adjusting your search query or category filter.",
+                        actionText = if (fileDocuments.isEmpty()) "Upload Document" else null,
+                        onAction = { isAddDocOpen = true }
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 96.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(filteredFileDocs, key = { it.id ?: it.url }) { doc ->
+                            FluidGlossDocumentCard(
+                                doc = doc,
+                                onPreview = { viewingPdfDoc = doc },
+                                onEdit = { editingDoc = doc },
+                                onDelete = { doc.id?.let { handleDelete(it, false) } }
+                            )
+                        }
+                    }
+                }
+            } else {
+                if (filteredNoteDocs.isEmpty()) {
+                    FluidGlossEmptyState(
+                        icon = Icons.AutoMirrored.Outlined.StickyNote2,
+                        title = if (noteDocuments.isEmpty()) "No Site Notes Yet" else "No Matching Notes",
+                        description = if (noteDocuments.isEmpty())
+                            "Record foundation specs, electricity meter codes, structural engineering memos, and client decisions."
+                        else "No notes match your filter or search query.",
+                        actionText = if (noteDocuments.isEmpty()) "Create Note" else null,
+                        onAction = { isCreateNoteOpen = true }
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 96.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(filteredNoteDocs, key = { it.id }) { note ->
+                            FluidGlossNoteCard(
+                                note = note,
+                                onPinToggle = { handlePinToggle(note) },
+                                onCopy = {
+                                    clipboardManager.setText(AnnotatedString(note.content))
+                                    Toast.makeText(context, "Note copied to clipboard", Toast.LENGTH_SHORT).show()
+                                },
+                                onEdit = { editingNote = note },
+                                onDelete = { handleDelete(note.id, true) },
+                                onClick = { viewingNote = note }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ─── High-End Modern PDF & Blueprint Viewer Dialog ──────────────────────────
+    viewingPdfDoc?.let { doc ->
+        ModernPdfBlueprintViewerDialog(
+            title = doc.name,
+            urlOrPath = doc.url,
+            category = doc.category.ifBlank { "Blueprint" },
+            onDismiss = { viewingPdfDoc = null }
+        )
+    }
+
+    // ─── Create Note Dialog ───────────────────────────────────────────────────
+    if (isCreateNoteOpen) {
+        FluidGlossCreateNoteDialog(
+            activeProjectId = activeProjectId,
+            onDismiss = { isCreateNoteOpen = false },
+            onSave = { title, category, content, pinned ->
+                val payload = serializeNotePayload(content, pinned)
+                val newDoc = DocumentDto(
+                    projectId = activeProjectId.ifBlank { allProjects.firstOrNull()?.id ?: "" },
+                    name = title.trim(),
+                    url = payload,
+                    size = content.length.toLong(),
+                    type = "note",
+                    category = category
                 )
-                StorageStatPill(
-                    title = "Site Notes",
-                    count = displayDocuments.count { it.category.equals("Notes", ignoreCase = true) || it.category.equals("Specifications", ignoreCase = true) },
-                    icon = Icons.Outlined.StickyNote2,
-                    color = EmeraldSuccess,
+                viewModel.addDocument(newDoc) {
+                    Toast.makeText(context, "Note saved to pouch", Toast.LENGTH_SHORT).show()
+                    isCreateNoteOpen = false
+                }
+            }
+        )
+    }
+
+    // ─── Edit Note Dialog ─────────────────────────────────────────────────────
+    editingNote?.let { note ->
+        FluidGlossEditNoteDialog(
+            note = note,
+            onDismiss = { editingNote = null },
+            onSave = { updatedTitle, updatedCategory, updatedContent, updatedPinned ->
+                val payload = serializeNotePayload(updatedContent, updatedPinned)
+                viewModel.updateDocument(
+                    docId = note.id,
+                    projectId = activeProjectId.ifBlank { note.rawDoc.projectId ?: "" },
+                    updates = mapOf(
+                        "name" to updatedTitle.trim(),
+                        "category" to updatedCategory,
+                        "url" to payload
+                    )
+                ) { success ->
+                    if (success) {
+                        Toast.makeText(context, "Note updated", Toast.LENGTH_SHORT).show()
+                        editingNote = null
+                    } else {
+                        Toast.makeText(context, "Failed to update note", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        )
+    }
+
+    // ─── View Full Note Modal ─────────────────────────────────────────────────
+    viewingNote?.let { note ->
+        FluidGlossViewNoteModal(
+            note = note,
+            onDismiss = { viewingNote = null },
+            onPinToggle = { handlePinToggle(note) },
+            onEdit = {
+                val current = note
+                viewingNote = null
+                editingNote = current
+            },
+            onDelete = {
+                handleDelete(note.id, true)
+                viewingNote = null
+            }
+        )
+    }
+
+    // ─── Add / Upload Document Dialog ─────────────────────────────────────────
+    if (isAddDocOpen) {
+        FluidGlossAddDocumentDialog(
+            activeProjectId = activeProjectId,
+            onDismiss = { isAddDocOpen = false },
+            onSave = { name, category, url, sizeBytes, docType ->
+                val newDoc = DocumentDto(
+                    projectId = activeProjectId.ifBlank { allProjects.firstOrNull()?.id ?: "" },
+                    name = name.trim(),
+                    url = url.trim(),
+                    size = sizeBytes,
+                    type = docType,
+                    category = category
+                )
+                viewModel.addDocument(newDoc) {
+                    Toast.makeText(context, "Document added to vault", Toast.LENGTH_SHORT).show()
+                    isAddDocOpen = false
+                }
+            }
+        )
+    }
+
+    // ─── Edit Document Dialog ─────────────────────────────────────────────────
+    editingDoc?.let { doc ->
+        FluidGlossEditDocumentDialog(
+            doc = doc,
+            onDismiss = { editingDoc = null },
+            onSave = { updatedName, updatedCategory ->
+                viewModel.updateDocument(
+                    docId = doc.id ?: "",
+                    projectId = activeProjectId.ifBlank { doc.projectId ?: "" },
+                    updates = mapOf(
+                        "name" to updatedName.trim(),
+                        "category" to updatedCategory
+                    )
+                ) { success ->
+                    if (success) {
+                        Toast.makeText(context, "Document updated", Toast.LENGTH_SHORT).show()
+                        editingDoc = null
+                    } else {
+                        Toast.makeText(context, "Failed to update document", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        )
+    }
+}
+
+// ─── FluidGloss Document Card ───────────────────────────────────────────────
+
+@Composable
+fun FluidGlossDocumentCard(
+    doc: DocumentDto,
+    onPreview: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val isPdf = doc.type.contains("pdf", ignoreCase = true) || doc.url.contains(".pdf", ignoreCase = true)
+    val isImage = doc.type.startsWith("image", ignoreCase = true) ||
+            doc.url.contains(".png", ignoreCase = true) ||
+            doc.url.contains(".jpg", ignoreCase = true) ||
+            doc.url.contains(".jpeg", ignoreCase = true)
+
+    val (iconBg, iconTint, icon) = when {
+        isPdf -> Triple(Color(0xFFFEE2E2), Color(0xFFDC2626), Icons.Outlined.PictureAsPdf)
+        isImage -> Triple(Color(0xFFDBEAFE), Color(0xFF2563EB), Icons.Outlined.Image)
+        else -> Triple(Color(0xFFF1F5F9), Color(0xFF475569), Icons.AutoMirrored.Outlined.InsertDriveFile)
+    }
+
+    GlassCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onPreview() },
+        shape = RoundedCornerShape(18.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // File Type Badge Icon
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(iconBg),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(imageVector = icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(24.dp))
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = BrandPrimary.copy(alpha = 0.12f),
+                            border = BorderStroke(1.dp, BrandPrimary.copy(alpha = 0.25f))
+                        ) {
+                            Text(
+                                text = doc.category.ifBlank { "General" },
+                                fontFamily = PlusJakartaSansFontFamily,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = BrandPrimary,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                        if (isPdf) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = Color(0xFFFEE2E2),
+                                border = BorderStroke(1.dp, Color(0xFFFCA5A5))
+                            ) {
+                                Text(
+                                    text = "PDF",
+                                    fontFamily = PlusJakartaSansFontFamily,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color(0xFFDC2626),
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    Text(
+                        text = doc.name,
+                        fontFamily = OutfitFontFamily,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = formatPouchDate(doc.createdAt),
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+                        if (doc.size > 0) {
+                            Text(
+                                text = "• ${formatFileSize(doc.size)}",
+                                fontFamily = PlusJakartaSansFontFamily,
+                                fontSize = 11.sp,
+                                color = TextSecondary
+                            )
+                        }
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onPreview, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Outlined.Visibility, contentDescription = "Preview", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                    }
+                    IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Outlined.Edit, contentDescription = "Edit", tint = TextSecondary, modifier = Modifier.size(17.dp))
+                    }
+                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Outlined.DeleteOutline, contentDescription = "Delete", tint = RoseDanger, modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ─── FluidGloss Note Card ───────────────────────────────────────────────────
+
+@Composable
+fun FluidGlossNoteCard(
+    note: ParsedNote,
+    onPinToggle: () -> Unit,
+    onCopy: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onClick: () -> Unit
+) {
+    val borderColor = if (note.pinned) Color(0xFFF59E0B) else GlassCardDefaultBorder
+    val borderWidth = if (note.pinned) 1.5.dp else 1.dp
+
+    GlassCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        borderColor = borderColor,
+        borderWidth = borderWidth,
+        shape = RoundedCornerShape(18.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.weight(1f)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = Color(0xFFF59E0B).copy(alpha = 0.15f),
+                        border = BorderStroke(1.dp, Color(0xFFF59E0B).copy(alpha = 0.35f))
+                    ) {
+                        Text(
+                            text = note.category,
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFD97706),
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                        )
+                    }
+
+                    if (note.pinned) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color(0xFFFEF3C7),
+                            border = BorderStroke(1.dp, Color(0xFFFCD34D))
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.PushPin,
+                                    contentDescription = "Pinned",
+                                    tint = Color(0xFFD97706),
+                                    modifier = Modifier.size(10.dp)
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text(
+                                    text = "PINNED",
+                                    fontFamily = PlusJakartaSansFontFamily,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color(0xFFB45309)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = onPinToggle,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (note.pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
+                            contentDescription = if (note.pinned) "Unpin" else "Pin",
+                            tint = if (note.pinned) Color(0xFFD97706) else TextSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    IconButton(onClick = onCopy, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy", tint = TextSecondary, modifier = Modifier.size(15.dp))
+                    }
+
+                    IconButton(onClick = onEdit, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Outlined.Edit, contentDescription = "Edit", tint = TextSecondary, modifier = Modifier.size(15.dp))
+                    }
+
+                    IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Outlined.DeleteOutline, contentDescription = "Delete", tint = RoseDanger, modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = note.title,
+                fontFamily = OutfitFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp,
+                color = TextPrimary
+            )
+
+            if (note.content.isNotBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = note.content,
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 12.sp,
+                    color = TextSecondary,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 17.sp
                 )
             }
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Main Document List
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 40.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                if (filteredList.isEmpty()) {
-                    item {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            color = Color.White,
-                            border = BorderStroke(1.dp, Color(0x150F172A))
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(32.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.FolderZip,
-                                    contentDescription = null,
-                                    tint = TextSecondary,
-                                    modifier = Modifier.size(44.dp)
-                                )
-                                Spacer(modifier = Modifier.height(10.dp))
-                                Text(
-                                    text = "No storage items found in this section",
-                                    fontFamily = OutfitFontFamily,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = TextPrimary
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "Tap 'Store Item' to upload blueprints, designs, notes or site measurements.",
-                                    fontFamily = PlusJakartaSansFontFamily,
-                                    fontSize = 12.sp,
-                                    color = TextSecondary
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    items(filteredList) { doc ->
-                        PouchItemCard(
-                            document = doc,
-                            onClick = { viewingDocument = doc },
-                            onDelete = {
-                                doc.id?.let { id ->
-                                    viewModel.deleteDocument(id, activeProjectId) {
-                                        Toast.makeText(context, "Item deleted", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            }
-                        )
-                    }
-                }
-            }
+            Text(
+                text = "Recorded ${formatPouchDate(note.createdAt)}",
+                fontFamily = PlusJakartaSansFontFamily,
+                fontSize = 10.sp,
+                color = TextSecondary.copy(alpha = 0.8f)
+            )
         }
-    }
-
-    // Modal: Add New Storage Item
-    if (isAddItemOpen) {
-        AddPouchItemDialog(
-            projectId = activeProjectId,
-            projectName = currentProjectName,
-            onDismiss = { isAddItemOpen = false },
-            onSubmit = { newDoc ->
-                viewModel.addDocument(newDoc) {
-                    Toast.makeText(context, "Saved to Project Pouch", Toast.LENGTH_SHORT).show()
-                }
-                isAddItemOpen = false
-            }
-        )
-    }
-
-    // Modal: Inspect Item Details / Blueprints
-    if (viewingDocument != null) {
-        val doc = viewingDocument!!
-        InspectPouchItemDialog(
-            document = doc,
-            onDismiss = { viewingDocument = null },
-            onCopy = {
-                clipboardManager.setText(AnnotatedString(doc.url))
-                Toast.makeText(context, "Details copied to clipboard", Toast.LENGTH_SHORT).show()
-            },
-            onOpenLink = {
-                if (doc.url.startsWith("http://") || doc.url.startsWith("https://")) {
-                    try {
-                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(doc.url))
-                        context.startActivity(browserIntent)
-                    } catch (_: Exception) {
-                        Toast.makeText(context, "Could not open external link", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-        )
     }
 }
 
+// ─── FluidGloss Empty State ─────────────────────────────────────────────────
+
 @Composable
-fun StorageStatPill(
-    title: String,
-    count: Int,
+fun FluidGlossEmptyState(
     icon: ImageVector,
-    color: Color,
-    modifier: Modifier = Modifier
+    title: String,
+    description: String,
+    actionText: String? = null,
+    onAction: (() -> Unit)? = null
 ) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        color = Color.White,
-        border = BorderStroke(1.dp, Color(0x150F172A)),
-        shadowElevation = 1.dp
+    GlassCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(20.dp),
+        shape = RoundedCornerShape(22.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Box(
                 modifier = Modifier
-                    .size(28.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(color.copy(alpha = 0.12f)),
+                    .size(60.dp)
+                    .clip(CircleShape)
+                    .background(BrandPrimary.copy(alpha = 0.12f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = color,
-                    modifier = Modifier.size(15.dp)
+                    tint = BrandPrimary,
+                    modifier = Modifier.size(30.dp)
                 )
             }
-            Spacer(modifier = Modifier.width(6.dp))
-            Column {
-                Text(
-                    text = "$count",
-                    fontFamily = OutfitFontFamily,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-                Text(
-                    text = title,
-                    fontFamily = PlusJakartaSansFontFamily,
-                    fontSize = 9.sp,
-                    color = TextSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Text(
+                text = title,
+                fontFamily = OutfitFontFamily,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = description,
+                fontFamily = PlusJakartaSansFontFamily,
+                fontSize = 12.sp,
+                color = TextSecondary,
+                textAlign = TextAlign.Center,
+                lineHeight = 18.sp
+            )
+
+            if (actionText != null && onAction != null) {
+                Spacer(modifier = Modifier.height(18.dp))
+                FluidGlossButton(
+                    text = actionText,
+                    onClick = onAction,
+                    variant = FluidGlossButtonVariant.Primary,
+                    size = FluidGlossButtonSize.Medium
                 )
             }
         }
     }
 }
 
-@Composable
-fun PouchItemCard(
-    document: DocumentDto,
-    onClick: () -> Unit,
-    onDelete: () -> Unit
-) {
-    val (catColor, catIcon) = when (document.category.lowercase()) {
-        "blueprints" -> Pair(Color(0xFF2563EB), Icons.Outlined.Architecture)
-        "designs" -> Pair(Color(0xFF7C3AED), Icons.Outlined.DesignServices)
-        "notes" -> Pair(EmeraldSuccess, Icons.Outlined.StickyNote2)
-        "specifications" -> Pair(AmberWarning, Icons.Outlined.Description)
-        else -> Pair(BrandPrimary, Icons.Outlined.FolderShared)
-    }
+// ─── Create Note Dialog ─────────────────────────────────────────────────────
 
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.92f),
-        border = BorderStroke(1.dp, Color(0x180F172A)),
-        shadowElevation = 1.dp
+@Composable
+fun FluidGlossCreateNoteDialog(
+    activeProjectId: String,
+    onDismiss: () -> Unit,
+    onSave: (title: String, category: String, content: String, pinned: Boolean) -> Unit
+) {
+    var title by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("General") }
+    var content by remember { mutableStateOf("") }
+    var pinned by remember { mutableStateOf(false) }
+
+    FluidGlossDialog(
+        onDismissRequest = onDismiss,
+        title = "Create New Note",
+        subtitle = "Field memo, spec, access code, or measurement",
+        icon = Icons.AutoMirrored.Outlined.StickyNote2
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(catColor.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = catIcon,
-                    contentDescription = null,
-                    tint = catColor,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
+            FluidGlossTextField(
+                value = title,
+                onValueChange = { title = it },
+                label = "Note Title *",
+                placeholder = "e.g. Column Centering Specs",
+                modifier = Modifier.fillMaxWidth()
+            )
 
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(
-                        text = document.name,
-                        fontFamily = OutfitFontFamily,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(catColor.copy(alpha = 0.10f))
-                            .padding(horizontal = 7.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = document.category.uppercase(),
-                            fontFamily = PlusJakartaSansFontFamily,
-                            fontSize = 8.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = catColor
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(3.dp))
-
-                Text(
-                    text = document.url,
-                    fontFamily = PlusJakartaSansFontFamily,
-                    fontSize = 11.5.sp,
-                    color = TextSecondary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 15.sp
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Outlined.Schedule,
-                        contentDescription = null,
-                        tint = TextSecondary.copy(alpha = 0.6f),
-                        modifier = Modifier.size(11.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = if (document.createdAt.isNullOrBlank()) "Saved in Pouch" else document.createdAt.take(10),
-                        fontFamily = PlusJakartaSansFontFamily,
-                        fontSize = 10.sp,
-                        color = TextSecondary.copy(alpha = 0.7f)
-                    )
-                    if (document.size > 0) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "• ${(document.size / 1024)} KB",
-                            fontFamily = PlusJakartaSansFontFamily,
-                            fontSize = 10.sp,
-                            color = TextSecondary.copy(alpha = 0.7f)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            IconButton(
-                onClick = onDelete,
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.DeleteOutline,
-                    contentDescription = "Delete",
-                    tint = TextSecondary.copy(alpha = 0.6f),
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun AddPouchItemDialog(
-    projectId: String,
-    projectName: String,
-    onDismiss: () -> Unit,
-    onSubmit: (DocumentDto) -> Unit
-) {
-    var name by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("Notes") }
-    var detailsOrUrl by remember { mutableStateOf("") }
-
-    val categories = listOf("Notes", "Blueprints", "Designs", "Specifications", "Important Details")
-    val isValid = name.trim().isNotEmpty() && detailsOrUrl.trim().isNotEmpty()
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Column {
-                Text(
-                    text = "Store in Project Pouch",
-                    fontFamily = OutfitFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = TextPrimary
-                )
-                Text(
-                    text = projectName,
-                    fontFamily = PlusJakartaSansFontFamily,
-                    fontSize = 11.sp,
-                    color = TextSecondary
-                )
-            }
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Title / Item Name *", color = TextSecondary, fontSize = 12.sp) },
-                    placeholder = { Text("e.g. Electrical Layout or Foundation Notes", color = TextSecondary) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = lightDialogTextFieldColors()
-                )
-
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     text = "Category",
                     fontFamily = PlusJakartaSansFontFamily,
-                    color = TextSecondary,
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    categories.take(3).forEach { cat ->
-                        val isSelected = category == cat
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { category = cat },
-                            label = { Text(cat, fontSize = 10.5.sp) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = BrandPrimary.copy(alpha = 0.15f),
-                                selectedLabelColor = BrandPrimary
-                            )
-                        )
-                    }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    categories.drop(3).forEach { cat ->
-                        val isSelected = category == cat
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { category = cat },
-                            label = { Text(cat, fontSize = 10.5.sp) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = BrandPrimary.copy(alpha = 0.15f),
-                                selectedLabelColor = BrandPrimary
-                            )
-                        )
-                    }
-                }
-
-                OutlinedTextField(
-                    value = detailsOrUrl,
-                    onValueChange = { detailsOrUrl = it },
-                    label = { Text("Details, Notes or Link / URL *", color = TextSecondary, fontSize = 12.sp) },
-                    placeholder = { Text("Type structural notes, site measurements, or paste Google Drive / Dropbox link...", color = TextSecondary) },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 4,
-                    maxLines = 6,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = lightDialogTextFieldColors()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (isValid) {
-                        val isUrl = detailsOrUrl.startsWith("http://") || detailsOrUrl.startsWith("https://")
-                        val itemType = if (isUrl) {
-                            if (detailsOrUrl.endsWith(".pdf", ignoreCase = true)) "pdf"
-                            else if (detailsOrUrl.endsWith(".png", ignoreCase = true) || detailsOrUrl.endsWith(".jpg", ignoreCase = true)) "image"
-                            else "link"
-                        } else "note"
-
-                        onSubmit(
-                            DocumentDto(
-                                id = UUID.randomUUID().toString(),
-                                projectId = projectId,
-                                uploaderId = SupabaseClient.userId,
-                                name = name.trim(),
-                                url = detailsOrUrl.trim(),
-                                size = detailsOrUrl.length.toLong(),
-                                type = itemType,
-                                category = category,
-                                createdAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
-                            )
-                        )
-                    }
-                },
-                enabled = isValid,
-                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Text("Save Item", color = Color.White, fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = TextSecondary)
-            }
-        },
-        containerColor = Color.White,
-        shape = RoundedCornerShape(20.dp)
-    )
-}
-
-@Composable
-fun InspectPouchItemDialog(
-    document: DocumentDto,
-    onDismiss: () -> Unit,
-    onCopy: () -> Unit,
-    onOpenLink: () -> Unit
-) {
-    val isUrl = document.url.startsWith("http://") || document.url.startsWith("https://")
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = document.name,
-                    fontFamily = OutfitFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
                     color = TextPrimary
                 )
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(NOTE_CATEGORIES) { cat ->
+                        val isSelected = cat == category
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { category = cat },
+                            label = { Text(cat, fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color(0xFFF59E0B).copy(alpha = 0.15f),
+                                selectedLabelColor = Color(0xFFD97706)
+                            )
+                        )
+                    }
+                }
             }
-        },
-        text = {
-            Column(
+
+            FluidGlossTextField(
+                value = content,
+                onValueChange = { content = it },
+                label = "Note Content *",
+                placeholder = "Enter site coordinates, concrete mixes, access codes...",
+                singleLine = false,
+                modifier = Modifier.fillMaxWidth().height(120.dp)
+            )
+
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                    .clickable { pinned = !pinned }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(BrandPrimary.copy(alpha = 0.12f))
-                        .padding(horizontal = 10.dp, vertical = 3.dp)
-                ) {
+                Checkbox(
+                    checked = pinned,
+                    onCheckedChange = { pinned = it },
+                    colors = CheckboxDefaults.colors(checkedColor = Color(0xFFD97706))
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Column {
                     Text(
-                        text = document.category.uppercase(),
-                        fontFamily = PlusJakartaSansFontFamily,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = BrandPrimary
-                    )
-                }
-
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFFF8FAFC),
-                    border = BorderStroke(1.dp, SlateBorder)
-                ) {
-                    Text(
-                        text = document.url,
+                        text = "Pin note to top",
                         fontFamily = PlusJakartaSansFontFamily,
                         fontSize = 13.sp,
-                        color = TextPrimary,
-                        modifier = Modifier.padding(12.dp),
-                        lineHeight = 18.sp
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
                     )
-                }
-
-                if (isUrl) {
                     Text(
-                        text = "This item links to an external cloud resource or blueprint document.",
+                        text = "Keep this memo highlighted at the top of the pouch",
                         fontFamily = PlusJakartaSansFontFamily,
                         fontSize = 11.sp,
                         color = TextSecondary
                     )
                 }
             }
-        },
-        confirmButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (isUrl) {
-                    Button(
-                        onClick = onOpenLink,
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = Color.White
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                FluidGlossButton(
+                    text = "Cancel",
+                    onClick = onDismiss,
+                    variant = FluidGlossButtonVariant.Secondary,
+                    modifier = Modifier.weight(1f)
+                )
+                FluidGlossButton(
+                    text = "Save Note",
+                    onClick = {
+                        if (title.isNotBlank() && content.isNotBlank()) {
+                            onSave(title, category, content, pinned)
+                        }
+                    },
+                    enabled = title.isNotBlank() && content.isNotBlank(),
+                    variant = FluidGlossButtonVariant.Primary,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+// ─── Edit Note Dialog ───────────────────────────────────────────────────────
+
+@Composable
+fun FluidGlossEditNoteDialog(
+    note: ParsedNote,
+    onDismiss: () -> Unit,
+    onSave: (title: String, category: String, content: String, pinned: Boolean) -> Unit
+) {
+    var title by remember { mutableStateOf(note.title) }
+    var category by remember { mutableStateOf(note.category) }
+    var content by remember { mutableStateOf(note.content) }
+    var pinned by remember { mutableStateOf(note.pinned) }
+
+    FluidGlossDialog(
+        onDismissRequest = onDismiss,
+        title = "Edit Note",
+        icon = Icons.Outlined.Edit
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            FluidGlossTextField(
+                value = title,
+                onValueChange = { title = it },
+                label = "Note Title *",
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "Category",
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(NOTE_CATEGORIES) { cat ->
+                        val isSelected = cat == category
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { category = cat },
+                            label = { Text(cat, fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Color(0xFFF59E0B).copy(alpha = 0.15f),
+                                selectedLabelColor = Color(0xFFD97706)
+                            )
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Open", color = Color.White, fontSize = 12.sp)
                     }
                 }
-                Button(
-                    onClick = onCopy,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F172A)),
-                    shape = RoundedCornerShape(8.dp)
+            }
+
+            FluidGlossTextField(
+                value = content,
+                onValueChange = { content = it },
+                label = "Note Content *",
+                singleLine = false,
+                modifier = Modifier.fillMaxWidth().height(120.dp)
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { pinned = !pinned }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = pinned,
+                    onCheckedChange = { pinned = it },
+                    colors = CheckboxDefaults.colors(checkedColor = Color(0xFFD97706))
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Pin note to top of list",
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                FluidGlossButton(
+                    text = "Cancel",
+                    onClick = onDismiss,
+                    variant = FluidGlossButtonVariant.Secondary,
+                    modifier = Modifier.weight(1f)
+                )
+                FluidGlossButton(
+                    text = "Update Note",
+                    onClick = {
+                        if (title.isNotBlank() && content.isNotBlank()) {
+                            onSave(title, category, content, pinned)
+                        }
+                    },
+                    enabled = title.isNotBlank() && content.isNotBlank(),
+                    variant = FluidGlossButtonVariant.Primary,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+// ─── View Full Note Modal ───────────────────────────────────────────────────
+
+@Composable
+fun FluidGlossViewNoteModal(
+    note: ParsedNote,
+    onDismiss: () -> Unit,
+    onPinToggle: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
+
+    FluidGlossDialog(
+        onDismissRequest = onDismiss,
+        title = note.title,
+        subtitle = "Created ${formatPouchDate(note.createdAt)}",
+        icon = Icons.AutoMirrored.Outlined.StickyNote2
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = Color(0xFFF59E0B).copy(alpha = 0.15f),
+                    border = BorderStroke(1.dp, Color(0xFFF59E0B).copy(alpha = 0.35f))
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.ContentCopy,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = Color.White
+                    Text(
+                        text = note.category,
+                        fontFamily = PlusJakartaSansFontFamily,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFD97706),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Copy", color = Color.White, fontSize = 12.sp)
+                }
+
+                if (note.pinned) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = Color(0xFFFEF3C7),
+                        border = BorderStroke(1.dp, Color(0xFFFCD34D))
+                    ) {
+                        Text(
+                            text = "PINNED",
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFFB45309),
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                        )
+                    }
                 }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close", color = TextSecondary)
+
+            GlassCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Text(
+                    text = note.content,
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 13.sp,
+                    color = TextPrimary,
+                    lineHeight = 20.sp,
+                    modifier = Modifier.padding(14.dp)
+                )
             }
-        },
-        containerColor = Color.White,
-        shape = RoundedCornerShape(20.dp)
-    )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FluidGlossButton(
+                    text = "Copy",
+                    onClick = {
+                        clipboardManager.setText(AnnotatedString(note.content))
+                        Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                    },
+                    variant = FluidGlossButtonVariant.Secondary,
+                    size = FluidGlossButtonSize.Small,
+                    modifier = Modifier.weight(1f)
+                )
+
+                FluidGlossButton(
+                    text = "Edit",
+                    onClick = onEdit,
+                    variant = FluidGlossButtonVariant.Primary,
+                    size = FluidGlossButtonSize.Small,
+                    modifier = Modifier.weight(1f)
+                )
+
+                FluidGlossButton(
+                    text = "Delete",
+                    onClick = onDelete,
+                    variant = FluidGlossButtonVariant.Destructive,
+                    size = FluidGlossButtonSize.Small,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+// ─── Add / Upload Document Dialog ───────────────────────────────────────────
+
+@Composable
+fun FluidGlossAddDocumentDialog(
+    activeProjectId: String,
+    onDismiss: () -> Unit,
+    onSave: (name: String, category: String, url: String, sizeBytes: Long, docType: String) -> Unit
+) {
+    val context = LocalContext.current
+    var docName by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("Blueprints") }
+    var fileUriString by remember { mutableStateOf("") }
+    var detectedSize by remember { mutableLongStateOf(0L) }
+    var docType by remember { mutableStateOf("pdf") }
+
+    val filePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            fileUriString = uri.toString()
+            val path = uri.path ?: ""
+            val displayName = path.substringAfterLast("/")
+            if (docName.isBlank()) {
+                docName = displayName.substringBeforeLast(".")
+            }
+            if (path.contains("pdf", ignoreCase = true) || uri.toString().contains("pdf", ignoreCase = true)) {
+                docType = "pdf"
+            } else if (path.contains("png", ignoreCase = true) || path.contains("jpg", ignoreCase = true) || path.contains("jpeg", ignoreCase = true)) {
+                docType = "image"
+            }
+            try {
+                context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                    detectedSize = pfd.statSize
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    FluidGlossDialog(
+        onDismissRequest = onDismiss,
+        title = "Upload Document",
+        subtitle = "Add blueprints, CAD drawings, invoices or contracts",
+        icon = Icons.Outlined.UploadFile
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            // Local File Picker Trigger
+            GlassCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { filePicker.launch("*/*") },
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(BrandPrimary.copy(alpha = 0.12f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Outlined.CloudUpload, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(20.dp))
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (fileUriString.isNotBlank()) "File Selected" else "Tap to Select Local File",
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = if (fileUriString.isNotBlank()) fileUriString.takeLast(30) else "PDF, DWG, PNG, JPG supported",
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 11.sp,
+                            color = TextSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+
+            FluidGlossTextField(
+                value = docName,
+                onValueChange = { docName = it },
+                label = "Document Title *",
+                placeholder = "e.g. Architectural Elevation Rev 2",
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            FluidGlossTextField(
+                value = fileUriString,
+                onValueChange = { fileUriString = it },
+                label = "Document URL / File Path *",
+                placeholder = "https://... or select file above",
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "Category",
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(DOCUMENT_CATEGORIES) { cat ->
+                        val isSelected = cat == category
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { category = cat },
+                            label = { Text(cat, fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = BrandPrimary.copy(alpha = 0.15f),
+                                selectedLabelColor = BrandPrimary
+                            )
+                        )
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                FluidGlossButton(
+                    text = "Cancel",
+                    onClick = onDismiss,
+                    variant = FluidGlossButtonVariant.Secondary,
+                    modifier = Modifier.weight(1f)
+                )
+                FluidGlossButton(
+                    text = "Save Document",
+                    onClick = {
+                        if (docName.isNotBlank() && fileUriString.isNotBlank()) {
+                            onSave(docName, category, fileUriString, detectedSize, docType)
+                        }
+                    },
+                    enabled = docName.isNotBlank() && fileUriString.isNotBlank(),
+                    variant = FluidGlossButtonVariant.Primary,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+// ─── Edit Document Dialog ───────────────────────────────────────────────────
+
+@Composable
+fun FluidGlossEditDocumentDialog(
+    doc: DocumentDto,
+    onDismiss: () -> Unit,
+    onSave: (name: String, category: String) -> Unit
+) {
+    var name by remember { mutableStateOf(doc.name) }
+    var category by remember { mutableStateOf(doc.category.ifBlank { "General" }) }
+
+    FluidGlossDialog(
+        onDismissRequest = onDismiss,
+        title = "Edit Document",
+        icon = Icons.Outlined.Edit
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            FluidGlossTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = "Document Name *",
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "Category",
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(DOCUMENT_CATEGORIES) { cat ->
+                        val isSelected = cat == category
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { category = cat },
+                            label = { Text(cat, fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = BrandPrimary.copy(alpha = 0.15f),
+                                selectedLabelColor = BrandPrimary
+                            )
+                        )
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                FluidGlossButton(
+                    text = "Cancel",
+                    onClick = onDismiss,
+                    variant = FluidGlossButtonVariant.Secondary,
+                    modifier = Modifier.weight(1f)
+                )
+                FluidGlossButton(
+                    text = "Update",
+                    onClick = {
+                        if (name.isNotBlank()) {
+                            onSave(name, category)
+                        }
+                    },
+                    enabled = name.isNotBlank(),
+                    variant = FluidGlossButtonVariant.Primary,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
 }

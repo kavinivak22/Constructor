@@ -963,14 +963,55 @@ class ProjectRepository(
     }
 
     suspend fun getContractors(): Result<List<ContractorDto>> {
-        val authHeader = SupabaseClient.authHeader
-        if (authHeader.isEmpty()) return Result.failure(Exception("Not authenticated"))
+        val token = SupabaseClient.authToken
+        if (token.isNullOrBlank()) return Result.failure(Exception("Not authenticated"))
+        val authHeader = "Bearer $token"
         return try {
             val response = SupabaseClient.api.getContractors(authHeader)
             if (response.isSuccessful) {
                 Result.success(response.body() ?: emptyList())
             } else {
                 Result.failure(Exception("Failed to load contractors: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun createContractor(
+        name: String,
+        category: String?,
+        contactPerson: String?,
+        phone: String,
+        email: String? = null
+    ): Result<ContractorDto> {
+        val token = SupabaseClient.authToken
+        if (token.isNullOrBlank()) return Result.failure(Exception("Not authenticated"))
+        val authHeader = "Bearer $token"
+        return try {
+            val body = mutableMapOf<String, Any?>("name" to name, "phone" to phone)
+            if (!category.isNullOrBlank()) body["category"] = category
+            if (!contactPerson.isNullOrBlank()) body["contactPerson"] = contactPerson
+            if (!email.isNullOrBlank()) body["email"] = email
+
+            val response = SupabaseClient.api.createContractor(authHeader, body)
+            if (response.isSuccessful && !response.body().isNullOrEmpty()) {
+                val created = response.body()!!.first()
+                database?.financialsDao?.upsertContractor(
+                    com.example.constructorapp.data.local.entity.ContractorEntity(
+                        id = created.id,
+                        companyId = created.companyId ?: "",
+                        name = created.name,
+                        category = created.trade ?: category,
+                        contactPerson = contactPerson,
+                        phone = created.phone ?: phone,
+                        email = email,
+                        syncStatus = 0
+                    )
+                )
+                Result.success(created)
+            } else {
+                Result.failure(Exception("Failed to create contractor: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -1074,6 +1115,17 @@ class ProjectRepository(
         return try {
             val response = SupabaseClient.api.deleteProjectDocument(authHeader, "eq.$docId")
             if (response.isSuccessful) Result.success(Unit) else Result.failure(Exception("Failed to delete document: ${response.code()}"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateDocument(docId: String, updates: Map<String, Any?>): Result<Unit> {
+        val authHeader = SupabaseClient.authHeader
+        if (authHeader.isEmpty()) return Result.failure(Exception("Not authenticated"))
+        return try {
+            val response = SupabaseClient.api.updateProjectDocument(authHeader, "eq.$docId", updates)
+            if (response.isSuccessful) Result.success(Unit) else Result.failure(Exception("Failed to update document: ${response.code()}"))
         } catch (e: Exception) {
             Result.failure(e)
         }
