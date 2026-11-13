@@ -411,7 +411,7 @@ private fun ProjectsScreen() {
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .background(SurfaceWhite)
-                    .border(BorderStroke(1.dp, SlateBorder))
+                    .border(1.dp, SlateBorder, RoundedCornerShape(12.dp))
                     .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -449,7 +449,7 @@ private fun ProjectsScreen() {
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
                             .background(if (isSel) BrandPrimary else SurfaceWhite)
-                            .border(BorderStroke(1.dp, if (isSel) BrandPrimary else SlateBorder))
+                            .border(1.dp, if (isSel) BrandPrimary else SlateBorder, RoundedCornerShape(20.dp))
                             .clickable { selectedStatus = status }
                             .padding(horizontal = 14.dp, vertical = 6.dp)
                     ) {
