@@ -133,7 +133,7 @@ data class WorklogWithDetails(
     val photos: List<WorklogPhotoEntity> = emptyList()
 )
 
-internal object ClockUtils {
+object ClockUtils {
     private var counter = 1000L
     fun nowMillis(): Long = 1731478000000L + (++counter)
 }

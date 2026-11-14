@@ -45,7 +45,9 @@ import com.example.constructorapp.ui.components.sampleAlerts
 import com.example.constructorapp.ui.screens.*
 import com.example.constructorapp.data.SharedDataRepository
 import com.example.constructorapp.data.model.ProjectEntity
-import com.example.constructorapp.data.local.entity.WorklogWithDetails
+import com.example.constructorapp.data.model.ProjectDto
+import com.example.constructorapp.data.local.entity.*
+import com.example.constructorapp.util.DateTimeUtil
 import com.example.constructorapp.util.toInrCompact
 
 @Composable
@@ -66,6 +68,10 @@ fun App() {
                 navigationStack.removeLast()
             }
         }
+
+        val liveProjects by SharedDataRepository.projects.collectAsState()
+        val liveWorklogs by SharedDataRepository.worklogs.collectAsState()
+        val liveExpenses by SharedDataRepository.expenses.collectAsState()
 
         val selectedTab = when (currentScreen) {
             is Screen.Dashboard -> 0
@@ -93,6 +99,7 @@ fun App() {
             is Screen.TeamHub, is Screen.AddEditReminder -> "/team-hub"
             is Screen.Notifications -> "/notifications"
             is Screen.Profile -> "/profile"
+            is Screen.Employees -> "/employees"
             else -> ""
         }
 
@@ -132,6 +139,7 @@ fun App() {
                                         "/expenses" -> navigateTo(Screen.Expenses())
                                         "/materials/reconciliation" -> navigateTo(Screen.MaterialReconciliation())
                                         "/projects/milestones" -> navigateTo(Screen.ClientMilestones())
+                                        "/employees" -> navigateTo(Screen.Employees)
                                         else -> {}
                                     }
                                 },
@@ -178,17 +186,38 @@ fun App() {
                             navigateTo(Screen.ProjectDetail(proj.id, proj.name))
                         }
                     )
-                    is Screen.ProjectDetail -> ProjectDetailScreen(
-                        projectId = currentScreen.projectId,
-                        projectName = currentScreen.projectName,
-                        onBackClick = navigateBack,
-                        onNavigateToMaterials = { pId, pName -> navigateTo(Screen.ProjectMaterials(pId, pName)) },
-                        onNavigateToPouch = { pId, pName -> navigateTo(Screen.ProjectPouch(pId, pName)) },
-                        onNavigateToWorklog = { pId, pName -> navigateTo(Screen.Worklog(pId, pName)) },
-                        onNavigateToBuildingPlan = { pId, pName -> navigateTo(Screen.BuildingPlan(pId, pName)) },
-                        onNavigateToExpenses = { pId -> navigateTo(Screen.Expenses(pId)) },
-                        onNavigateToWorkPrep = { pId -> navigateTo(Screen.WorkPrep(pId)) }
-                    )
+                    is Screen.ProjectDetail -> {
+                        val activeProject = liveProjects.firstOrNull { it.id == currentScreen.projectId }?.let {
+                            ProjectDto(
+                                id = it.id,
+                                name = it.name,
+                                companyId = it.companyId,
+                                description = it.description,
+                                startDate = it.startDate,
+                                endDate = it.endDate,
+                                status = it.status,
+                                progress = it.progress,
+                                clientName = it.clientName,
+                                clientPhone = it.clientPhone,
+                                location = it.location,
+                                budget = it.budget,
+                                spent = it.spent
+                            )
+                        }
+                        ProjectDetailScreen(
+                            projectId = currentScreen.projectId,
+                            projectName = currentScreen.projectName,
+                            onBackClick = navigateBack,
+                            onNavigateToMaterials = { pId, pName -> navigateTo(Screen.ProjectMaterials(pId, pName)) },
+                            onNavigateToPouch = { pId, pName -> navigateTo(Screen.ProjectPouch(pId, pName)) },
+                            onNavigateToWorklog = { pId, pName -> navigateTo(Screen.Worklog(pId, pName)) },
+                            onNavigateToBuildingPlan = { pId, pName -> navigateTo(Screen.BuildingPlan(pId, pName)) },
+                            onNavigateToExpenses = { pId -> navigateTo(Screen.Expenses(pId)) },
+                            onNavigateToWorkPrep = { pId -> navigateTo(Screen.WorkPrep(pId)) },
+                            initialProject = activeProject,
+                            initialWorklogsWithDetails = liveWorklogs
+                        )
+                    }
                     is Screen.ProjectMaterials -> ProjectMaterialsScreen(
                         projectId = currentScreen.projectId,
                         projectName = currentScreen.projectName,
@@ -197,26 +226,64 @@ fun App() {
                     is Screen.ProjectPouch -> ProjectPouchScreen(
                         projectId = currentScreen.projectId,
                         projectName = currentScreen.projectName,
+                        allProjects = liveProjects,
                         onBackClick = navigateBack
                     )
                     is Screen.Worklog -> WorklogScreen(
                         projectId = currentScreen.projectId,
                         projectName = currentScreen.projectName,
-                        onBackClick = navigateBack
+                        initialWorklogs = liveWorklogs,
+                        allProjects = liveProjects.map {
+                            com.example.constructorapp.data.remote.ProjectDto(
+                                id = it.id,
+                                name = it.name,
+                                companyId = it.companyId,
+                                description = it.description,
+                                status = it.status,
+                                progress = it.progress,
+                                clientName = it.clientName,
+                                budget = it.budget
+                            )
+                        },
+                        onBackClick = navigateBack,
+                        onCreateWorklogClick = {
+                            val newWorklog = WorklogWithDetails(
+                                worklog = DailyWorklogEntity(
+                                    id = "wl-${ClockUtils.nowMillis()}",
+                                    projectId = currentScreen.projectId.ifBlank { liveProjects.firstOrNull()?.id ?: "proj-1" },
+                                    date = DateTimeUtil.formatEpochToDateString(ClockUtils.nowMillis()),
+                                    title = "Site Construction Progress Log",
+                                    createdBy = "Site Engineer",
+                                    createdAt = ClockUtils.nowMillis().toString(),
+                                    updatedAt = ClockUtils.nowMillis().toString()
+                                ),
+                                laborEntries = emptyList(),
+                                materials = emptyList(),
+                                photos = emptyList()
+                            )
+                            SharedDataRepository.addWorklog(newWorklog)
+                        },
+                        onDeleteWorklog = { id ->
+                            SharedDataRepository.deleteWorklog(id)
+                        }
                     )
                     is Screen.WorkPrep -> WorkPrepScreen(
+                        projectId = currentScreen.projectId,
                         onBackClick = navigateBack
                     )
                     is Screen.MaterialEstimation -> MaterialEstimationScreen(
+                        initialProjectId = currentScreen.projectId,
                         onBackClick = navigateBack
                     )
                     is Screen.MaterialReconciliation -> MaterialReconciliationScreen(
+                        projectId = currentScreen.projectId,
                         onBackClick = navigateBack
                     )
                     is Screen.PurchaseOrders -> PurchaseOrdersScreen(
                         onBackClick = navigateBack
                     )
                     is Screen.Inventory -> InventoryScreen(
+                        siteId = currentScreen.siteId,
                         onBackClick = navigateBack
                     )
                     is Screen.CompanyMaterials -> CompanyMaterialsScreen(
@@ -232,12 +299,15 @@ fun App() {
                         onBackClick = navigateBack
                     )
                     is Screen.Expenses -> ExpensesScreen(
+                        initialProjectId = currentScreen.projectId,
                         onBackClick = navigateBack
                     )
                     is Screen.Payday -> PaydayScreen(
+                        initialPayoutId = currentScreen.payoutId,
                         onBackClick = navigateBack
                     )
                     is Screen.Contractors -> ContractorAccountsScreen(
+                        initialContractorId = currentScreen.contractorId,
                         onBackClick = navigateBack
                     )
                     is Screen.Financials -> FinancialsScreen(
@@ -261,10 +331,27 @@ fun App() {
                             navigationStack.add(Screen.Login)
                         }
                     )
+                    is Screen.Employees -> EmployeesScreen(
+                        onBackClick = navigateBack
+                    )
+                    is Screen.RegisterCompany -> RegisterCompanyScreen(
+                        initialDisplayName = currentScreen.initialDisplayName,
+                        onRegistrationSuccess = {
+                            navigationStack.clear()
+                            navigationStack.add(Screen.Dashboard)
+                        },
+                        onBackToLogin = {
+                            navigationStack.clear()
+                            navigationStack.add(Screen.Login)
+                        }
+                    )
                     is Screen.Login -> LoginScreen(
                         onLoginSuccess = {
                             navigationStack.clear()
                             navigationStack.add(Screen.Dashboard)
+                        },
+                        onNavigateToRegisterCompany = { email ->
+                            navigateTo(Screen.RegisterCompany(initialDisplayName = email.substringBefore("@")))
                         }
                     )
                 }

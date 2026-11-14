@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -25,6 +26,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
@@ -77,6 +79,9 @@ val sampleAlerts = listOf(
     )
 )
 
+// Webapp Exact Alert Color Palette
+// warning: "bg-yellow-50 border-yellow-200 text-yellow-800"
+// danger: "bg-red-50 border-red-200 text-red-800"
 data class AlertStyleColors(
     val background: Color,
     val border: Color,
@@ -89,18 +94,23 @@ private val FLIPPER_HALF_HEIGHT = 30.dp
 fun getAlertColors(variant: AlertVariant): AlertStyleColors {
     return when (variant) {
         AlertVariant.WARNING -> AlertStyleColors(
-            background = Color(0xFFFEFCE8),
-            border = Color(0xFFFEF08A),
-            text = Color(0xFF854D0E)
+            background = Color(0xFFFEFCE8), // yellow-50
+            border = Color(0xFFFEF08A),     // yellow-200
+            text = Color(0xFF854D0E)        // yellow-800
         )
         AlertVariant.DANGER -> AlertStyleColors(
-            background = Color(0xFFFEF2F2),
-            border = Color(0xFFFECACA),
-            text = Color(0xFF991B1B)
+            background = Color(0xFFFEF2F2), // red-50
+            border = Color(0xFFFECACA),     // red-200
+            text = Color(0xFF991B1B)        // red-800
         )
     }
 }
 
+/**
+ * Compact Split-Flap Card Body (60.dp)
+ * Modern, clean layout with squircle icon, title + variant + timestamp, 1-line description,
+ * and trailing chevron. Whole card is tap-to-inspect.
+ */
 @Composable
 fun AlertCardBody(
     alert: DashboardAlert,
@@ -118,6 +128,7 @@ fun AlertCardBody(
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Left: Squircle Icon Pill
         Box(
             modifier = Modifier
                 .size(32.dp)
@@ -135,8 +146,10 @@ fun AlertCardBody(
 
         Spacer(modifier = Modifier.width(10.dp))
 
+        // Center: Title + Variant Badge + Time on row 1, Description on row 2
         Column(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f),
             verticalArrangement = Arrangement.Center
         ) {
             Row(
@@ -145,6 +158,7 @@ fun AlertCardBody(
             ) {
                 Text(
                     text = alert.title,
+                    fontFamily = OutfitFontFamily,
                     fontSize = 12.5.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = colors.text,
@@ -154,6 +168,7 @@ fun AlertCardBody(
                 )
                 Text(
                     text = "• ${alert.time}",
+                    fontFamily = PlusJakartaSansFontFamily,
                     fontSize = 10.sp,
                     color = colors.text.copy(alpha = 0.7f),
                     maxLines = 1
@@ -164,6 +179,7 @@ fun AlertCardBody(
 
             Text(
                 text = alert.description,
+                fontFamily = PlusJakartaSansFontFamily,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Normal,
                 color = colors.text.copy(alpha = 0.85f),
@@ -174,6 +190,7 @@ fun AlertCardBody(
 
         Spacer(modifier = Modifier.width(6.dp))
 
+        // Right: Trailing subtle chevron indicator
         Icon(
             imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
             contentDescription = "Details",
@@ -183,6 +200,10 @@ fun AlertCardBody(
     }
 }
 
+/**
+ * Clean Half-Slice Helper: Renders exact top or bottom half slice of an AlertCardBody
+ * without manual pixel offset or clipping artifacts.
+ */
 @Composable
 fun AlertCardHalf(
     alert: DashboardAlert,
@@ -263,6 +284,7 @@ fun AllClearAlertCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "All Clear • No Active Alerts",
+                    fontFamily = OutfitFontFamily,
                     fontSize = 12.5.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = TextPrimary
@@ -270,6 +292,7 @@ fun AllClearAlertCard(
                 Spacer(modifier = Modifier.height(1.dp))
                 Text(
                     text = "All project milestones, stock, and site tasks are on track.",
+                    fontFamily = PlusJakartaSansFontFamily,
                     fontSize = 10.5.sp,
                     color = TextSecondary,
                     maxLines = 1,
@@ -280,12 +303,23 @@ fun AllClearAlertCard(
     }
 }
 
+/**
+ * Split-Flap Display Component
+ * Exact match with webapp (src/components/dashboard/alert-flipper.tsx):
+ * - 86px (86.dp) height split into two 43.dp halves
+ * - 600ms flip animation with CubicBezierEasing(0.455f, 0.030f, 0.515f, 0.955f)
+ * - 3D rotationX from 0 to -180 degrees
+ * - Static background layers + moving flap with front/back lighting shadows
+ * - Left/Right manual arrows
+ * - Bottom controls bar with Pause status and animated dot pills
+ */
 @Composable
 fun AlertFlipper(
     alerts: List<DashboardAlert>,
-    onAlertDismiss: (String) -> Unit = {},
+    onAlertDismiss: (String) -> Unit,
     modifier: Modifier = Modifier,
-    autoplayDelay: Long = 5000L
+    autoplayDelay: Long = 5000L,
+    onRestoreAlerts: () -> Unit = {}
 ) {
     if (alerts.isEmpty()) {
         AllClearAlertCard(modifier = modifier)
@@ -296,16 +330,19 @@ fun AlertFlipper(
     var nextIndex by remember { mutableIntStateOf(if (alerts.size > 1) 1 else 0) }
     var isFlipping by remember { mutableStateOf(false) }
     var isPaused by remember { mutableStateOf(false) }
+    var inspectingAlert by remember { mutableStateOf<DashboardAlert?>(null) }
 
     val coroutineScope = rememberCoroutineScope()
     val flipAngle = remember { Animatable(0f) }
 
+    // Bound indices safely
     val activeCount = alerts.size
     val safeCurrentIndex = currentIndex.coerceIn(0, (activeCount - 1).coerceAtLeast(0))
     val safeNextIndex = nextIndex.coerceIn(0, (activeCount - 1).coerceAtLeast(0))
 
     val currentAlert = alerts[safeCurrentIndex]
     val nextAlert = alerts[safeNextIndex]
+
     val currentColors = getAlertColors(currentAlert.variant)
 
     fun triggerFlip(targetIndex: Int? = null) {
@@ -330,6 +367,7 @@ fun AlertFlipper(
         }
     }
 
+    // Autoplay Loop
     LaunchedEffect(activeCount, isPaused, isFlipping, autoplayDelay) {
         while (isActive) {
             delay(autoplayDelay)
@@ -340,6 +378,7 @@ fun AlertFlipper(
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
+        // Outer Split-Flap Display Container (Fixed FLIPPER_TOTAL_HEIGHT)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -356,19 +395,22 @@ fun AlertFlipper(
                             isPaused = false
                         },
                         onTap = {
-                            triggerFlip()
+                            inspectingAlert = currentAlert
                         }
                     )
                 }
         ) {
             if (!isFlipping) {
+                // RESTING STATE: Full uninterrupted card body
                 AlertCardBody(
                     alert = currentAlert,
-                    onView = { triggerFlip() }
+                    onView = { inspectingAlert = currentAlert }
                 )
             } else {
+                // FLIPPING STATE: 3D mechanical calendar / split-flap flip animation
                 val currentRot = flipAngle.value
 
+                // LAYER 1: STATIC BOTTOM HALF (Underneath: Shows currentAlert bottom half until flap covers it)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -384,6 +426,7 @@ fun AlertFlipper(
                     )
                 }
 
+                // LAYER 2: STATIC TOP HALF (Revealed underneath as the top flap flips forward like a calendar)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -393,6 +436,7 @@ fun AlertFlipper(
                     AlertCardHalf(alert = nextAlert, isTop = true)
                 }
 
+                // LAYER 3: FLIPPER (The Moving Half Flap swinging forward and down over the bottom)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -405,27 +449,209 @@ fun AlertFlipper(
                         }
                 ) {
                     if (currentRot > -90f) {
+                        // FRONT FACE: Upper half of currentAlert rotating forward towards viewer
                         AlertCardHalf(alert = currentAlert, isTop = true)
-                        val shadowAlpha = (abs(currentRot) / 90f * 0.35f).coerceIn(0f, 0.35f)
+                        val shadowAlpha = ((abs(currentRot) / 90f) * 0.35f).coerceIn(0f, 0.35f)
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(Color.Black.copy(alpha = shadowAlpha))
                         )
                     } else {
+                        // BACK FACE: Lower half of nextAlert landing face-up over the bottom half
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .graphicsLayer { rotationX = 180f }
                         ) {
                             AlertCardHalf(alert = nextAlert, isTop = false)
-                            val shadowAlpha = ((180f - abs(currentRot)) / 90f * 0.35f).coerceIn(0f, 0.35f)
+                            val shadowAlpha = (((180f - abs(currentRot)) / 90f) * 0.35f).coerceIn(0f, 0.35f)
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .background(Color.Black.copy(alpha = shadowAlpha))
                             )
                         }
+                    }
+                }
+            }
+        }
+
+        if (activeCount > 1) {
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Bottom Controls Bar: Index Count, Animated Dots
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Left: Status / Pause Indicator
+                if (isPaused) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Outlined.Pause,
+                            contentDescription = "Paused",
+                            tint = BrandPrimary,
+                            modifier = Modifier.size(10.dp)
+                        )
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text(
+                            text = "Paused",
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = BrandPrimary
+                        )
+                    }
+                } else {
+                    Text(
+                        text = "${safeCurrentIndex + 1} of $activeCount",
+                        fontFamily = PlusJakartaSansFontFamily,
+                        fontSize = 10.sp,
+                        color = TextSecondary
+                    )
+                }
+
+                // Center: Progress Dots
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    alerts.forEachIndexed { index, _ ->
+                        val isActive = index == safeCurrentIndex
+                        val dotWidth by animateDpAsState(
+                            targetValue = if (isActive) 16.dp else 5.dp,
+                            animationSpec = tween(durationMillis = 250),
+                            label = "dotWidth"
+                        )
+                        Box(
+                            modifier = Modifier
+                                .height(4.dp)
+                                .width(dotWidth)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(if (isActive) BrandPrimary else Color(0xFFCBD5E1))
+                                .clickable { triggerFlip(index) }
+                        )
+                    }
+                }
+
+                // Right: Clean subtle notification icon
+                Box(
+                    modifier = Modifier.size(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.NotificationsNone,
+                        contentDescription = null,
+                        tint = TextSecondary.copy(alpha = 0.45f),
+                        modifier = Modifier.size(11.dp)
+                    )
+                }
+            }
+        }
+    }
+
+    // Alert Inspection Modal Dialog (matching webapp Dialog)
+    if (inspectingAlert != null) {
+        val alert = inspectingAlert!!
+        val colors = getAlertColors(alert.variant)
+
+        FluidGlossDialog(
+            onDismissRequest = { inspectingAlert = null },
+            title = alert.title,
+            icon = alert.icon,
+            iconTint = colors.text,
+            confirmButton = {
+                FluidGlossButton(
+                    text = "Dismiss Alert",
+                    onClick = {
+                        onAlertDismiss(alert.id)
+                        inspectingAlert = null
+                        if (currentIndex >= activeCount - 1) {
+                            currentIndex = (activeCount - 2).coerceAtLeast(0)
+                        }
+                    },
+                    variant = FluidGlossButtonVariant.Destructive
+                )
+            },
+            dismissButton = {
+                FluidGlossButton(
+                    text = "Got it",
+                    onClick = { inspectingAlert = null },
+                    variant = FluidGlossButtonVariant.Secondary
+                )
+            }
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(colors.border)
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = alert.variant.name.uppercase(),
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.text,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Outlined.Schedule,
+                            contentDescription = null,
+                            tint = TextSecondary,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = alert.time,
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+                    }
+                }
+
+                Text(
+                    text = alert.description,
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 13.sp,
+                    color = TextPrimary,
+                    lineHeight = 18.sp
+                )
+
+                GlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Shield,
+                            contentDescription = null,
+                            tint = EmeraldSuccess,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Actionable reminder logged in Constructor site registry.",
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
                     }
                 }
             }

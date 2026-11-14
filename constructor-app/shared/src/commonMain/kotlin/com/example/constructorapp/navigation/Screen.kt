@@ -24,4 +24,6 @@ sealed interface Screen {
     data object Profile : Screen
     data class AddEditReminder(val reminderId: String? = null) : Screen
     data object Login : Screen
+    data class RegisterCompany(val initialDisplayName: String = "") : Screen
+    data object Employees : Screen
 }

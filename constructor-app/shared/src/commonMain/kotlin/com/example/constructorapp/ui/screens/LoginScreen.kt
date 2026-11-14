@@ -38,12 +38,14 @@ import com.example.constructorapp.ui.components.GlassCard
 fun LoginScreen(
     onLoginSuccess: () -> Unit = {},
     onLogin: ((String, String) -> Unit)? = null,
+    onNavigateToRegisterCompany: ((String) -> Unit)? = null,
     isLoading: Boolean = false,
     errorMessage: String? = null
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var isSignUpMode by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -179,9 +181,13 @@ fun LoginScreen(
                 }
 
                 FluidGlossButton(
-                    text = "Login",
+                    text = if (isSignUpMode) "Sign Up" else "Login",
                     onClick = {
-                        onLogin?.invoke(email, password) ?: onLoginSuccess()
+                        if (isSignUpMode) {
+                            onNavigateToRegisterCompany?.invoke(email) ?: onLoginSuccess()
+                        } else {
+                            onLogin?.invoke(email, password) ?: onLoginSuccess()
+                        }
                     },
                     variant = FluidGlossButtonVariant.Primary,
                     size = FluidGlossButtonSize.Large,
@@ -190,6 +196,19 @@ fun LoginScreen(
                         .fillMaxWidth()
                         .padding(top = 8.dp)
                 )
+
+                TextButton(
+                    onClick = { isSignUpMode = !isSignUpMode },
+                    modifier = Modifier.padding(top = 4.dp)
+                ) {
+                    Text(
+                        text = if (isSignUpMode) "Already have an account? Sign In" else "Don't have an account? Sign Up",
+                        fontFamily = PlusJakartaSansFontFamily,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = BrandPrimary
+                    )
+                }
             }
         }
     }
